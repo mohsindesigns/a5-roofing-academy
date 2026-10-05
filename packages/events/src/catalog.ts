@@ -417,6 +417,8 @@ export const assessmentEvents = {
           possiblePoints: z.number(),
         }),
       ),
+      /** Managers to notify, resolved from the assessment's `notifyManagerOn` policy (empty or absent: none). */
+      notifyManagerIds: z.array(id).optional(),
     }),
   }),
 };
