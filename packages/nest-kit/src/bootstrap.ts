@@ -16,15 +16,23 @@ export interface BootstrapOptions {
   title: string;
   description?: string;
   configure?: (app: NestExpressApplication) => void | Promise<void>;
+  /** Parse JSON/urlencoded bodies globally (disable for the streaming gateway). */
+  parseBodies?: boolean;
 }
 
 /** Apply middleware and settings shared by production bootstrap and tests. */
-export function configureApplication(app: NestExpressApplication, config: ServiceRuntimeConfig): void {
+export function configureApplication(
+  app: NestExpressApplication,
+  config: ServiceRuntimeConfig,
+  { parseBodies = true }: { parseBodies?: boolean } = {},
+): void {
   app.set('trust proxy', 'loopback, linklocal, uniquelocal');
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'same-site' } }));
-  app.useBodyParser('json', { limit: config.bodyLimit });
-  app.useBodyParser('urlencoded', { limit: config.bodyLimit, extended: false });
+  if (parseBodies) {
+    app.useBodyParser('json', { limit: config.bodyLimit });
+    app.useBodyParser('urlencoded', { limit: config.bodyLimit, extended: false });
+  }
 }
 
 export function setupSwagger(app: INestApplication, title: string, description?: string): void {
@@ -52,7 +60,7 @@ export async function bootstrapService(options: BootstrapOptions): Promise<NestE
     bodyParser: false,
     abortOnError: false,
   });
-  configureApplication(app, config);
+  configureApplication(app, config, { parseBodies: options.parseBodies ?? true });
   if (config.swaggerEnabled) setupSwagger(app, options.title, options.description);
   await options.configure?.(app);
 

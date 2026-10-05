@@ -44,10 +44,11 @@ export async function createTestApp(
   module: unknown,
   config: ServiceRuntimeConfig,
   configure?: (app: NestExpressApplication) => void | Promise<void>,
+  options: { parseBodies?: boolean } = {},
 ): Promise<NestExpressApplication> {
   const ref = await Test.createTestingModule({ imports: [module as never] }).compile();
   const app = ref.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
-  configureApplication(app, config);
+  configureApplication(app, config, options);
   await configure?.(app);
   await app.init();
   return app;
