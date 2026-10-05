@@ -115,6 +115,43 @@ export const routes: RouteObject[] = [
                   'NotificationsPage',
                 ),
               },
+              {
+                path: 'ai-coach',
+                lazy: page(() => import('@/features/ai-coach/coach-page'), 'CoachPage'),
+              },
+              {
+                path: 'ai-coach/sessions/:id',
+                lazy: page(() => import('@/features/ai-coach/session-page'), 'SessionPage'),
+              },
+              {
+                path: 'ai-coach/sessions/:id/scorecard',
+                lazy: page(() => import('@/features/ai-coach/scorecard-page'), 'ScorecardPage'),
+              },
+              {
+                path: 'content/ai-scenarios',
+                lazy: page(
+                  () => import('@/features/ai-scenarios/scenarios-page'),
+                  'AiScenariosPage',
+                ),
+              },
+              {
+                path: 'content/ai-scenarios/new',
+                lazy: page(
+                  () => import('@/features/ai-scenarios/scenario-detail-page'),
+                  'ScenarioCreatePage',
+                ),
+              },
+              {
+                path: 'content/ai-scenarios/rubrics/:id',
+                lazy: page(() => import('@/features/ai-scenarios/rubric-page'), 'RubricPage'),
+              },
+              {
+                path: 'content/ai-scenarios/:id',
+                lazy: page(
+                  () => import('@/features/ai-scenarios/scenario-detail-page'),
+                  'ScenarioDetailPage',
+                ),
+              },
               { path: '*', element: <NotFoundPage /> },
             ],
           },
