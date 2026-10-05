@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"],
+  "references": [
+    { "path": "../../packages/auth" },
+    { "path": "../../packages/config" },
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/database" },
+    { "path": "../../packages/events" },
+    { "path": "../../packages/messaging" },
+    { "path": "../../packages/nest-kit" },
+    { "path": "../../packages/observability" },
+    { "path": "../../packages/permissions" },
+    { "path": "../../packages/seed-data" },
+    { "path": "../../packages/storage" }
+  ]
+}

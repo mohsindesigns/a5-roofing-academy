@@ -1,0 +1,2 @@
+# Local storage driver root (STORAGE_LOCAL_ROOT=./storage resolves relative to this service).
+/storage/
