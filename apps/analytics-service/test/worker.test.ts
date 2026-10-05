@@ -84,7 +84,8 @@ describe('background jobs', () => {
     const queues = h.app.get(QueueFactory, { strict: false });
     const rollup = await queues.queue(ROLLUP_QUEUE).getJobSchedulers();
     expect(rollup.map((s) => s.key).sort()).toEqual(['analytics.rollup.dirty', 'analytics.rollup.nightly']);
-    expect(rollup.find((s) => s.key === 'analytics.rollup.dirty')!.every).toBe(String(15 * 60_000));
+    expect(Number(rollup.find((s) => s.key === 'analytics.rollup.dirty')!.every)).toBe(15 * 60_000);
+    expect(rollup.find((s) => s.key === 'analytics.rollup.nightly')!.pattern).toBe('17 3 * * *');
     const reports = await queues.queue(REPORT_QUEUE).getJobSchedulers();
     expect(reports.map((s) => s.key)).toEqual(['analytics.report.maintenance']);
   });
@@ -102,12 +103,14 @@ describe('background jobs', () => {
       { timeoutMs: 15_000, message: 'rollup rows' },
     );
     const lessons = rows.filter((r) => r.metric === 'lessons_completed');
+    // One completion, attributed to the organization, the person, their team, location and department.
     expect(lessons.map((r) => [r.dimension_type, r.value]).sort()).toEqual([
+      ['department', 1],
       ['location', 1],
       ['organization', 1],
       ['team', 1],
       ['user', 1],
-    ].sort());
+    ]);
     expect(rows.find((r) => r.metric === 'enrollments_started' && r.dimension_type === 'department')!.value).toBe(1);
     expect(rows.find((r) => r.metric === 'active_learners' && r.dimension_type === 'organization')!.value).toBe(1);
   });
