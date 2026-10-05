@@ -68,13 +68,8 @@ export function claudeCapabilities(model: string): ClaudeCapabilities {
   if (is('claude-opus-4-6', 'claude-sonnet-4-6')) effortLevels = ['low', 'medium', 'high', 'max'];
   else if (is('claude-opus-4-5')) effortLevels = ['low', 'medium', 'high'];
   else if (
-    is(
-      'claude-haiku-4-5',
-      'claude-sonnet-4-5',
-      'claude-opus-4-1',
-      'claude-opus-4',
-      'claude-sonnet-4',
-    )
+    is('claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-1') ||
+    /^claude-(opus|sonnet)-4(-\d{8})?$/.test(m) // effort is not supported before Opus 4.5
   )
     effortLevels = [];
   return {

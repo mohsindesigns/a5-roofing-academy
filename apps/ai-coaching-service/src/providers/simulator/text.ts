@@ -204,7 +204,11 @@ export function isNegated(sentence: string, pattern: RegExp): boolean {
   if (!m) return false;
   // Only a negation close to the match and in the same clause counts ("Don't worry, insurance will
   // pay" is a promise; "I can't promise insurance will pay" is not).
-  const clause = s.slice(0, m.index).split(/[,;:.!?\u2014\u2013]|\s-\s/).pop() ?? '';
+  const clause =
+    s
+      .slice(0, m.index)
+      .split(/[,;:.!?\u2014\u2013]|\s-\s/)
+      .pop() ?? '';
   return PATTERNS.negation.test(clause.split(/\s+/).filter(Boolean).slice(-6).join(' '));
 }
 
@@ -286,4 +290,19 @@ export function forbiddenClaimSentences(text: string): string[] {
     if (PATTERNS.forbidden.test(n)) return !isNegated(s, PATTERNS.forbidden);
     return COST_PHRASE.test(n) && OUTCOME_CONTEXT.test(n) && !isNegated(s, COST_PHRASE);
   });
+}
+
+const CLAUSE_BREAK = /,\s+(?:and|but|so|because)\s+|\s+because\s+|\s+until\s+/g;
+
+/** Shorten a long sentence at a natural clause boundary so a homeowner reply stays conversational. */
+export function compactSentence(sentence: string, maxWords = 28): string {
+  const words = sentence.trim().split(/\s+/);
+  if (words.length <= maxWords) return sentence.trim();
+  let cut = -1;
+  for (const m of sentence.matchAll(CLAUSE_BREAK)) {
+    const left = sentence.slice(0, m.index).trim().split(/\s+/).length;
+    if (left >= 10 && left <= maxWords + 8) cut = m.index;
+  }
+  const left = cut > 0 ? sentence.slice(0, cut).trim() : words.slice(0, maxWords).join(' ');
+  return `${left.replace(/[,;:\s]+$/, '')}.`;
 }

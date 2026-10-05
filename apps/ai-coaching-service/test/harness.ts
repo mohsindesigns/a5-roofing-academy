@@ -4,10 +4,34 @@ import request from 'supertest';
 import { signLessonGrant } from '@a5/auth';
 import { createDatabase, migrateToLatest, type Database } from '@a5/database';
 import { createRedis, RedisNamespace, type Redis } from '@a5/messaging';
-import { TEST_INTERNAL_SECRET, closeApp, createTestApp, principalHeaders, testLogger } from '@a5/nest-kit/testing';
-import { DEFAULT_ROLES, widestScope, type DataScope, type PermissionKey, type PermissionMap } from '@a5/permissions';
-import { ORGANIZATION, PEOPLE, SCENARIOS, TEAMS, TRAINER_ASSIGNMENTS, type PersonKey } from '@a5/seed-data';
-import { TEST_REDIS_URL, createTestDatabase, testRedisNamespace, type TestDatabase } from '@a5/testing';
+import {
+  TEST_INTERNAL_SECRET,
+  closeApp,
+  createTestApp,
+  principalHeaders,
+  testLogger,
+} from '@a5/nest-kit/testing';
+import {
+  DEFAULT_ROLES,
+  widestScope,
+  type DataScope,
+  type PermissionKey,
+  type PermissionMap,
+} from '@a5/permissions';
+import {
+  ORGANIZATION,
+  PEOPLE,
+  SCENARIOS,
+  TEAMS,
+  TRAINER_ASSIGNMENTS,
+  type PersonKey,
+} from '@a5/seed-data';
+import {
+  TEST_REDIS_URL,
+  createTestDatabase,
+  testRedisNamespace,
+  type TestDatabase,
+} from '@a5/testing';
 import { AppModule } from '../src/app.module.js';
 import { loadAiConfig, type AiConfig } from '../src/config.js';
 import { migrations } from '../src/database/migrations/index.js';
@@ -23,9 +47,23 @@ export interface AiHarness {
   /** Principal headers for a seeded person, computed from the default role definitions. */
   as(person: PersonKey): Promise<Record<string, string>>;
   /** Principal headers with explicit permissions (for edge cases). */
-  asCustom(userId: string, permissions: PermissionKey[], scope: DataScope): Promise<Record<string, string>>;
+  asCustom(
+    userId: string,
+    permissions: PermissionKey[],
+    scope: DataScope,
+  ): Promise<Record<string, string>>;
   scenarioId(key: string): string;
-  grant(person: PersonKey, scenarioKey: string, overrides?: { userId?: string; resourceId?: string; resourceType?: 'ai_scenario' | 'media'; secret?: string; ttlSeconds?: number }): Promise<string>;
+  grant(
+    person: PersonKey,
+    scenarioKey: string,
+    overrides?: {
+      userId?: string;
+      resourceId?: string;
+      resourceType?: 'ai_scenario' | 'media';
+      secret?: string;
+      ttlSeconds?: number;
+    },
+  ): Promise<string>;
   close(): Promise<void>;
 }
 
@@ -48,19 +86,26 @@ function principalFor(person: PersonKey) {
       permissions[key] = existing ? widestScope(existing, role.dataScope) : role.dataScope;
     }
   }
-  const managedUserIds = TRAINER_ASSIGNMENTS.filter((a) => a.trainer === person).flatMap((a) => a.trainees.map((t) => PEOPLE[t].id));
+  const managedUserIds = TRAINER_ASSIGNMENTS.filter((a) => a.trainer === person).flatMap((a) =>
+    a.trainees.map((t) => PEOPLE[t].id),
+  );
   return {
     userId: p.id,
     organizationId: ORGANIZATION.id,
     displayName: `${p.firstName} ${p.lastName}`,
     roles: [...p.roles],
     permissions,
-    managedTeamIds: TEAMS.filter((t) => (t.managers as readonly string[]).includes(person)).map((t) => t.id),
+    managedTeamIds: TEAMS.filter((t) => (t.managers as readonly string[]).includes(person)).map(
+      (t) => t.id,
+    ),
     managedUserIds,
   };
 }
 
-export async function createAiHarness(name: string, options: HarnessOptions = {}): Promise<AiHarness> {
+export async function createAiHarness(
+  name: string,
+  options: HarnessOptions = {},
+): Promise<AiHarness> {
   const tdb: TestDatabase = await createTestDatabase(`ai_${name}`);
   const namespace = testRedisNamespace(`ai-${name}`);
   const config = loadAiConfig({
@@ -112,7 +157,10 @@ export async function createAiHarness(name: string, options: HarnessOptions = {}
           programId: '0190a3b2-0000-7000-8000-00000000aa01',
           enrollmentId: '0190a3b2-0000-7000-8000-00000000aa02',
           lessonId: '0190a3b2-0000-7000-8000-00000000aa03',
-          resource: { type: overrides.resourceType ?? 'ai_scenario', id: overrides.resourceId ?? SCENARIOS.find((s) => s.key === scenarioKey)!.id },
+          resource: {
+            type: overrides.resourceType ?? 'ai_scenario',
+            id: overrides.resourceId ?? SCENARIOS.find((s) => s.key === scenarioKey)!.id,
+          },
           policy: {},
         },
         overrides.secret ?? config.ai.lessonGrantSecret,
@@ -143,14 +191,26 @@ export function parseSse(body: string): SseEvent[] {
     .filter((block) => block && !block.startsWith(':'))
     .map((block) => {
       const lines = block.split('\n');
-      const event = lines.find((l) => l.startsWith('event:'))?.slice(6).trim() ?? 'message';
-      const data = lines.filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trim()).join('\n');
+      const event =
+        lines
+          .find((l) => l.startsWith('event:'))
+          ?.slice(6)
+          .trim() ?? 'message';
+      const data = lines
+        .filter((l) => l.startsWith('data:'))
+        .map((l) => l.slice(5).trim())
+        .join('\n');
       return { event, data: JSON.parse(data) as Record<string, unknown> };
     });
 }
 
 /** Send a message and collect the SSE events. */
-export async function sendStreaming(h: AiHarness, headers: Record<string, string>, sessionId: string, body: Record<string, unknown>) {
+export async function sendStreaming(
+  h: AiHarness,
+  headers: Record<string, string>,
+  sessionId: string,
+  body: Record<string, unknown>,
+) {
   const res = await h.http
     .post(`/api/v1/ai/sessions/${sessionId}/messages`)
     .set(headers)
@@ -164,7 +224,12 @@ export async function sendStreaming(h: AiHarness, headers: Record<string, string
     })
     .send(body);
   const text = typeof res.body === 'string' ? res.body : '';
-  return { status: res.status, headers: res.headers, text, events: res.status === 200 ? parseSse(text) : [] };
+  return {
+    status: res.status,
+    headers: res.headers,
+    text,
+    events: res.status === 200 ? parseSse(text) : [],
+  };
 }
 
 export function replyText(events: SseEvent[]): string {
@@ -174,7 +239,15 @@ export function replyText(events: SseEvent[]): string {
     .join('');
 }
 
-export async function startSession(h: AiHarness, headers: Record<string, string>, scenarioKey: string, extra: Record<string, unknown> = {}) {
-  const res = await h.http.post('/api/v1/ai/sessions').set(headers).send({ scenarioId: h.scenarioId(scenarioKey), ...extra });
+export async function startSession(
+  h: AiHarness,
+  headers: Record<string, string>,
+  scenarioKey: string,
+  extra: Record<string, unknown> = {},
+) {
+  const res = await h.http
+    .post('/api/v1/ai/sessions')
+    .set(headers)
+    .send({ scenarioId: h.scenarioId(scenarioKey), ...extra });
   return res;
 }

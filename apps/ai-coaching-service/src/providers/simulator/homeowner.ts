@@ -3,6 +3,7 @@ import type { ChatMessage, PersonaSnapshot, ScenarioSnapshot } from '../types.js
 import {
   PATTERNS,
   affirmedMatches,
+  compactSentence,
   forbiddenClaimSentences,
   hash,
   isDiscoveryQuestion,
@@ -97,11 +98,16 @@ function bestFact(scenario: ScenarioSnapshot, query: string): string | null {
     const { hits } = overlap(query, fact);
     if (hits > 0 && (!best || hits > best.score)) best = { fact, score: hits };
   }
-  return best ? secondToFirstPerson(best.fact) : null;
+  return best ? secondToFirstPerson(compactSentence(best.fact)) : null;
 }
 
 function concernText(scenario: ScenarioSnapshot): string {
-  return secondToFirstPerson(sentences(scenario.hiddenConcern).slice(0, 2).join(' '));
+  return secondToFirstPerson(
+    sentences(scenario.hiddenConcern)
+      .slice(0, 2)
+      .map((x) => compactSentence(x))
+      .join(' '),
+  );
 }
 
 /**
@@ -137,12 +143,12 @@ export function simulateHomeownerReply(
 
   if (!latest) return `${prefix}${scenario.objection}`;
 
-  const concernRevealed = homeownerLines.some(
-    (line) => overlap(line, scenario.hiddenConcern).ratio >= 0.35,
-  );
-  const revealIndex = homeownerLines.findIndex(
-    (line) => overlap(line, scenario.hiddenConcern).ratio >= 0.35,
-  );
+  // The homeowner recognises its own earlier reveal (or a paraphrase of the concern).
+  const revealSnippet = concernText(scenario).slice(0, 60);
+  const isReveal = (line: string) =>
+    line.includes(revealSnippet) || overlap(line, scenario.hiddenConcern).ratio >= 0.35;
+  const concernRevealed = homeownerLines.some(isReveal);
+  const revealIndex = homeownerLines.findIndex(isReveal);
   const latestQuestions = questions(latest);
   const isolationQuestion = latestQuestions.some((q) => PATTERNS.isolation.test(normalize(q)));
   const latestDiscovery = latestQuestions.some(isDiscoveryQuestion) || isolationQuestion;
