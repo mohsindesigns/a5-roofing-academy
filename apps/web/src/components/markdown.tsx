@@ -15,7 +15,11 @@ export function Markdown({ children, className }: { children: string; className?
         urlTransform={(url) => (/^(https?:|mailto:|\/)/i.test(url) ? url : '')}
         components={{
           a: ({ href, children: c }) => (
-            <a href={href} target={href?.startsWith('/') ? undefined : '_blank'} rel="noopener noreferrer">
+            <a
+              href={href}
+              target={href?.startsWith('/') ? undefined : '_blank'}
+              rel="noopener noreferrer"
+            >
               {c}
             </a>
           ),

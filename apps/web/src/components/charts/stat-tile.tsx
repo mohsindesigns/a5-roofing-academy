@@ -3,7 +3,10 @@ import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export function compactNumber(n: number): string {
-  return new Intl.NumberFormat('en-US', { notation: n >= 10_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(n);
+  return new Intl.NumberFormat('en-US', {
+    notation: n >= 10_000 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  }).format(n);
 }
 
 /**
@@ -25,16 +28,27 @@ export function StatTile({
   upIsGood?: boolean;
   className?: string;
 }) {
-  const good = delta ? (delta.value >= 0) === upIsGood : true;
+  const good = delta ? delta.value >= 0 === upIsGood : true;
   return (
     <div className={cn('min-w-0', className)}>
       <p className="text-sm text-text-secondary">{label}</p>
-      <p className="tabular mt-1 text-2xl font-semibold tracking-[-0.01em] text-text-primary">{value}</p>
+      <p className="tabular mt-1 text-2xl font-semibold tracking-[-0.01em] text-text-primary">
+        {value}
+      </p>
       {(delta || context) && (
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-text-tertiary">
           {delta && delta.value !== 0 && (
-            <span className={cn('inline-flex items-center gap-0.5 font-medium', good ? 'text-success' : 'text-danger')}>
-              {delta.value > 0 ? <ArrowUpRight aria-hidden className="size-3.5" /> : <ArrowDownRight aria-hidden className="size-3.5" />}
+            <span
+              className={cn(
+                'inline-flex items-center gap-0.5 font-medium',
+                good ? 'text-success' : 'text-danger',
+              )}
+            >
+              {delta.value > 0 ? (
+                <ArrowUpRight aria-hidden className="size-3.5" />
+              ) : (
+                <ArrowDownRight aria-hidden className="size-3.5" />
+              )}
               {(delta.format ?? ((n: number) => `${Math.abs(n)}`))(Math.abs(delta.value))}
               <span className="sr-only">{delta.value > 0 ? 'up' : 'down'}</span>
             </span>
@@ -50,7 +64,12 @@ export function StatTile({
 /** Row of headline figures separated by hairlines rather than boxed into cards. */
 export function StatRow({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('grid grid-cols-2 gap-x-6 gap-y-5 border-y border-border py-5 sm:grid-cols-3 lg:flex lg:divide-x lg:divide-border', className)}>
+    <div
+      className={cn(
+        'grid grid-cols-2 gap-x-6 gap-y-5 border-y border-border py-5 sm:grid-cols-3 lg:flex lg:divide-x lg:divide-border',
+        className,
+      )}
+    >
       {children}
     </div>
   );

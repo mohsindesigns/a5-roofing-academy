@@ -49,9 +49,15 @@ export function BarList({
               {d.meta && <span className="ml-1.5 text-text-tertiary">{d.meta}</span>}
             </span>
             <span className="tabular text-sm font-medium text-text-primary">{format(d.value)}</span>
-            <span className="relative col-span-2 h-2 rounded-r-[4px] bg-[var(--a5-chart-grid)]" aria-hidden>
+            <span
+              className="relative col-span-2 h-2 rounded-r-[4px] bg-[var(--a5-chart-grid)]"
+              aria-hidden
+            >
               <span
-                className={cn('absolute inset-y-0 left-0 rounded-r-[4px] transition-[width,opacity] duration-300', hover && hover !== d.key && 'opacity-60')}
+                className={cn(
+                  'absolute inset-y-0 left-0 rounded-r-[4px] transition-[width,opacity] duration-300',
+                  hover && hover !== d.key && 'opacity-60',
+                )}
                 style={{ width: `${pct}%`, background: color }}
               />
             </span>

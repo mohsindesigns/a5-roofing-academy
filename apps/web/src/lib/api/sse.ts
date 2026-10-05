@@ -19,7 +19,9 @@ export function createSseParser(onMessage: (m: SseMessage) => void) {
     let newline: number;
     while ((newline = buffer.search(/\r\n|\r|\n/)) >= 0) {
       const line = buffer.slice(0, newline);
-      buffer = buffer.slice(newline + (buffer[newline] === '\r' && buffer[newline + 1] === '\n' ? 2 : 1));
+      buffer = buffer.slice(
+        newline + (buffer[newline] === '\r' && buffer[newline + 1] === '\n' ? 2 : 1),
+      );
       if (line === '') {
         if (data.length) onMessage({ event, data: data.join('\n'), id });
         event = 'message';
@@ -40,6 +42,7 @@ export function createSseParser(onMessage: (m: SseMessage) => void) {
 export interface StreamOptions {
   method?: 'GET' | 'POST';
   body?: unknown;
+  headers?: Record<string, string>;
   signal?: AbortSignal;
   onMessage: (m: SseMessage) => void;
 }
@@ -48,7 +51,10 @@ export interface StreamOptions {
  * Server-sent events over fetch so the bearer token can be sent (EventSource cannot set headers).
  * Resolves when the stream ends; rejects with ApiError for HTTP errors.
  */
-export async function streamSse(path: string, { method = 'GET', body, signal, onMessage }: StreamOptions): Promise<void> {
+export async function streamSse(
+  path: string,
+  { method = 'GET', body, headers, signal, onMessage }: StreamOptions,
+): Promise<void> {
   const attempt = async (retried: boolean): Promise<void> => {
     const token = useAuth.getState().accessToken;
     let res: Response;
@@ -59,6 +65,7 @@ export async function streamSse(path: string, { method = 'GET', body, signal, on
         credentials: 'same-origin',
         headers: {
           accept: 'text/event-stream',
+          ...headers,
           ...(body !== undefined && { 'content-type': 'application/json' }),
           ...(token && { authorization: `Bearer ${token}` }),
         },

@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WatchTracker, type WatchReport } from './watch-tracker';
 
 function play(t: WatchTracker, from: number, to: number, rate = 1, step = 0.25) {
-  for (let x = from; x <= to + 1e-9; x += step * rate) t.update(Math.round(x * 100) / 100, true, rate);
+  for (let x = from; x <= to + 1e-9; x += step * rate)
+    t.update(Math.round(x * 100) / 100, true, rate);
 }
 
 afterEach(() => vi.useRealTimers());
@@ -58,7 +59,10 @@ describe('WatchTracker', () => {
   it('sends periodic heartbeats while playing and a beacon on dispose', () => {
     vi.useFakeTimers();
     const sent: Array<{ r: WatchReport; beacon: boolean }> = [];
-    const t = new WatchTracker({ send: (r, o) => sent.push({ r, beacon: o.beacon }), intervalMs: 15_000 });
+    const t = new WatchTracker({
+      send: (r, o) => sent.push({ r, beacon: o.beacon }),
+      intervalMs: 15_000,
+    });
     play(t, 0, 14);
     vi.advanceTimersByTime(15_000);
     play(t, 14.25, 20);

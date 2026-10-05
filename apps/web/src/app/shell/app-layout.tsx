@@ -7,6 +7,8 @@ import { cn } from '@/lib/cn';
 import { visibleNav, type NavItem } from '../nav';
 import { BrandLockup, BrandMark } from './brand';
 import { useUi } from './ui-store';
+import { NotificationBell } from '@/features/notifications/notification-bell';
+import { useNotificationStream } from '@/features/notifications/use-notification-stream';
 import { UserMenu } from './user-menu';
 
 function isActive(item: NavItem, pathname: string): boolean {
@@ -104,6 +106,7 @@ function Sidebar() {
         <div className="min-w-0 flex-1">
           <UserMenu collapsed={collapsed} />
         </div>
+        <NotificationBell />
         <IconButton
           label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           size="sm"
@@ -123,7 +126,10 @@ function MobileTopBar() {
         <BrandMark size={26} />
         <span className="text-sm font-semibold">Sales Academy</span>
       </NavLink>
-      <UserMenu compact />
+      <div className="flex items-center gap-1">
+        <NotificationBell />
+        <UserMenu compact />
+      </div>
     </header>
   );
 }
@@ -179,6 +185,7 @@ function RouteFallback() {
 }
 
 export function AppLayout() {
+  useNotificationStream();
   return (
     <div className="flex min-h-dvh">
       <a

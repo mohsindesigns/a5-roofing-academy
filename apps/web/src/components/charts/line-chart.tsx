@@ -12,7 +12,12 @@ export interface LineSeries {
   points: LinePoint[];
 }
 
-const SLOTS = ['var(--a5-series-1)', 'var(--a5-series-2)', 'var(--a5-series-3)', 'var(--a5-series-4)'];
+const SLOTS = [
+  'var(--a5-series-1)',
+  'var(--a5-series-2)',
+  'var(--a5-series-3)',
+  'var(--a5-series-4)',
+];
 const MARGIN = { top: 12, right: 44, bottom: 26, left: 36 };
 
 function niceTicks(min: number, max: number, count = 4): number[] {
@@ -21,7 +26,8 @@ function niceTicks(min: number, max: number, count = 4): number[] {
   const pow = 10 ** Math.floor(Math.log10(raw));
   const step = [1, 2, 2.5, 5, 10].map((m) => m * pow).find((s) => span / s <= count) ?? raw;
   const ticks: number[] = [];
-  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) ticks.push(Math.round(v * 100) / 100);
+  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step)
+    ticks.push(Math.round(v * 100) / 100);
   return ticks;
 }
 
@@ -63,15 +69,21 @@ export function LineChart({
   const [ref, width] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
   const shown = series.slice(0, 4);
-  const xs = useMemo(() => [...new Set(shown.flatMap((s) => s.points.map((p) => p.x)))].sort(), [shown]);
-  const values = shown.flatMap((s) => s.points.map((p) => p.y).filter((v): v is number => v !== null));
+  const xs = useMemo(
+    () => [...new Set(shown.flatMap((s) => s.points.map((p) => p.x)))].sort(),
+    [shown],
+  );
+  const values = shown.flatMap((s) =>
+    s.points.map((p) => p.y).filter((v): v is number => v !== null),
+  );
   if (xs.length === 0 || values.length === 0) {
     return <p className="text-sm text-text-secondary">Not enough activity yet to show a trend.</p>;
   }
   const [y0, y1] = yDomain ?? [Math.min(0, ...values), Math.max(...values) * 1.1 || 1];
   const innerW = Math.max(0, width - MARGIN.left - MARGIN.right);
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  const x = (i: number) => MARGIN.left + (xs.length === 1 ? innerW / 2 : (i / (xs.length - 1)) * innerW);
+  const x = (i: number) =>
+    MARGIN.left + (xs.length === 1 ? innerW / 2 : (i / (xs.length - 1)) * innerW);
   const y = (v: number) => MARGIN.top + innerH - ((v - y0) / (y1 - y0 || 1)) * innerH;
   const ticks = niceTicks(y0, y1);
   const xLabelEvery = Math.max(1, Math.ceil(xs.length / Math.max(2, Math.floor(innerW / 80))));
@@ -97,7 +109,11 @@ export function LineChart({
         <figcaption className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">
           {shown.map((s, i) => (
             <span key={s.key} className="inline-flex items-center gap-1.5">
-              <span aria-hidden className="h-0.5 w-3 rounded-full" style={{ background: SLOTS[i] }} />
+              <span
+                aria-hidden
+                className="h-0.5 w-3 rounded-full"
+                style={{ background: SLOTS[i] }}
+              />
               {s.label}
             </span>
           ))}
@@ -113,7 +129,8 @@ export function LineChart({
             onPointerMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const px = e.clientX - rect.left;
-              const idx = xs.length === 1 ? 0 : Math.round(((px - MARGIN.left) / innerW) * (xs.length - 1));
+              const idx =
+                xs.length === 1 ? 0 : Math.round(((px - MARGIN.left) / innerW) * (xs.length - 1));
               setHover(Math.max(0, Math.min(xs.length - 1, idx)));
             }}
             onPointerLeave={() => setHover(null)}
@@ -121,22 +138,58 @@ export function LineChart({
           >
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={MARGIN.left} x2={width - MARGIN.right} y1={y(t)} y2={y(t)} stroke="var(--a5-chart-grid)" strokeWidth={1} />
-                <text x={MARGIN.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-[var(--a5-text-tertiary)] text-[11px] tabular-nums">
+                <line
+                  x1={MARGIN.left}
+                  x2={width - MARGIN.right}
+                  y1={y(t)}
+                  y2={y(t)}
+                  stroke="var(--a5-chart-grid)"
+                  strokeWidth={1}
+                />
+                <text
+                  x={MARGIN.left - 8}
+                  y={y(t)}
+                  dy="0.32em"
+                  textAnchor="end"
+                  className="fill-[var(--a5-text-tertiary)] text-[11px] tabular-nums"
+                >
                   {formatY(t)}
                 </text>
               </g>
             ))}
             {xs.map((xv, i) =>
               i % xLabelEvery === 0 || i === xs.length - 1 ? (
-                <text key={xv} x={x(i)} y={height - 6} textAnchor="middle" className="fill-[var(--a5-text-tertiary)] text-[11px]">
+                <text
+                  key={xv}
+                  x={x(i)}
+                  y={height - 6}
+                  textAnchor="middle"
+                  className="fill-[var(--a5-text-tertiary)] text-[11px]"
+                >
                   {formatX(xv)}
                 </text>
               ) : null,
             )}
-            {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={MARGIN.top} y2={MARGIN.top + innerH} stroke="var(--a5-border-strong)" strokeWidth={1} />}
+            {hover !== null && (
+              <line
+                x1={x(hover)}
+                x2={x(hover)}
+                y1={MARGIN.top}
+                y2={MARGIN.top + innerH}
+                stroke="var(--a5-border-strong)"
+                strokeWidth={1}
+              />
+            )}
             {shown.map((s, i) => (
-              <path key={s.key} d={path(s)} fill="none" stroke={SLOTS[i]} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+              <path
+                key={s.key}
+                d={path(s)}
+                fill="none"
+                stroke={SLOTS[i]}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
             ))}
             {shown.map((s, i) => {
               const last = [...s.points].reverse().find((p) => p.y !== null);
@@ -144,8 +197,20 @@ export function LineChart({
               const li = xs.indexOf(last.x);
               return (
                 <g key={s.key}>
-                  <circle cx={x(li)} cy={y(last.y)} r={4} fill={SLOTS[i]} stroke="var(--a5-surface)" strokeWidth={2} />
-                  <text x={x(li) + 8} y={y(last.y)} dy="0.32em" className="fill-[var(--a5-text-secondary)] text-[11px] font-medium tabular-nums">
+                  <circle
+                    cx={x(li)}
+                    cy={y(last.y)}
+                    r={4}
+                    fill={SLOTS[i]}
+                    stroke="var(--a5-surface)"
+                    strokeWidth={2}
+                  />
+                  <text
+                    x={x(li) + 8}
+                    y={y(last.y)}
+                    dy="0.32em"
+                    className="fill-[var(--a5-text-secondary)] text-[11px] font-medium tabular-nums"
+                  >
                     {formatY(last.y)}
                   </text>
                 </g>
@@ -154,7 +219,17 @@ export function LineChart({
             {hover !== null &&
               shown.map((s, i) => {
                 const p = s.points.find((pt) => pt.x === xs[hover]);
-                return p && p.y !== null ? <circle key={s.key} cx={x(hover)} cy={y(p.y)} r={4} fill={SLOTS[i]} stroke="var(--a5-surface)" strokeWidth={2} /> : null;
+                return p && p.y !== null ? (
+                  <circle
+                    key={s.key}
+                    cx={x(hover)}
+                    cy={y(p.y)}
+                    r={4}
+                    fill={SLOTS[i]}
+                    stroke="var(--a5-surface)"
+                    strokeWidth={2}
+                  />
+                ) : null;
               })}
           </svg>
         )}
@@ -169,9 +244,15 @@ export function LineChart({
               const p = s.points.find((pt) => pt.x === xs[hover]);
               return (
                 <p key={s.key} className="flex items-center gap-1.5 text-text-secondary">
-                  <span aria-hidden className="size-2 rounded-full" style={{ background: SLOTS[i] }} />
+                  <span
+                    aria-hidden
+                    className="size-2 rounded-full"
+                    style={{ background: SLOTS[i] }}
+                  />
                   <span className="flex-1">{s.label}</span>
-                  <span className="tabular font-medium text-text-primary">{p?.y === null || p === undefined ? '—' : formatY(p.y)}</span>
+                  <span className="tabular font-medium text-text-primary">
+                    {p?.y === null || p === undefined ? '—' : formatY(p.y)}
+                  </span>
                 </p>
               );
             })}
@@ -179,7 +260,9 @@ export function LineChart({
         )}
       </div>
       <details className="mt-1 text-xs text-text-tertiary">
-        <summary className="cursor-pointer select-none hover:text-text-secondary">View as table</summary>
+        <summary className="cursor-pointer select-none hover:text-text-secondary">
+          View as table
+        </summary>
         <table className="mt-2 w-full text-left text-sm text-text-primary">
           <thead>
             <tr className="text-xs text-text-tertiary">
