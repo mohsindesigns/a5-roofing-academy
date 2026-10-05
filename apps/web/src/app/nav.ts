@@ -6,6 +6,7 @@ import {
   Bell,
   Building2,
   ClipboardList,
+  Film,
   GraduationCap,
   LayoutDashboard,
   MessagesSquare,
@@ -98,6 +99,12 @@ export const NAV: NavSection[] = [
         icon: BookOpenCheck,
         visible: (p) => p.has('programs.view'),
         match: ['/content/programs'],
+      },
+      {
+        to: '/content/media',
+        label: 'Media library',
+        icon: Film,
+        visible: (p) => p.has('media.view'),
       },
       {
         to: '/content/assessments',

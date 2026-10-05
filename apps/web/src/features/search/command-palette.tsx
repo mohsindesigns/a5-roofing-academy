@@ -176,7 +176,10 @@ export function CommandPalette() {
         group: 'Programs',
         title: p.title,
         subtitle: p.status === 'published' ? undefined : `${p.status} program`,
-        to: canEdit || !permissions.has('training.participate') ? `/content/programs/${p.id}` : `/training/${p.id}`,
+        to:
+          canEdit || !permissions.has('training.participate')
+            ? `/content/programs/${p.id}`
+            : `/training/${p.id}`,
         icon: BookOpen,
       });
     }
@@ -198,10 +201,9 @@ export function CommandPalette() {
 
   const { groups, flat } = arrangeItems([...local, ...remote]);
   const searching = q.length >= MIN_REMOTE_QUERY && (people.isFetching || content.isFetching);
-  const failed =
-    (canPeople && people.isError ? ['people'] : []).concat(
-      canContent && content.isError ? ['programs and lessons'] : [],
-    );
+  const failed = (canPeople && people.isError ? ['people'] : []).concat(
+    canContent && content.isError ? ['programs and lessons'] : [],
+  );
   const activeIndex = Math.min(active, Math.max(0, flat.length - 1));
 
   const choose = (item: PaletteItem) => {
@@ -255,7 +257,12 @@ export function CommandPalette() {
             />
             {searching && <Spinner size={14} className="text-text-tertiary" />}
           </div>
-          <div id={listId} role="listbox" aria-label="Results" className="min-h-0 flex-1 overflow-y-auto p-2">
+          <div
+            id={listId}
+            role="listbox"
+            aria-label="Results"
+            className="min-h-0 flex-1 overflow-y-auto p-2"
+          >
             {flat.length === 0 && (
               <p className="px-3 py-6 text-center text-sm text-text-secondary">
                 {searching

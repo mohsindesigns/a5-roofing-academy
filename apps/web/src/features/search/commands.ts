@@ -55,7 +55,9 @@ export function moveActive(current: number, delta: 1 | -1, count: number): numbe
   return (current + delta + count) % count;
 }
 
-export function isPaletteShortcut(e: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey'>) {
+export function isPaletteShortcut(
+  e: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey'>,
+) {
   return (e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'k';
 }
 
