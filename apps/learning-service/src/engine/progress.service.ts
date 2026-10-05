@@ -191,6 +191,15 @@ export class ProgressService {
           })
           .returningAll()
           .executeTakeFirstOrThrow();
+    // A lesson finished without an explicit start (graded attempt, manager override) still starts first.
+    if (!existing) {
+      await this.events.emit(
+        trx,
+        learningEvents.lessonStarted,
+        { ...this.ref(input.enrollment), lessonId: lesson.id, lessonType: lesson.type },
+        this.emitOptions(input.enrollment),
+      );
+    }
 
     await this.events.emit(
       trx,

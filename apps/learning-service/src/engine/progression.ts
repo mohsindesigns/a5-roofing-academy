@@ -349,10 +349,13 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
     previousPhase = evaluation;
   });
 
-  const nextLesson = ordered.find((l) => l.state === 'available' || l.state === 'in_progress') ?? null;
+  // Once every required lesson is done there is nothing left to continue with, even if optional
+  // lessons remain.
   const requiredIds = new Set(completionSet(indexed.map((l) => l.lesson)).map((l) => l.id));
-  const currentLesson =
-    nextLesson ?? ordered.find((l) => !l.completed && requiredIds.has(l.lesson.id)) ?? ordered.find((l) => !l.completed) ?? null;
+  const nextLesson = programCounts.complete ? null : (ordered.find((l) => l.state === 'available' || l.state === 'in_progress') ?? null);
+  const currentLesson = programCounts.complete
+    ? null
+    : (nextLesson ?? ordered.find((l) => !l.completed && requiredIds.has(l.lesson.id)) ?? ordered.find((l) => !l.completed) ?? null);
   const currentPhase = currentLesson
     ? (phases.find((p) => p.phase.id === currentLesson.phase.id) ?? null)
     : programCounts.complete
