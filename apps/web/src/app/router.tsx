@@ -97,6 +97,14 @@ export const routes: RouteObject[] = [
                 lazy: page(() => import('@/features/settings/settings-page'), 'SettingsPage'),
               },
               {
+                path: 'team',
+                lazy: page(() => import('@/features/team/team-page'), 'TeamPage'),
+              },
+              {
+                path: 'reports',
+                lazy: page(() => import('@/features/reports/reports-page'), 'ReportsPage'),
+              },
+              {
                 path: 'training',
                 lazy: page(() => import('@/features/learning/training-page'), 'TrainingPage'),
               },

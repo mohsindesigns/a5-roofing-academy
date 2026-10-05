@@ -71,7 +71,6 @@ export const NAV: NavSection[] = [
     items: [
       {
         to: '/team',
-        ready: false,
         label: 'Team',
         icon: UsersRound,
         visible: (p) =>
@@ -81,7 +80,6 @@ export const NAV: NavSection[] = [
       { to: '/people', label: 'People', icon: Users, visible: (p) => p.has('users.view') },
       {
         to: '/reports',
-        ready: false,
         label: 'Reports',
         icon: BarChart3,
         visible: (p) => p.hasAny(['reports.view', 'analytics.view']),
