@@ -43,10 +43,12 @@ export function testServiceConfig(
 export async function createTestApp(
   module: unknown,
   config: ServiceRuntimeConfig,
+  configure?: (app: NestExpressApplication) => void | Promise<void>,
 ): Promise<NestExpressApplication> {
   const ref = await Test.createTestingModule({ imports: [module as never] }).compile();
   const app = ref.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
   configureApplication(app, config);
+  await configure?.(app);
   await app.init();
   return app;
 }

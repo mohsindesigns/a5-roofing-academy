@@ -5,6 +5,8 @@ import { Kysely, PostgresDialect, type LogEvent } from 'kysely';
 // sequences) are well below 2^53; certificate sequences are formatted from the number directly.
 pg.types.setTypeParser(pg.types.builtins.INT8, (v) => Number(v));
 pg.types.setTypeParser(pg.types.builtins.NUMERIC, (v) => Number.parseFloat(v));
+// Calendar dates stay 'YYYY-MM-DD' strings; converting them to Date would shift them by time zone.
+pg.types.setTypeParser(pg.types.builtins.DATE, (v) => v);
 
 export interface DatabaseOptions {
   url: string;

@@ -17,8 +17,8 @@ const csv = z
   );
 
 export const env = {
-  boolean: (fallback?: boolean) => (fallback === undefined ? booleanish : booleanish.default(fallback)),
-  csv: (fallback?: string) => (fallback === undefined ? csv : z.string().default(fallback).pipe(csv)),
+  boolean: (fallback?: boolean) => (fallback === undefined ? booleanish.optional() : booleanish.default(fallback)),
+  csv: (fallback?: string) => (fallback === undefined ? csv.optional() : z.string().default(fallback).pipe(csv)),
   port: (fallback: number) => z.coerce.number().int().min(1).max(65535).default(fallback),
   int: (fallback: number) => z.coerce.number().int().default(fallback),
   url: () => z.url(),

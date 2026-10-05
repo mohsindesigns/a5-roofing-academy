@@ -7,7 +7,9 @@ import { defaultServerConditions } from 'vite';
  * - oxc legacy decorators + metadata keep NestJS dependency injection working.
  */
 export function createVitestConfig(overrides: ViteUserConfig = {}): ViteUserConfig {
-  const conditions = ['@a5/source', ...defaultServerConditions];
+  // Match Node's resolution: the bundler-only "module" condition points some packages (AWS SDK)
+  // at builds that Node cannot load.
+  const conditions = ['@a5/source', ...defaultServerConditions.filter((c) => c !== 'module')];
   return defineConfig({
     oxc: { decorator: { legacy: true, emitDecoratorMetadata: true } },
     resolve: { conditions },

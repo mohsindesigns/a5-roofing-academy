@@ -1,0 +1,32 @@
+{
+  "name": "@a5/directory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "@a5/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@a5/auth": "workspace:*",
+    "@a5/database": "workspace:*",
+    "@a5/events": "workspace:*",
+    "@a5/messaging": "workspace:*",
+    "@a5/nest-kit": "workspace:*",
+    "@nestjs/common": "^12.1.2"
+  },
+  "devDependencies": {
+    "@a5/testing": "workspace:*",
+    "@types/node": "^22.19.0"
+  }
+}
