@@ -34,6 +34,7 @@ export interface CertHarness {
   db: Database<CertificationDatabase>['db'];
   redis: Redis;
   config: CertificationConfig;
+  namespace: string;
   storage: LocalDiskStorage;
   storageRoot: string;
   consumer: ProjectionsConsumer;
@@ -138,7 +139,8 @@ export async function createCertHarness(name: string, options: HarnessOptions = 
   await migrateToLatest(database.db as never, migrations);
 
   const app = await createTestApp(AppModule.register(config, testLogger(), { storage }), config);
-  app.getHttpServer().setMaxListeners(100);
+  // A really listening server: supertest's per-request ephemeral listeners race under parallel requests.
+  await app.listen(0, '127.0.0.1');
   const get = <T>(cls: abstract new (...args: never[]) => T): T => app.get(cls as never, { strict: false });
   const eligibility = get(EligibilityService);
   const issuance = get(IssuanceService);
@@ -150,10 +152,11 @@ export async function createCertHarness(name: string, options: HarnessOptions = 
   const redis = createRedis(TEST_REDIS_URL);
   const h: CertHarness = {
     app,
-    http: request(app.getHttpServer()),
+    http: request(await app.getUrl()),
     db: database.db,
     redis,
     config,
+    namespace,
     storage,
     storageRoot,
     consumer: get(ProjectionsConsumer),
