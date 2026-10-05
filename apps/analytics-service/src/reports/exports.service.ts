@@ -184,7 +184,8 @@ export class ExportsService implements OnModuleInit {
 
   async download(p: Principal, id: string): Promise<analytics.ExportDownload> {
     const row = await this.mine(p, id);
-    const now = this.scope.now();
+    // Retention and link lifetimes are wall-clock concerns, independent of the analytics clock.
+    const now = new Date();
     if (row.status === 'expired' || (row.status === 'completed' && row.expires_at && row.expires_at <= now)) {
       throw new AppError(410, 'EXPORT_EXPIRED', 'This export has expired. Run the export again to download a fresh copy.');
     }
