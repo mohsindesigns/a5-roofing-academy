@@ -84,8 +84,11 @@ export class TelemetryService {
         lastReportAt: now,
       };
       const known = new Set(state.milestones);
+      // Persist right away on the first report, on milestones/completion and when playback ends
+      // (once per viewing); every other heartbeat stays in Redis until the flush job runs.
       const needsFlush =
         !state.persisted ||
+        input.ended ||
         reachedMilestones(percent).some((m) => !known.has(m)) ||
         (state.completedAt === null && percent >= policy.completionPercent);
       await this.buffer.save(key, next);
