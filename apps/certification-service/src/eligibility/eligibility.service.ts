@@ -185,7 +185,7 @@ export class EligibilityService {
 
       const outcome = await this.compute(trx, def, userId, cand, now);
       const requiresApproval = def.approval_policy !== 'none';
-      let status: CandidateStatus = cand.status;
+      let status: CandidateStatus;
       let eligibleCycle = cand.eligible_cycle;
       let eligibleAt = cand.eligible_at;
 

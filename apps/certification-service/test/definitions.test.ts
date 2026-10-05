@@ -254,6 +254,29 @@ describe('templates', () => {
     await h.http.post(`/api/v1/certificate-templates/${CERTIFICATE_TEMPLATES[0].id}/default`).set(admin);
   });
 
+  it('refuses design changes that would make an active certification unissuable', async () => {
+    const source = (await h.http.get(`/api/v1/certificate-templates/${classic}`).set(admin)).body;
+    const slim = structuredClone(source.design);
+    slim.elements = slim.elements.filter((e: { id: string; type: string }) => !/^signat(ure|ory)-2/.test(e.id) && e.type !== 'stamp');
+    const template = await h.http.post('/api/v1/certificate-templates').set(admin).send({ name: 'Single signature', design: slim });
+    expect(template.status).toBe(201);
+    const cert = await h.http
+      .post('/api/v1/certifications')
+      .set(admin)
+      .send(base({ code: 'ONE', templateId: template.body.id, signatories: [{ slot: 1, signatoryId: SIGNATORIES[0].id }], stampId: null, eligibilityRule: { type: 'all', rules: [{ type: 'ai_sessions_count', minCount: 1 }] } }));
+    expect(cert.status).toBe(201);
+    expect((await h.http.post(`/api/v1/certifications/${cert.body.id}/activate`).set(admin)).status).toBe(200);
+
+    const withSecond = await h.http.put(`/api/v1/certificate-templates/${template.body.id}/design`).set(admin).send({ design: source.design });
+    expect(withSecond.status).toBe(422);
+    expect(withSecond.body.error.code).toBe('TEMPLATE_BREAKS_CERTIFICATION');
+    expect(withSecond.body.error.message).toContain('slot 2');
+    expect((await h.http.get(`/api/v1/certificate-templates/${template.body.id}`).set(admin)).body.currentVersion).toBe(1);
+    const assign = await h.http.post(`/api/v1/certificate-templates/${classic}/assign`).set(admin).send({ certificationIds: [cert.body.id] });
+    expect(assign.status).toBe(422);
+    expect(assign.body.error.code).toBe('TEMPLATE_BREAKS_CERTIFICATION');
+  });
+
   it('previews with sample data: a PDF and resolved elements for the live HTML preview', async () => {
     const preview = await h.http.post(`/api/v1/certificate-templates/${CERTIFICATE_TEMPLATES[0].id}/preview`).set(admin).send({ certificationId: CERTIFICATION.id });
     expect(preview.status).toBe(200);

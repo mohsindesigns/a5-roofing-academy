@@ -8,6 +8,7 @@ import type { Db, DbOrTrx, Trx } from '../database/index.js';
 import { assertDesignAssets } from '../common/artwork-repo.js';
 import { canonicalJson } from '../common/json.js';
 import { personRef } from '../common/timeline.js';
+import { artworkProblems } from './artwork-check.js';
 import { STARTER_DESIGNS } from './starters.js';
 
 type TemplateDesign = certification.TemplateDesign;
@@ -272,7 +273,7 @@ export class TemplatesService {
       if (canonicalJson(current.design) === canonicalJson(design)) return;
       const definitions = await trx
         .selectFrom('certification_definitions')
-        .select(['name', 'custom_variables'])
+        .select(['id', 'name', 'status', 'stamp_id', 'custom_variables'])
         .where('template_id', '=', id)
         .where('status', '<>', 'archived')
         .execute();
@@ -285,6 +286,7 @@ export class TemplatesService {
             { placeholders: missing },
           );
         }
+        if (d.status === 'active') await this.assertIssuable(trx, d, design);
       }
       const version = t.current_version + 1;
       await trx
@@ -383,7 +385,7 @@ export class TemplatesService {
       const version = await this.currentVersion(trx, id);
       const definitions = await trx
         .selectFrom('certification_definitions')
-        .select(['id', 'name', 'template_id', 'custom_variables', 'status'])
+        .select(['id', 'name', 'template_id', 'custom_variables', 'status', 'stamp_id'])
         .where('organization_id', '=', p.organizationId)
         .where('id', 'in', certificationIds)
         .forUpdate()
@@ -399,6 +401,7 @@ export class TemplatesService {
             { placeholders: missing },
           );
         }
+        if (d.status === 'active') await this.assertIssuable(trx, d, version.design);
       }
       await trx
         .updateTable('certification_definitions')
@@ -417,6 +420,14 @@ export class TemplatesService {
       }
     });
     return this.get(p, id);
+  }
+
+  /** An active certification must stay issuable with the design (signatories, signatures, stamp). */
+  private async assertIssuable(db: DbOrTrx, def: { id: string; name: string; stamp_id: string | null }, design: TemplateDesign): Promise<void> {
+    const problems = await artworkProblems(db, def, design);
+    if (problems.length) {
+      throw new PreconditionError('TEMPLATE_BREAKS_CERTIFICATION', `${problems[0]} Fix this on the certification first, then use the design.`, { problems });
+    }
   }
 
   private async withNameGuard<T>(fn: () => Promise<T>): Promise<T> {

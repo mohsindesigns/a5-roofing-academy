@@ -192,7 +192,7 @@ function drawText(doc: Doc, el: DesignElement, box: Box, text: string, font: str
   doc.font(font);
   const longestWord = text.split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a), '');
   let size = el.fontSize;
-  let height = 0;
+  let height: number;
   for (;;) {
     doc.fontSize(size);
     height = doc.heightOfString(text, textOptions(el, box, size));

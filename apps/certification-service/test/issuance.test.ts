@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { applyDirectoryUser } from '@a5/directory';
 import { certificationEvents } from '@a5/events';
-import { CERTIFICATE_TEMPLATES, CERTIFICATION, ORGANIZATION, PEOPLE, SIGNATORIES, directoryUser, seedId, type PersonKey } from '@a5/seed-data';
+import { CERTIFICATE_TEMPLATES, CERTIFICATION, ORGANIZATION, PEOPLE, SIGNATORIES, directoryUser, seedId } from '@a5/seed-data';
 import type { Trx } from '../src/database/index.js';
 import { renderSnapshotPdf } from '../src/rendering/snapshot-render.js';
 import { createCertHarness, solidPng, type CertHarness } from './harness.js';

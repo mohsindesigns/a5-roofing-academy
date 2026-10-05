@@ -138,7 +138,6 @@ export async function seedCertification(deps: SeedDeps, options: SeedOptions = {
   });
 
   const priya = { id: PEOPLE.priya.id, name: fullName('priya') };
-  const shelby = { id: PEOPLE.shelby.id, name: fullName('shelby') };
 
   // ------------------------------------------------------------ settings, artwork, templates
   await db
@@ -349,7 +348,7 @@ export async function seedCertification(deps: SeedDeps, options: SeedOptions = {
   log(`certification: projected learner facts for ${JOURNEYS.length} journeys`);
 
   // ------------------------------------------------------------ historical certificates
-  const issued = await seedCertificates(deps, now);
+  const issued = await seedCertificates(deps);
 
   // Reminders and renewal windows as of the seed date (Sofia is inside her renewal window).
   const windows = await deps.lifecycle.openRenewalWindows(now);
@@ -472,7 +471,7 @@ async function seedLearnerFacts(db: Db, now: Date): Promise<void> {
 }
 
 /** Historical certificates through the real issuance path (numbers, snapshots, copied images, timeline). */
-async function seedCertificates(deps: SeedDeps, now: Date): Promise<number> {
+async function seedCertificates(deps: SeedDeps): Promise<number> {
   const { db, issuance, eligibility } = deps;
   let issued = 0;
   const journeys = JOURNEYS.filter((j) => j.certificates?.length)
