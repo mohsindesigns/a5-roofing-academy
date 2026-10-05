@@ -112,10 +112,13 @@ export class LogsService {
 
   /**
    * Stream the selection as CSV. Selections above the configured maximum are refused up front
-   * (never silently truncated). The export itself is recorded in the trail.
+   * (never silently truncated). The export is a snapshot as of its start: entries from that
+   * instant on, including the entry that records the export itself, are not part of the file.
    */
   async exportCsv(p: Principal, q: audit.AuditFilter, res: Response): Promise<void> {
-    const filter = this.resolve(p, q);
+    const startedAt = new Date();
+    const resolved = this.resolve(p, q);
+    const filter: ResolvedFilter = { ...resolved, to: resolved.to && resolved.to < startedAt ? resolved.to : startedAt };
     const max = this.config.exportMaxRows;
     const matches = await this.repo.countUpTo(filter, max + 1);
     if (matches > max) {
@@ -126,7 +129,7 @@ export class LogsService {
       );
     }
     const ctx = getContext();
-    const now = new Date();
+    const now = startedAt;
     await this.repo.append({
       id: uuidv7(),
       organizationId: filter.organizationId,

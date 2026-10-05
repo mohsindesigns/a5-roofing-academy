@@ -652,7 +652,7 @@ export function auditHistory(): Entry[] {
         resourceType: 'certificate',
         resourceId: certId,
         after: { certificateNumber: number, userId: PEOPLE[j.person].id, definitionId: CERTIFICATION.id, status: 'issued' },
-        ...(index === 0 ? {} : { before: { certificateId: seedId(`certificate:${j.person}:${index}`), status: 'issued' }, reason: cert.reissueReason ?? 'Corrected certificate details' }),
+        ...(index === 0 ? {} : { before: { certificateId: seedId(`certificate:${j.person}:${index}`), status: 'issued' }, reason: j.certificates![index - 1]!.reissueReason ?? 'Corrected certificate details' }),
         metadata: { mode: index === 0 ? 'approval' : 'reissue', certificateNumber: number },
       });
       if (index > 0) {
