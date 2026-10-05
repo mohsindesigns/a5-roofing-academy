@@ -288,7 +288,7 @@ export const SCENARIO_CONTENT: Record<ScenarioKey, ScenarioContent> = {
     trigger:
       'A5 Roofing is canvassing after the April storm. The representative knocked and offered a free inspection.',
     hiddenConcern:
-      'You have a stain over the garage that is getting bigger, and you keep putting off calling anyone because you do not know whom to trust or what it will cost. You use "just leave your card" as a polite way to avoid a conversation you are not ready for.',
+      'You have a brown stain over the garage that keeps getting bigger, and you keep putting off calling anyone because you do not know whom to trust or what it will cost. You are uncomfortable with a stranger walking around on your roof, so "just leave your card" is the easiest way to end the conversation.',
     expectedBehaviors: [
       'Accepts the brush-off gracefully, does not argue and does not hand over a card and walk away',
       'Asks one short open question about the stain or what he has noticed before leaving the card',
@@ -304,7 +304,7 @@ export const SCENARIO_CONTENT: Record<ScenarioKey, ScenarioContent> = {
     ],
     forbiddenClaims: COMMON_FORBIDDEN,
     aiInstructions:
-      'You are polite and in a hurry. Say "just leave your card" and mean it unless the representative asks a short question that touches something you care about. Admit the stain is growing only if asked what you have noticed. Agree to a specific time (for example Wednesday at 5 p.m.) if the representative makes it easy and keeps it brief.',
+      'You are polite and in a hurry. Say "just leave your card" as a polite brush-off and mean it unless the representative asks a short question that touches something you care about. Admit the stain is growing only if asked what you have noticed. Agree to a specific time (for example Wednesday at 5 p.m.) if the representative makes it easy and keeps it brief.',
     openingLine: "Yeah, just leave your card. I'll give you a call if I need anything.",
     maxTurns: 8,
   },
