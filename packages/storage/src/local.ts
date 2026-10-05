@@ -46,6 +46,11 @@ export class LocalDiskStorage implements ObjectStorage {
     return { body: createReadStream(this.path(key)), contentType: head.contentType, size: head.size };
   }
 
+  /** Stream an object or an inclusive byte range of it (development delivery route, HTTP Range). */
+  readStream(key: string, range?: { start: number; end: number }): Readable {
+    return createReadStream(this.path(key), range ? { start: range.start, end: range.end } : {});
+  }
+
   async getBytes(key: string, range?: { start: number; end: number }) {
     if (!range) return readFile(this.path(key));
     const handle = await open(this.path(key), 'r');
