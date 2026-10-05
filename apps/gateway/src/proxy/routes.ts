@@ -62,6 +62,8 @@ export const ROUTES: RouteRule[] = [
   r('/api/v1/notifications/stream', 'notification-service', { stream: true }),
   ...['notifications', 'notification-templates', 'notification-rules'].map((p) => r(`/api/v1/${p}`, 'notification-service')),
   // analytics & audit
+  // Signed export downloads are opened by the browser without a bearer token.
+  r('/api/v1/reports/files', 'analytics-service', { access: 'public', rate: 'public' }),
   ...['analytics', 'reports'].map((p) => r(`/api/v1/${p}`, 'analytics-service')),
   r('/api/v1/audit', 'audit-service'),
 ].sort((a, b) => b.prefix.length - a.prefix.length);

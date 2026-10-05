@@ -182,6 +182,20 @@ export const learningEvents = {
         }),
       ),
       aiScenarios: z.array(z.object({ scenarioId: id, lessonId: id, minScore: z.number().nullable() })),
+      /** Published lesson outline in learner order (optional; lets consumers label and order lessons). */
+      lessons: z
+        .array(
+          z.object({
+            lessonId: id,
+            phaseId: id,
+            moduleId: id,
+            title: z.string(),
+            type: z.string(),
+            position: z.int(),
+            required: z.boolean(),
+          }),
+        )
+        .optional(),
     }),
   }),
   programArchived: define({
@@ -419,6 +433,9 @@ export const assessmentEvents = {
           correct: z.boolean().nullable(),
           awardedPoints: z.number(),
           possiblePoints: z.number(),
+          /** Question stem as shown to the learner (optional; used for reporting labels). */
+          prompt: z.string().optional(),
+          categoryName: z.string().nullable().optional(),
         }),
       ),
       /** Managers to notify, resolved from the assessment's `notifyManagerOn` policy (empty or absent: none). */
