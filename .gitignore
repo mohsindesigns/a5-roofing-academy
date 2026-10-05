@@ -16,3 +16,4 @@ coverage/
 /e2e/playwright-report/
 /infra/keys/
 /e2e/screenshots/
+.claude/worktrees/

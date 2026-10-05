@@ -48,7 +48,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.test.ts', '**/*.test.tsx', '**/test/**/*.ts', 'infra/**/*.mjs', '**/scripts/**/*.ts'],
+    files: ['**/*.test.ts', '**/*.test.tsx', '**/test/**/*.ts', 'infra/**/*.mjs', '**/scripts/**/*.ts', '**/scripts/**/*.mjs', 'e2e/**/*.ts'],
     rules: { 'no-console': 'off', '@typescript-eslint/no-non-null-assertion': 'off' },
   },
 );
