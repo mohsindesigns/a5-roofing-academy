@@ -2,6 +2,7 @@ import { createBrowserRouter, type RouteObject } from 'react-router';
 import { LoginPage } from '@/features/auth/login-page';
 import { ForgotPasswordPage } from '@/features/auth/forgot-password-page';
 import { SetPasswordPage } from '@/features/auth/set-password-page';
+import { certificationPublicRoutes, certificationRoutes } from '@/features/certification/routes';
 import { RedirectIfAuthenticated, RequireAuth } from './guards';
 import { NotFoundPage, RouteError } from './route-error';
 import { AppLayout } from './shell/app-layout';
@@ -28,6 +29,7 @@ export const routes: RouteObject[] = [
       },
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <SetPasswordPage mode="reset" /> },
+      ...certificationPublicRoutes,
       {
         path: '/activate',
         element: (
@@ -44,6 +46,7 @@ export const routes: RouteObject[] = [
             errorElement: <RouteError />,
             children: [
               { index: true, lazy: page(() => import('@/features/home/home-page'), 'HomePage') },
+              ...certificationRoutes,
               {
                 path: 'account',
                 lazy: page(() => import('@/features/account/account-page'), 'AccountPage'),
