@@ -43,6 +43,8 @@ export const ROUTES: RouteRule[] = [
   ...['programs', 'enrollments', 'lessons', 'progress', 'learning'].map((p) => r(`/api/v1/${p}`, 'learning-service')),
   // media
   r('/api/v1/media/hls', 'media-service', { access: 'public', rate: 'public' }),
+  // navigator.sendBeacon cannot send Authorization headers; the body carries a signed playback token.
+  r('/api/v1/media/playback/beacon', 'media-service', { access: 'public', rate: 'default' }),
   r('/api/v1/media/dev-storage', 'media-service', { access: 'public', rate: 'public', upload: true }),
   r('/api/v1/media', 'media-service'),
   // assessment

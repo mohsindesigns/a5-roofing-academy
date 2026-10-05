@@ -17,3 +17,25 @@ describe('seed data', () => {
     for (const rep of reps) expect(TEAMS.filter((t) => (t.members as readonly string[]).includes(rep))).toHaveLength(1);
   });
 });
+
+import { ASSESSMENTS, JOURNEYS, PHASES, SCENARIOS, allLessons, completedLessonKeys } from './index.js';
+
+describe('academy catalogue', () => {
+  it('references existing assessments and scenarios from lessons', () => {
+    for (const l of allLessons()) {
+      if (l.type === 'quiz' || l.type === 'final_assessment') expect(ASSESSMENTS.some((a) => a.key === l.ref), l.key).toBe(true);
+      if (l.type === 'ai_simulation') expect(SCENARIOS.some((s) => s.key === l.ref), l.key).toBe(true);
+    }
+  });
+  it('has unique ids', () => {
+    const ids = [...PHASES.map((p) => p.id), ...allLessons().map((l) => l.id), ...ASSESSMENTS.map((a) => a.id), ...SCENARIOS.map((s) => s.id)];
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+  it('journeys reference known lessons and scenarios', () => {
+    const lessonKeys = new Set(allLessons().map((l) => l.key));
+    for (const j of JOURNEYS) {
+      for (const key of completedLessonKeys(j.stage)) expect(lessonKeys.has(key), key).toBe(true);
+      for (const s of j.aiSessions) expect(SCENARIOS.some((x) => x.key === s.scenario)).toBe(true);
+    }
+  });
+});

@@ -1,3 +1,11 @@
 export * from './common.js';
 export * from './feature-flags.js';
 export * as identity from './identity.js';
+export * as learning from './learning.js';
+export * as media from './media.js';
+export * as assessment from './assessment.js';
+export * as ai from './ai.js';
+export * as certification from './certification.js';
+export * as notification from './notification.js';
+export * as analytics from './analytics.js';
+export * as audit from './audit.js';
