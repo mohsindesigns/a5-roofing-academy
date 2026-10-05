@@ -202,8 +202,10 @@ export function isNegated(sentence: string, pattern: RegExp): boolean {
   const s = normalize(sentence);
   const m = pattern.exec(s);
   if (!m) return false;
-  const before = s.slice(0, m.index);
-  return PATTERNS.negation.test(before);
+  // Only a negation close to the match and in the same clause counts ("Don't worry, insurance will
+  // pay" is a promise; "I can't promise insurance will pay" is not).
+  const clause = s.slice(0, m.index).split(/[,;:.!?\u2014\u2013]|\s-\s/).pop() ?? '';
+  return PATTERNS.negation.test(clause.split(/\s+/).filter(Boolean).slice(-6).join(' '));
 }
 
 /** Matches of `pattern` in non-negated sentences, as exact sentence quotes. */
@@ -233,7 +235,7 @@ export function quoteOf(sentence: string, max = 220): string {
 }
 
 const OBJECT_CONTEXT =
-  /\b(to|for|with|at|about|tell|give|make|let|help|show|ask|call|sell|charge|pressure|push|rush|trust|told|than|from|by|on|bother|convince|send)\s*$/i;
+  /\b(to|for|with|at|about|tell|give|make|let|help|show|ask|call|sell|charge|pressure|push|rush|trust|told|than|from|by|on|bother|convince|send|cost|owe|hurt|leave|bring|take|see|hear|text|email|thank|warn|assure|promise|force)\s*$/i;
 
 /**
  * Turn second-person scenario text ("You're worried your deductible…") into what the homeowner
