@@ -163,6 +163,27 @@ describe('dashboard and admin queues', () => {
     expect(expiringSoon.body.items.map((c: { recipient: { displayName: string } }) => c.recipient.displayName)).toEqual(['Sofia Navarro']);
   });
 
+  it('sorts, filters and pages certificates and approval history', async () => {
+    const admin = await h.as('grant');
+    const asc = await h.http.get('/api/v1/certificates?sort=number&pageSize=2').set(admin);
+    expect(asc.body.items.map((c: { certificateNumber: string }) => c.certificateNumber)).toEqual(['A5-SALES-2024-000001', 'A5-SALES-2025-000002']);
+    expect(asc.body).toMatchObject({ total: 4, pageCount: 2 });
+    const desc = await h.http.get('/api/v1/certificates?sort=-expiresAt&pageSize=1').set(admin);
+    expect(desc.body.items[0].certificateNumber).toBe('A5-SALES-2025-000004');
+    expect((await h.http.get('/api/v1/certificates?issuedFrom=2025-01-01&issuedTo=2025-06-30').set(admin)).body.total).toBe(1);
+    expect((await h.http.get('/api/v1/certificates?sort=bogus-field').set(admin)).status).toBe(400);
+
+    const history = await h.http.get('/api/v1/certificates/approvals?status=approved&pageSize=10').set(admin);
+    expect(history.body.total).toBe(3);
+    expect(history.body.items.map((a: { decidedBy: { displayName: string } }) => a.decidedBy.displayName).sort()).toEqual(['Danielle Okafor', 'Luis Ortega', 'Mei Lin Chou']);
+    const pending = await h.http.get('/api/v1/certificates/approvals').set(admin);
+    expect(pending.body.items.map((a: { user: { displayName: string } }) => a.user.displayName)).toEqual(['Brianna Castillo']);
+    expect(pending.body.items[0].progress).toMatchObject({ metCount: 5, totalCount: 6 });
+    // Andre manages Brianna's team; Danielle does not.
+    expect((await h.http.get('/api/v1/certificates/approvals').set(await h.as('andre'))).body.total).toBe(1);
+    expect((await h.http.get('/api/v1/certificates/approvals').set(await h.as('danielle'))).body.total).toBe(0);
+  });
+
   it('lists the renewal opened for the certificate expiring soon', async () => {
     const res = await h.http.get('/api/v1/certificates/renewals').set(await h.as('grant'));
     expect(res.body.items).toHaveLength(1);

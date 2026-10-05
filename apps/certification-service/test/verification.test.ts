@@ -35,7 +35,9 @@ describe('public verification', () => {
 
   it('never exposes contact details, scores, ids, internal notes or storage keys', async () => {
     const res = await h.http.get(`/api/v1/public/certificates/verify/${await tokenOf('ashlyn')}`);
-    const text = JSON.stringify(res.body);
+    // Timestamps are random digits; scan everything else.
+    const { checkedAt: _checked, issuedAt: _issued, expiresAt: _expires, ...rest } = res.body;
+    const text = JSON.stringify(rest);
     const forbidden = [
       'a5roofing.example', // email
       PEOPLE.ashlyn.phone,
