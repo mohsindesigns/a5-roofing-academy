@@ -7,7 +7,7 @@ const learningEnv = z.object({
   /** TTL of cached published program trees (the key is also versioned on every change). */
   PROGRAM_TREE_CACHE_SECONDS: env.int(600),
   /** Cron pattern of the daily overdue sweep (BullMQ job scheduler). */
-  OVERDUE_SWEEP_CRON: z.string().trim().min(9).default('5 13 * * *'),
+  OVERDUE_SWEEP_CRON: z.string().trim().min(9).default('5 6 * * *'),
   OVERDUE_SWEEP_TZ: z.string().trim().default('America/Chicago'),
 });
 

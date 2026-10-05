@@ -146,6 +146,7 @@ describe('manager scope', () => {
     expect((await h.http.get(`/api/v1/progress/teams/${TEAMS[0].id}`).set(danielle)).status).toBe(200);
     expect((await h.http.get(`/api/v1/progress/learners/${PEOPLE.naomi.id}`).set(danielle)).status).toBe(404);
     expect((await h.http.get(`/api/v1/progress/learners/${PEOPLE.marcus.id}`).set(danielle)).status).toBe(200);
+    expect((await h.http.get(`/api/v1/progress/learners/${randomId()}`).set(await h.as('priya'))).status).toBe(404);
     const naomiEnrollment = (await h.db.selectFrom('enrollments').select('id').where('user_id', '=', PEOPLE.naomi.id).executeTakeFirstOrThrow()).id;
     expect((await h.http.get(`/api/v1/enrollments/${naomiEnrollment}`).set(danielle)).status).toBe(404);
     expect((await h.http.get(`/api/v1/enrollments/${naomiEnrollment}`).set(await h.as('luis'))).status).toBe(200);

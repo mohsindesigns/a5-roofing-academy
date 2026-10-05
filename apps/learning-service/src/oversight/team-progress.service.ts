@@ -191,8 +191,8 @@ export class TeamProgressService {
   /** One learner across programs, with assessment and AI practice scores. 404 outside scope. */
   async learner(p: Principal, userId: string): Promise<learning.LearnerProgress> {
     const user = await this.db.selectFrom('dir_users').select(['id', 'organization_id']).where('id', '=', userId).executeTakeFirst();
-    const organizationId = user?.organization_id ?? p.organizationId;
-    await this.scope.assertAdmits(p, ['enrollments.view'], { userId, organizationId }, 'Learner');
+    if (!user) throw new NotFoundError('Learner');
+    await this.scope.assertAdmits(p, ['enrollments.view'], { userId, organizationId: user.organization_id }, 'Learner');
     const now = new Date();
     const rows = await this.flagged(now)
       .where('e.user_id', '=', userId)

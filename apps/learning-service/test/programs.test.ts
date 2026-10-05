@@ -342,6 +342,30 @@ describe('publishing', () => {
     expect((await h.http.get(`/api/v1/programs/${built.id}/versions`).set(admin)).body.items.map((v: { version: number }) => v.version)).toEqual([2, 1]);
   });
 
+  it('caches the published tree in Redis under a versioned namespace that every structural change bumps', async () => {
+    const built = await buildProgram(h, admin, { title: 'Cached Program', phases: [{ key: 'p1', lessons: [{ key: 'a', type: 'article' }] }] });
+    await enroll(h, admin, built.id, ['darius']);
+    const rep = await h.as('darius');
+    const namespace = `lrn:tree:${built.id}`;
+    const version = async () => Number((await h.redis.get(h.ns.key('cachever', namespace))) ?? 0);
+    const keys = async () => (await h.redis.keys(h.ns.key('cache', namespace, '*'))).sort();
+
+    await outline(h, rep, built.id);
+    const start = await version();
+    expect(await keys()).toEqual([h.ns.key('cache', namespace, `v${start}`, 'published', '1')]);
+
+    // Edits bump the namespace, so stale trees are unreachable immediately; republishing re-fills it.
+    await h.http.patch(`/api/v1/lessons/${built.lessons.a}`).set(admin).send({ title: 'Renamed lesson' });
+    expect(await version()).toBeGreaterThan(start);
+    await h.http.post(`/api/v1/programs/${built.id}/publish`).set(admin).send({ changeNote: 'Rename' });
+    const bumped = await version();
+    await outline(h, rep, built.id);
+    expect(await keys()).toContain(h.ns.key('cache', namespace, `v${bumped}`, 'published', '2'));
+    expect((await outline(h, rep, built.id)).phases[0]!.modules[0]!.lessons[0]!.id).toBe(built.lessons.a);
+    const lesson = await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.a}`).set(rep);
+    expect(lesson.body.lesson.title).toBe('Renamed lesson');
+  });
+
   it('duplicates a program as a draft, remapping unlock rules to the copied nodes', async () => {
     const built = await buildProgram(h, admin, {
       title: 'Original Program',
