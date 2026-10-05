@@ -1,4 +1,4 @@
-import { createBrowserRouter, type RouteObject } from 'react-router';
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { LoginPage } from '@/features/auth/login-page';
 import { ForgotPasswordPage } from '@/features/auth/forgot-password-page';
 import { SetPasswordPage } from '@/features/auth/set-password-page';
@@ -103,6 +103,21 @@ export const routes: RouteObject[] = [
               {
                 path: 'reports',
                 lazy: page(() => import('@/features/reports/reports-page'), 'ReportsPage'),
+              },
+              {
+                path: 'admin/audit',
+                lazy: page(() => import('@/features/audit/audit-page'), 'AuditPage'),
+              },
+              {
+                path: 'admin/notifications',
+                lazy: page(
+                  () => import('@/features/notification-admin/notifications-admin-page'),
+                  'NotificationsAdminPage',
+                ),
+              },
+              {
+                path: 'admin/feature-flags',
+                element: <Navigate to="/admin/settings?tab=features" replace />,
               },
               {
                 path: 'training',
