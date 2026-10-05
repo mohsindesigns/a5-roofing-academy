@@ -131,6 +131,11 @@ async function seedDirectory(trx: Trx): Promise<void> {
   for (const user of directoryUsers()) await applyDirectoryUser(dir, user, 1);
 }
 
+/** Fill the people/teams projection from the shared catalogue (what identity-service would publish). */
+export function seedDirectoryProjection(db: Db): Promise<void> {
+  return db.transaction().execute(seedDirectory);
+}
+
 async function seedProgram(trx: Trx): Promise<void> {
   const owner = PEOPLE.shelby.id;
   await trx
@@ -706,7 +711,7 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
  */
 export async function seedLearning(db: Db, options: LearningSeedOptions = {}): Promise<{ created: boolean }> {
   const log = options.log ?? (() => undefined);
-  await db.transaction().execute(seedDirectory);
+  await seedDirectoryProjection(db);
   const existing = await db.selectFrom('programs').select('id').where('id', '=', PROGRAM.id).executeTakeFirst();
   if (existing) {
     log('learning: academy already seeded');
