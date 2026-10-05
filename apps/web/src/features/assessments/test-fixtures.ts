@@ -185,3 +185,257 @@ export function intro(over: Partial<assessment.AssessmentIntro> = {}): assessmen
 }
 
 export const ids = { id };
+
+export const BANK_ID = id(500);
+export const CATEGORY_ID = id(501);
+
+export function bankDetail(
+  over: Partial<assessment.QuestionBankDetail> = {},
+): assessment.QuestionBankDetail {
+  return {
+    id: BANK_ID,
+    title: 'A5 Sales Core',
+    description: null,
+    archived: false,
+    questionCount: 12,
+    activeQuestionCount: 12,
+    categoryCount: 2,
+    createdAt: '2026-09-01T10:00:00.000Z',
+    updatedAt: '2026-09-01T10:00:00.000Z',
+    categories: [
+      {
+        id: CATEGORY_ID,
+        bankId: BANK_ID,
+        name: 'Storm damage',
+        description: null,
+        position: 0,
+        questionCount: 4,
+      },
+      {
+        id: id(502),
+        bankId: BANK_ID,
+        name: 'Objection handling',
+        description: null,
+        position: 1,
+        questionCount: 3,
+      },
+    ],
+    competencies: [
+      { id: id(503), bankId: BANK_ID, name: 'Inspection', description: null, questionCount: 2 },
+    ],
+    createdBy: null,
+    updatedBy: null,
+    ...over,
+  };
+}
+
+export function bankSummary(
+  over: Partial<assessment.QuestionBankSummary> = {},
+): assessment.QuestionBankSummary {
+  const {
+    categories: _c,
+    competencies: _k,
+    createdBy: _a,
+    updatedBy: _b,
+    ...summary
+  } = bankDetail();
+  return { ...summary, ...over };
+}
+
+export function questionDetail(
+  over: Partial<assessment.QuestionDetail> = {},
+): assessment.QuestionDetail {
+  return {
+    id: id(600),
+    bank: { id: BANK_ID, title: 'A5 Sales Core' },
+    status: 'active',
+    archivedAt: null,
+    versionCount: 3,
+    currentVersion: {
+      id: id(603),
+      questionId: id(600),
+      version: 3,
+      type: 'multiple_choice',
+      config: {
+        options: [
+          { id: 'oAAA', text: 'The homeowner', correct: true },
+          { id: 'oBBB', text: 'The sales manager', correct: false },
+          { id: 'oCCC', text: 'The insurance adjuster', correct: false },
+        ],
+      },
+      prompt: 'Who must give permission before a photo report is shared?',
+      explanation: 'A5 never shares photos without a yes.',
+      points: 2,
+      difficulty: 'medium',
+      category: { id: CATEGORY_ID, name: 'Storm damage' },
+      competencies: [],
+      tags: ['permission'],
+      changeNote: 'Tightened the wording',
+      createdAt: '2026-10-01T10:00:00.000Z',
+      createdBy: { id: id(1), displayName: 'Shelby Hartman' },
+    },
+    usage: [
+      { assessmentId: id(800), title: 'Week 1 Knowledge Check', status: 'published', kind: 'quiz' },
+    ],
+    attemptCount: 14,
+    createdAt: '2026-09-02T10:00:00.000Z',
+    updatedAt: '2026-10-01T10:00:00.000Z',
+    ...over,
+  };
+}
+
+export function reviewSummary(
+  over: Partial<assessment.ReviewAttemptSummary> = {},
+): assessment.ReviewAttemptSummary {
+  return {
+    id: id(950),
+    assessment: { id: id(800), title: 'Week 1 Knowledge Check', kind: 'quiz' },
+    learner: { id: id(2), displayName: 'Marcus Delgado' },
+    attemptNumber: 1,
+    status: 'graded',
+    startedAt: '2026-10-05T15:00:00.000Z',
+    submittedAt: '2026-10-05T15:12:00.000Z',
+    gradedAt: '2026-10-05T15:12:01.000Z',
+    autoSubmitted: false,
+    scorePercent: 66.67,
+    passed: false,
+    overridden: false,
+    pendingReviewCount: 0,
+    context: {},
+    ...over,
+  };
+}
+
+export function reviewDetail(
+  over: Partial<assessment.ReviewAttemptDetail> = {},
+): assessment.ReviewAttemptDetail {
+  const mc = questionDetail().currentVersion;
+  const question = (
+    n: number,
+    outcome: assessment.QuestionOutcome,
+    awarded: number | null,
+    category: string | null,
+  ): assessment.ReviewQuestion => ({
+    attemptQuestionId: id(960 + n),
+    position: n,
+    questionId: id(970 + n),
+    questionVersionId: id(980 + n),
+    version: 1,
+    points: 2,
+    difficulty: 'medium',
+    category: category ? { id: id(990 + n), name: category } : null,
+    prompt: `Review question ${n}`,
+    explanation: null,
+    definition: {
+      type: 'multiple_choice',
+      config: mc.type === 'multiple_choice' ? mc.config : { options: [] },
+    } as assessment.QuestionDefinition,
+    optionOrder: {},
+    response: { type: 'multiple_choice', optionId: n === 1 ? 'oAAA' : 'oBBB' },
+    savedAt: null,
+    outcome,
+    needsReview: outcome === 'pending_review',
+    isCorrect: outcome === 'correct',
+    awardedPoints: awarded,
+    feedback: null,
+    gradedBy: null,
+    gradedAt: null,
+  });
+  return {
+    ...reviewSummary(),
+    config: {
+      title: 'Week 1 Knowledge Check',
+      kind: 'quiz',
+      assessmentRevision: 4,
+      passingPercent: 80,
+      maxAttempts: 3,
+      timeLimitSeconds: 1200,
+      randomizeQuestions: false,
+      randomizeOptions: true,
+      revealCorrectAnswers: 'after_submit',
+      revealScore: true,
+      retryCooldownMinutes: 10,
+      notifyManagerOn: ['failed'],
+      allowStandalone: false,
+    },
+    expiresAt: '2026-10-05T15:20:00.000Z',
+    maxPoints: 6,
+    gradedScorePoints: 4,
+    gradedScorePercent: 66.67,
+    gradedPassed: false,
+    questions: [
+      question(1, 'correct', 2, 'Storm damage'),
+      question(2, 'incorrect', 0, 'Storm damage'),
+      question(3, 'correct', 2, 'Objection handling'),
+      question(4, 'pending_review', null, null),
+    ],
+    overrides: [],
+    ...over,
+  };
+}
+
+export function assessmentDetail(
+  over: Partial<assessment.AssessmentDetail> = {},
+): assessment.AssessmentDetail {
+  return {
+    id: id(800),
+    title: 'Week 1 Knowledge Check',
+    description: 'Checks how A5 earns trust.',
+    kind: 'quiz',
+    status: 'draft',
+    passingPercent: 80,
+    itemCount: 2,
+    questionCount: 2,
+    attemptCount: 0,
+    publishedAt: null,
+    archivedAt: null,
+    createdAt: '2026-09-02T10:00:00.000Z',
+    updatedAt: '2026-10-01T10:00:00.000Z',
+    revision: 4,
+    config: {
+      passingPercent: 80,
+      maxAttempts: 3,
+      timeLimitSeconds: 1200,
+      randomizeQuestions: false,
+      randomizeOptions: true,
+      revealCorrectAnswers: 'after_submit',
+      revealScore: true,
+      retryCooldownMinutes: 10,
+      notifyManagerOn: ['failed'],
+      allowStandalone: false,
+    },
+    items: [
+      {
+        id: id(901),
+        position: 1,
+        kind: 'question',
+        points: null,
+        question: {
+          id: id(600),
+          status: 'active',
+          version: 3,
+          type: 'multiple_choice',
+          prompt: 'Who must give permission before a photo report is shared?',
+          difficulty: 'medium',
+          points: 2,
+          category: { id: CATEGORY_ID, name: 'Storm damage' },
+        },
+      },
+      {
+        id: id(902),
+        position: 2,
+        kind: 'pool',
+        points: null,
+        bank: { id: BANK_ID, title: 'A5 Sales Core' },
+        category: { id: CATEGORY_ID, name: 'Storm damage' },
+        difficulty: null,
+        tags: [],
+        count: 3,
+        available: 4,
+      },
+    ],
+    createdBy: null,
+    updatedBy: { id: id(1), displayName: 'Shelby Hartman' },
+    ...over,
+  };
+}

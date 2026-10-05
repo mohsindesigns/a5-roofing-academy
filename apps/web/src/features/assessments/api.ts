@@ -120,12 +120,13 @@ export function useSubmitAttempt() {
 
 // ------------------------------------------------------------------ assessments (content)
 
-export function useAssessments(filters: ListFilters) {
+export function useAssessments(filters: ListFilters, enabled = true) {
   return useQuery({
     queryKey: assessmentKeys.list(filters),
     queryFn: ({ signal }) =>
       api.get<PageResult<assessment.AssessmentSummary>>('/assessments', filters, signal),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 
@@ -372,12 +373,13 @@ export function useDeleteTaxonomy(bankId: Id, kind: TaxonomyKind) {
 
 // ------------------------------------------------------------------ questions
 
-export function useQuestions(filters: ListFilters) {
+export function useQuestions(filters: ListFilters, enabled = true) {
   return useQuery({
     queryKey: assessmentKeys.questions(filters),
     queryFn: ({ signal }) =>
       api.get<PageResult<assessment.QuestionSummary>>('/questions', filters, signal),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 

@@ -4,3 +4,11 @@ import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 afterEach(cleanup);
+
+// Radix measures some controls (checkbox, switch) with ResizeObserver, which jsdom does not provide.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub;

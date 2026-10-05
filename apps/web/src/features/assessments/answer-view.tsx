@@ -186,3 +186,42 @@ export function CorrectAnswerView({ correct, lookup }: { correct: Correct; looku
       );
   }
 }
+
+/** The answer key of a stored question definition (mirrors the service; used by reviewer screens). */
+export function correctAnswerOf(def: assessment.QuestionDefinition): Correct {
+  switch (def.type) {
+    case 'multiple_choice':
+      return {
+        type: 'multiple_choice',
+        optionId: def.config.options.find((o) => o.correct)?.id ?? '',
+      };
+    case 'multiple_select':
+      return {
+        type: 'multiple_select',
+        optionIds: def.config.options.filter((o) => o.correct).map((o) => o.id),
+      };
+    case 'true_false':
+      return { type: 'true_false', value: def.config.correctAnswer };
+    case 'short_answer':
+      return { type: 'short_answer', acceptedAnswers: def.config.acceptedAnswers };
+    case 'long_answer':
+      return { type: 'long_answer', sampleAnswer: def.config.sampleAnswer ?? null };
+    case 'scenario': {
+      const sub = def.config.subQuestion;
+      return sub.kind === 'multiple_choice'
+        ? {
+            type: 'scenario',
+            optionId: sub.options.find((o) => o.correct)?.id ?? null,
+            sampleAnswer: null,
+          }
+        : { type: 'scenario', optionId: null, sampleAnswer: sub.sampleAnswer ?? null };
+    }
+    case 'ordering':
+      return { type: 'ordering', order: def.config.items.map((i) => i.id) };
+    case 'matching':
+      return {
+        type: 'matching',
+        matches: Object.fromEntries(def.config.pairs.map((p) => [p.leftId, p.rightId])),
+      };
+  }
+}

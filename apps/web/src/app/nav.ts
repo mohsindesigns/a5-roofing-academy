@@ -101,10 +101,9 @@ export const NAV: NavSection[] = [
       },
       {
         to: '/content/assessments',
-        ready: false,
         label: 'Assessments',
         icon: ClipboardList,
-        visible: (p) => p.has('assessments.view'),
+        visible: (p) => p.hasAny(['assessments.view', 'assessment_attempts.view']),
         match: ['/content/assessments', '/content/questions'],
       },
       {
