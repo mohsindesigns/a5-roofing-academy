@@ -185,14 +185,11 @@ describe('coaching reviews', () => {
   it('lets a trainer in scope review a session, emits ai.session.reviewed and shows it to the learner', async () => {
     const id = await sessionOf('naomi', 'spouse', 0);
     const hector = await h.as('hector');
-    const res = await h.http
-      .post(`/api/v1/ai/review/sessions/${id}/reviews`)
-      .set(hector)
-      .send({
-        comment:
-          'Your recovery after the insurance comment was good, but never make that promise. Practice again before the field ride-along.',
-        recommendation: 'practice_again',
-      });
+    const res = await h.http.post(`/api/v1/ai/review/sessions/${id}/reviews`).set(hector).send({
+      comment:
+        'Your recovery after the insurance comment was good, but never make that promise. Practice again before the field ride-along.',
+      recommendation: 'practice_again',
+    });
     expect(res.status).toBe(201);
     expect(res.body.reviews).toHaveLength(1);
     expect(res.body.reviews[0]).toMatchObject({

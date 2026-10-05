@@ -43,14 +43,11 @@ describe('prompt versioning', () => {
     await sendStreaming(h, marcus, oldSession.id, { text: 'Hi, I am Marcus with A5 Roofing.' });
 
     // The scenario is edited: v2 is created, v1 is untouched.
-    const edited = await h.http
-      .patch(`/api/v1/ai/scenarios/${id}`)
-      .set(admin)
-      .send({
-        openingLine: "Hello. I've got a roofer already, thanks.",
-        hiddenConcern:
-          'Your brother-in-law Ray has been promising to come out for two months. You feel loyal to him.',
-      });
+    const edited = await h.http.patch(`/api/v1/ai/scenarios/${id}`).set(admin).send({
+      openingLine: "Hello. I've got a roofer already, thanks.",
+      hiddenConcern:
+        'Your brother-in-law Ray has been promising to come out for two months. You feel loyal to him.',
+    });
     expect(edited.status).toBe(200);
     expect(edited.body.currentPromptVersion.version).toBe(2);
     expect(edited.body.openingLine).toBe("Hello. I've got a roofer already, thanks.");
@@ -444,14 +441,11 @@ describe('settings', () => {
       simulated: true,
     });
 
-    const updated = await h.http
-      .put('/api/v1/ai/settings')
-      .set(admin)
-      .send({
-        transcriptRetentionDays: 365,
-        timezone: 'America/New_York',
-        conversationModel: 'claude-sonnet-5-5',
-      });
+    const updated = await h.http.put('/api/v1/ai/settings').set(admin).send({
+      transcriptRetentionDays: 365,
+      timezone: 'America/New_York',
+      conversationModel: 'claude-sonnet-5-5',
+    });
     expect(updated.status).toBe(200);
     expect(updated.body).toMatchObject({
       transcriptRetentionDays: 365,
