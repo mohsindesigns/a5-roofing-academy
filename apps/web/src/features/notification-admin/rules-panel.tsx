@@ -16,7 +16,7 @@ import {
   Tr,
   toast,
 } from '@/components/ui';
-import { useRoles } from '@/features/access/api';
+import { useRoleOptions } from '@/features/analytics/options';
 import { categoryLabel } from '@/features/notifications/notification-item';
 import { errorMessage } from '@/lib/api/errors';
 import { useRules, useToggleRule } from './api';
@@ -31,7 +31,7 @@ const CHANNEL: Record<notification.NotificationChannel, string> = {
 /** Who gets each notification, how, and when. */
 export function RulesPanel() {
   const rules = useRules();
-  const roles = useRoles();
+  const roles = useRoleOptions();
   const toggle = useToggleRule();
   const [editing, setEditing] = useState<notification.NotificationRule | null>(null);
   const roleNames = new Map(roles.data?.items.map((r) => [r.key, r.name]) ?? []);

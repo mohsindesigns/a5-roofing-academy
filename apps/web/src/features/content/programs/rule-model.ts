@@ -334,11 +334,17 @@ function fieldMessage(
   return `${label}: ${issue.message}`;
 }
 
+export interface Problem {
+  /** Field the message belongs to, or null for the node as a whole. */
+  field: string | null;
+  message: string;
+}
+
 /** Problems per node uid, in words a content editor can act on. Empty map = valid. */
-export function validateDraft(root: DraftGroup): Map<string, string[]> {
-  const problems = new Map<string, string[]>();
-  const add = (id: string, message: string) =>
-    problems.set(id, [...(problems.get(id) ?? []), message]);
+export function validateDraft(root: DraftGroup): Map<string, Problem[]> {
+  const problems = new Map<string, Problem[]>();
+  const add = (id: string, message: string, field: string | null = null) =>
+    problems.set(id, [...(problems.get(id) ?? []), { field, message }]);
   const visit = (n: DraftNode) => {
     if (isDraftGroup(n)) {
       if (n.type === 'any' && n.rules.length === 0)
@@ -351,7 +357,7 @@ export function validateDraft(root: DraftGroup): Map<string, string[]> {
       for (const issue of parsed.error.issues) {
         const name = String(issue.path[0] ?? '');
         if (name === 'type') continue;
-        add(n.uid, fieldMessage(n.type, name, issue));
+        add(n.uid, fieldMessage(n.type, name, issue), name);
       }
     }
   };
@@ -396,4 +402,22 @@ export function addChild(root: DraftGroup, groupId: string, child: DraftNode): D
   return updateNode(root, groupId, (n) =>
     isDraftGroup(n) ? { ...n, rules: [...n.rules, child] } : n,
   ) as DraftGroup;
+}
+
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, v]) => v !== undefined)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => [k, canonical(v)]),
+    );
+  }
+  return value;
+}
+
+/** Equality of two rules regardless of key order, so reopening a rule is not "a change". */
+export function sameRule(a: unknown, b: unknown): boolean {
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 }

@@ -83,6 +83,15 @@ export function useProgramAction(id: string) {
   });
 }
 
+export function useArchiveProgram() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
+      api.post<learning.ProgramDetail>(`/programs/${id}/${archived ? 'archive' : 'restore'}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: programKeys.all }),
+  });
+}
+
 export function useDuplicateProgram() {
   const qc = useQueryClient();
   return useMutation({

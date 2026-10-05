@@ -39,6 +39,12 @@ describe('schema bounds', () => {
     expect(ai.minScore).toMatchObject({ min: 0, max: 100 });
   });
 
+  it('reads text length limits', () => {
+    const note = boundsOf(learning.publishProgramRequestSchema).changeNote;
+    expect(note?.minLength).toBe(3);
+    expect(note?.maxLength).toBe(2000);
+  });
+
   it('describes a range in words', () => {
     expect(rangeHint({ min: 0, max: 100, integer: false }, '%')).toBe('0% to 100%');
     expect(rangeHint({ min: 1, integer: true })).toBe('1 or more');

@@ -8,6 +8,9 @@ import { z } from 'zod';
 export interface FieldBounds {
   min?: number;
   max?: number;
+  /** Text length limits, for string fields. */
+  minLength?: number;
+  maxLength?: number;
   /** Schema default, when the schema declares one. */
   default?: unknown;
   integer: boolean;
@@ -18,6 +21,8 @@ interface JsonSchemaNode {
   type?: string | string[];
   minimum?: number;
   maximum?: number;
+  minLength?: number;
+  maxLength?: number;
   exclusiveMinimum?: number;
   default?: unknown;
   enum?: unknown[];
@@ -45,6 +50,8 @@ function toBounds(raw: JsonSchemaNode | undefined): FieldBounds {
   const bounds: FieldBounds = { integer: types.includes('integer') };
   if (node?.minimum !== undefined && Math.abs(node.minimum) < UNBOUNDED) bounds.min = node.minimum;
   if (node?.maximum !== undefined && node.maximum < UNBOUNDED) bounds.max = node.maximum;
+  if (node?.minLength !== undefined) bounds.minLength = node.minLength;
+  if (node?.maxLength !== undefined) bounds.maxLength = node.maxLength;
   if (node?.default !== undefined) bounds.default = node.default;
   if (node?.enum) bounds.enum = node.enum.map(String);
   return bounds;

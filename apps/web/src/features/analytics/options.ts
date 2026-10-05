@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { PageResult, certification, learning } from '@a5/contracts';
+import type { PageResult, certification, identity, learning } from '@a5/contracts';
 import { api } from '@/lib/api/client';
 import { usePermissions } from '@/features/auth/session';
 
@@ -37,6 +37,18 @@ export function useCertificationOptions(enabled = true) {
         signal,
       ),
     enabled: enabled && allowed,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Roles for pickers; only people who may view roles can list them. */
+export function useRoleOptions() {
+  const allowed = usePermissions().has('roles.view');
+  return useQuery({
+    queryKey: ['options', 'roles'],
+    queryFn: ({ signal }) =>
+      api.get<{ items: identity.RoleSummary[] }>('/roles', undefined, signal),
+    enabled: allowed,
     staleTime: 5 * 60_000,
   });
 }

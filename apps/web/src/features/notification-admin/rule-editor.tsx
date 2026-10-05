@@ -14,7 +14,7 @@ import {
   Switch,
   toast,
 } from '@/components/ui';
-import { useRoles } from '@/features/access/api';
+import { useRoleOptions } from '@/features/analytics/options';
 import { ApiError, errorMessage } from '@/lib/api/errors';
 import {
   CONDITION_OPERATORS,
@@ -80,7 +80,7 @@ export function RuleEditor({
 
 function Form({ rule, onClose }: { rule: notification.NotificationRule; onClose: () => void }) {
   const update = useUpdateRule(rule.id);
-  const roles = useRoles();
+  const roles = useRoleOptions();
   const locked = rule.mandatory;
 
   const [recipients, setRecipients] = useState<string[]>(rule.recipients);

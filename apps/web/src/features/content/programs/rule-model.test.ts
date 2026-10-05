@@ -11,6 +11,7 @@ import {
   isDraftGroup,
   newLeaf,
   removeNode,
+  sameRule,
   toDraft,
   updateNode,
   validateDraft,
@@ -106,8 +107,8 @@ describe('validation', () => {
   it('flags missing references and thresholds in words', () => {
     const leaf = newLeaf('assessment_score');
     const problems = validateDraft(draftWith(leaf)).get(leaf.uid) ?? [];
-    expect(problems).toContain('Choose an assessment.');
-    expect(problems.some((p) => /minimum score/i.test(p))).toBe(true);
+    expect(problems).toContainEqual({ field: 'assessmentId', message: 'Choose an assessment.' });
+    expect(problems.find((p) => p.field === 'minPercent')?.message).toMatch(/minimum score/i);
   });
 
   it('takes the allowed range from the schema', () => {
@@ -116,7 +117,9 @@ describe('validation', () => {
       values: { assessmentId: ID(1), minPercent: '140' },
     };
     const problems = validateDraft(draftWith(leaf)).get(leaf.uid);
-    expect(problems).toEqual(['Minimum score must be between 0% and 100%.']);
+    expect(problems).toEqual([
+      { field: 'minPercent', message: 'Minimum score must be between 0% and 100%.' },
+    ]);
     const bounds = RULE_BOUNDS.assessment_score!.minPercent!;
     expect(`${bounds.min}% to ${bounds.max}%`).toBe('0% to 100%');
   });
@@ -133,16 +136,17 @@ describe('validation', () => {
   it('requires at least one requirement in an "any of" group', () => {
     const group = emptyGroup('any');
     const root: DraftGroup = { ...emptyGroup(), rules: [group] };
-    expect(validateDraft(root).get(group.uid)?.[0]).toMatch(/at least one requirement/);
+    expect(validateDraft(root).get(group.uid)?.[0]?.message).toMatch(/at least one requirement/);
     // An empty "all of" is allowed: it means no requirements.
     expect(validateDraft(emptyGroup('all')).size).toBe(0);
   });
 
   it('rejects whole numbers below the schema minimum', () => {
     const leaf: DraftLeaf = { ...newLeaf('ai_sessions_count'), values: { minCount: '0' } };
-    expect(validateDraft(draftWith(leaf)).get(leaf.uid)?.[0]).toBe(
-      'Number of sessions must be between 1 and 1000.',
-    );
+    expect(validateDraft(draftWith(leaf)).get(leaf.uid)?.[0]).toEqual({
+      field: 'minCount',
+      message: 'Number of sessions must be between 1 and 1000.',
+    });
   });
 });
 
@@ -162,5 +166,24 @@ describe('tree edits', () => {
 
     expect(removeNode(changed, leaf.uid).rules.map((r) => r.uid)).toEqual([nested.uid]);
     expect(removeNode(changed, nested.uid).rules.map((r) => r.uid)).toEqual([leaf.uid]);
+  });
+});
+
+describe('sameRule', () => {
+  it('ignores key order and undefined fields', () => {
+    expect(
+      sameRule(
+        { type: 'assessment_score', assessmentId: ID(1), minPercent: 80 },
+        { minPercent: 80, type: 'assessment_score', assessmentId: ID(1), label: undefined },
+      ),
+    ).toBe(true);
+    expect(sameRule(null, null)).toBe(true);
+    expect(sameRule(null, { type: 'all', rules: [] })).toBe(false);
+    expect(
+      sameRule(
+        { type: 'assessment_score', assessmentId: ID(1), minPercent: 80 },
+        { type: 'assessment_score', assessmentId: ID(1), minPercent: 85 },
+      ),
+    ).toBe(false);
   });
 });

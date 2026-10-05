@@ -94,7 +94,6 @@ export const NAV: NavSection[] = [
     items: [
       {
         to: '/content/programs',
-        ready: false,
         label: 'Programs',
         icon: BookOpenCheck,
         visible: (p) => p.has('programs.view'),
