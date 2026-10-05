@@ -633,7 +633,7 @@ export class DashboardQueries {
       where s.organization_id = ${q.org} and ${q.people('s.user_id', 's.organization_id')} and ${q.range('s.evaluated_at')}
       group by s.scenario_id
       having count(*) filter (where not s.passed) > 0
-      order by (count(*) filter (where not s.passed))::numeric / count(*) desc, count(*) filter (where not s.passed) desc, avg(s.overall_score)
+      order by count(*) filter (where not s.passed) desc, (count(*) filter (where not s.passed))::numeric / count(*) desc, avg(s.overall_score), s.scenario_id
       limit ${limit}
     `);
     return rows.map((r) => ({
