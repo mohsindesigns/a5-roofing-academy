@@ -1,0 +1,159 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+@theme inline {
+  --color-background: var(--a5-background);
+  --color-surface: var(--a5-surface);
+  --color-surface-elevated: var(--a5-surface-elevated);
+  --color-surface-sunken: var(--a5-surface-sunken);
+  --color-surface-hover: var(--a5-surface-hover);
+  --color-surface-selected: var(--a5-surface-selected);
+  --color-text-primary: var(--a5-text-primary);
+  --color-text-secondary: var(--a5-text-secondary);
+  --color-text-tertiary: var(--a5-text-tertiary);
+  --color-text-inverse: var(--a5-text-inverse);
+  --color-border: var(--a5-border);
+  --color-border-strong: var(--a5-border-strong);
+  --color-divider: var(--a5-divider);
+  --color-brand-primary: var(--a5-brand-primary);
+  --color-brand-primary-hover: var(--a5-brand-primary-hover);
+  --color-brand-primary-active: var(--a5-brand-primary-active);
+  --color-brand-secondary: var(--a5-brand-secondary);
+  --color-brand-secondary-hover: var(--a5-brand-secondary-hover);
+  --color-brand-secondary-soft: var(--a5-brand-secondary-soft);
+  --color-success: var(--a5-success);
+  --color-success-soft: var(--a5-success-soft);
+  --color-warning: var(--a5-warning);
+  --color-warning-soft: var(--a5-warning-soft);
+  --color-danger: var(--a5-danger);
+  --color-danger-soft: var(--a5-danger-soft);
+  --color-information: var(--a5-information);
+  --color-information-soft: var(--a5-information-soft);
+  --color-focus: var(--a5-focus);
+
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-sm: var(--a5-radius-sm);
+  --radius: var(--a5-radius);
+  --radius-md: var(--a5-radius);
+  --radius-lg: var(--a5-radius-lg);
+
+  --shadow-popover: var(--a5-shadow-popover);
+  --shadow-dialog: var(--a5-shadow-dialog);
+
+  /* UI-scale type: hierarchy through weight and spacing, not giant headings. */
+  --text-2xs: 11px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 20px;
+  --text-base: 14px;
+  --text-base--line-height: 22px;
+  --text-md: 15px;
+  --text-md--line-height: 24px;
+  --text-lg: 17px;
+  --text-lg--line-height: 26px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 32px;
+  --text-3xl: 30px;
+  --text-3xl--line-height: 36px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background: var(--a5-background);
+    color: var(--a5-text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 22px;
+    font-feature-settings: 'ss02' 0;
+  }
+  /* Phones get a slightly larger reading size. */
+  @media (max-width: 640px) {
+    body {
+      font-size: 15px;
+      line-height: 24px;
+    }
+  }
+  :focus-visible {
+    outline: 2px solid var(--a5-focus);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--a5-brand-secondary-soft);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Long-form lesson content rendered from markdown. */
+  .prose-a5 {
+    font-size: 15px;
+    line-height: 26px;
+    color: var(--a5-text-primary);
+    max-width: 68ch;
+  }
+  .prose-a5 h2 {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+    margin: 28px 0 8px;
+  }
+  .prose-a5 h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 20px 0 6px;
+  }
+  .prose-a5 p {
+    margin: 0 0 14px;
+  }
+  .prose-a5 ul,
+  .prose-a5 ol {
+    margin: 0 0 14px;
+    padding-left: 20px;
+  }
+  .prose-a5 ul {
+    list-style: disc;
+  }
+  .prose-a5 ol {
+    list-style: decimal;
+  }
+  .prose-a5 li {
+    margin: 4px 0;
+  }
+  .prose-a5 strong {
+    font-weight: 600;
+  }
+  .prose-a5 blockquote {
+    border-left: 3px solid var(--a5-brand-secondary);
+    padding: 2px 0 2px 14px;
+    color: var(--a5-text-secondary);
+    margin: 0 0 14px;
+  }
+  .prose-a5 a {
+    color: var(--a5-information);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}

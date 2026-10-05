@@ -1,0 +1,63 @@
+/*
+ * A5 Sales Academy design tokens.
+ *
+ * Placeholder brand until official A5 assets arrive: a charcoal primary and a copper accent
+ * (a nod to roof flashing) on warm paper neutrals. Replace the values in this file to re-brand;
+ * components only reference the semantic names.
+ */
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --a5-background: #f6f5f2;
+  --a5-surface: #ffffff;
+  --a5-surface-elevated: #ffffff;
+  --a5-surface-sunken: #efede8;
+  --a5-surface-hover: #f3f1ed;
+  --a5-surface-selected: #ece8e1;
+
+  /* Text */
+  --a5-text-primary: #1c1b19;
+  --a5-text-secondary: #5c5850;
+  --a5-text-tertiary: #857f75;
+  --a5-text-inverse: #ffffff;
+
+  /* Lines */
+  --a5-border: #e3dfd8;
+  --a5-border-strong: #cdc7bd;
+  --a5-divider: #ebe8e2;
+
+  /* Brand */
+  --a5-brand-primary: #1f2a30;
+  --a5-brand-primary-hover: #2d3b43;
+  --a5-brand-primary-active: #151d21;
+  --a5-brand-secondary: #a8582a;
+  --a5-brand-secondary-hover: #924b22;
+  --a5-brand-secondary-soft: #f5e8de;
+
+  /* Status */
+  --a5-success: #1f7547;
+  --a5-success-soft: #e4f1e8;
+  --a5-warning: #93600a;
+  --a5-warning-soft: #fbf0d7;
+  --a5-danger: #b02a20;
+  --a5-danger-soft: #fae6e3;
+  --a5-information: #285a96;
+  --a5-information-soft: #e5edf7;
+
+  /* Focus */
+  --a5-focus: #285a96;
+
+  /* Elevation (used sparingly: popovers, dialogs, menus) */
+  --a5-shadow-popover: 0 1px 2px rgb(28 27 25 / 0.06), 0 8px 24px rgb(28 27 25 / 0.1);
+  --a5-shadow-dialog: 0 2px 6px rgb(28 27 25 / 0.08), 0 24px 64px rgb(28 27 25 / 0.18);
+
+  /* Geometry */
+  --a5-radius-sm: 4px;
+  --a5-radius: 6px;
+  --a5-radius-lg: 8px;
+  --a5-control-height: 36px;
+  --a5-control-height-sm: 30px;
+  --a5-sidebar-width: 236px;
+  --a5-sidebar-collapsed: 60px;
+}
