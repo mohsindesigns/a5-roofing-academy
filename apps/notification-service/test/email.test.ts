@@ -128,8 +128,10 @@ describe('email delivery', () => {
     expect(delivery.status).toBe('queued');
     expect(delivery.scheduled_at.getTime()).toBeGreaterThan(Date.now() + 29 * 60_000);
     const queues = h.app.get(QueueFactory);
-    expect(await (await queues.queue(EMAIL_QUEUE).getJob(emailJobId(delivery.id)))?.getState()).toBe('delayed');
-    expect(await (await queues.queue(PUSH_QUEUE).getJob(`push-${notification.id}`))?.getState()).toBe('delayed');
+    // Jobs are enqueued right after the transaction commits, so give them a moment to appear.
+    const stateOf = (queue: string, jobId: string) => async () => (await queues.queue(queue).getJob(jobId))?.getState();
+    expect(await waitFor(stateOf(EMAIL_QUEUE, emailJobId(delivery.id)), { message: 'email job' })).toBe('delayed');
+    expect(await waitFor(stateOf(PUSH_QUEUE, `push-${notification.id}`), { message: 'push job' })).toBe('delayed');
     const devon = await h.http.get('/api/v1/notifications').set(await h.as('devon'));
     expect(devon.body.items.some((n: { id: string }) => n.id === notification.id)).toBe(false);
     await h.http.patch(`/api/v1/notification-rules/${rule.id}`).set(admin).send({ delayMinutes: 0 });

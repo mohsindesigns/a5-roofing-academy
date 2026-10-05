@@ -1,8 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { sql } from '@a5/database';
 import { principalHeaders } from '@a5/nest-kit/testing';
 import { uuidv7 } from '@a5/observability';
 import { ORGANIZATION, PEOPLE } from '@a5/seed-data';
+import { LogsRepository } from '../src/logs/logs.repository.js';
 import { ensurePartitions, monthsBetween } from '../src/partitions/partitions.js';
 import { OTHER_ORG, createAuditHarness, type AuditHarness, type TestEntry } from './harness.js';
 
@@ -423,6 +424,34 @@ describe('CSV export', () => {
     await new Promise((r) => setTimeout(r, 200));
     expect((await fetch(`${url}/health/ready`)).status).toBe(200);
     expect((await get('/api/v1/audit/logs?limit=1')).status).toBe(200);
+  });
+
+  it('aborts the download when the database fails mid-stream, so a partial file never looks complete', async () => {
+    const repo = h.app.get(LogsRepository);
+    const original = repo.stream.bind(repo);
+    const spy = vi.spyOn(repo, 'stream').mockImplementation(async function* (filter, max) {
+      for await (const batch of original(filter, max)) {
+        yield batch;
+        throw new Error('connection to the database was lost');
+      }
+    });
+    try {
+      const url = await h.listen();
+      const res = await fetch(`${url}/api/v1/audit/export?service=stream-service`, { headers: await h.as('ruth') });
+      expect(res.status).toBe(200);
+      const reader = res.body!.getReader();
+      await expect(
+        (async () => {
+          for (;;) {
+            const { done } = await reader.read();
+            if (done) return 'completed';
+          }
+        })(),
+      ).rejects.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await fetch(`${await h.listen()}/health/live`)).status).toBe(200);
   });
 
   it('refuses selections above the limit instead of truncating them', async () => {

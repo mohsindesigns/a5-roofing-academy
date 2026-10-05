@@ -156,31 +156,38 @@ export class LogsService {
     res.setHeader('X-Content-Type-Options', 'nosniff');
 
     const isClosed = () => closed;
-    if (!(await writeChunk(res, csvLine(audit.AUDIT_EXPORT_COLUMNS), isClosed))) return;
-    for await (const batch of this.repo.stream(filter, max)) {
-      const chunk = batch
-        .map((r) =>
-          csvLine([
-            r.occurred_at,
-            r.action,
-            r.actor_type,
-            r.actor_id,
-            r.actor_display,
-            r.resource_type,
-            r.resource_id,
-            r.reason,
-            r.service,
-            r.ip,
-            r.user_agent,
-            r.request_id,
-            r.correlation_id,
-            r.before,
-            r.after,
-            r.id,
-          ]),
-        )
-        .join('');
-      if (!(await writeChunk(res, chunk, isClosed))) return;
+    try {
+      if (!(await writeChunk(res, csvLine(audit.AUDIT_EXPORT_COLUMNS), isClosed))) return;
+      for await (const batch of this.repo.stream(filter, max)) {
+        const chunk = batch
+          .map((r) =>
+            csvLine([
+              r.occurred_at,
+              r.action,
+              r.actor_type,
+              r.actor_id,
+              r.actor_display,
+              r.resource_type,
+              r.resource_id,
+              r.reason,
+              r.service,
+              r.ip,
+              r.user_agent,
+              r.request_id,
+              r.correlation_id,
+              r.before,
+              r.after,
+              r.id,
+            ]),
+          )
+          .join('');
+        if (!(await writeChunk(res, chunk, isClosed))) return;
+      }
+    } catch (err) {
+      // Headers are already sent: ending the response normally would hand the auditor a file that
+      // looks complete but is not. Abort the connection so the download visibly fails.
+      res.destroy();
+      throw err;
     }
     res.end();
   }
