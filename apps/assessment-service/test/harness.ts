@@ -14,7 +14,7 @@ import { Clock } from '../src/common/clock.js';
 import { loadAssessmentConfig, type AssessmentConfig } from '../src/config.js';
 import { migrations } from '../src/database/migrations/index.js';
 import type { AssessmentDatabase } from '../src/database/schema.js';
-import { seedAssessment } from '../src/seed/seed-assessment.js';
+import { seedAssessment, seedDirectory } from '../src/seed/seed-assessment.js';
 
 /** Controllable clock: tests move time forward to exercise deadlines, cooldowns and sweeps. */
 export class TestClock extends Clock {
@@ -104,7 +104,9 @@ export async function createAssessmentHarness(name: string, options: HarnessOpti
   });
   const database = createDatabase<AssessmentDatabase>({ url: tdb.url, poolMax: 4 });
   await migrateToLatest(database.db as never, migrations);
-  if (options.seed !== false) await seedAssessment(database.db);
+  // Without the full seed the directory projection is still filled, as events would do in production.
+  if (options.seed === false) await seedDirectory(database.db);
+  else await seedAssessment(database.db);
 
   const clock = new TestClock();
   const app = await createTestApp(AppModule.register(config, testLogger(), { clock }), config);

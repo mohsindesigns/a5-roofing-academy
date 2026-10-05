@@ -68,7 +68,8 @@ function attemptTimes(journey: LearnerJourney, assessmentKey: string, index: num
   return { startedAt, submittedAt: new Date(startedAt.getTime() + durationMs) };
 }
 
-async function seedDirectory(db: Db): Promise<void> {
+/** Fill the directory projection with the seeded people, teams and units (older revisions are ignored). */
+export async function seedDirectory(db: Db): Promise<void> {
   await db.transaction().execute(async (trx) => {
     for (const unit of directoryUnits()) await applyDirectoryUnit(trx, unit, 1);
     for (const team of directoryTeams()) await applyDirectoryTeam(trx, team, 1);
