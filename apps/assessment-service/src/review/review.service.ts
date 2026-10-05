@@ -93,7 +93,9 @@ export class ReviewService {
     }
     const desc = f.sort ? f.sort.startsWith('-') : true;
     const key = (f.sort?.replace(/^-/, '') ?? 'submittedAt') as keyof typeof SORTS;
-    query = query.orderBy(SORTS[key] ?? SORTS.submittedAt, sql.raw(desc ? 'desc nulls last' : 'asc nulls last')).orderBy('t.id', 'desc');
+    query = query
+      .orderBy(SORTS[key] ?? SORTS.submittedAt, (ob) => (desc ? ob.desc().nullsLast() : ob.asc().nullsLast()))
+      .orderBy('t.id', 'desc');
 
     const page = await paginate(query, { page: f.page, pageSize: f.pageSize });
     const overrides = await latestOverrides(

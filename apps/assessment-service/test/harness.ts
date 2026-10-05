@@ -50,7 +50,7 @@ export interface AssessmentHarness {
   config: AssessmentConfig;
   clock: TestClock;
   /** Principal headers for a seeded person with the permissions their roles grant. */
-  as(person: PersonKey): Promise<Record<string, string>>;
+  as(person: PersonKey, patch?: Partial<PrincipalData>): Promise<Record<string, string>>;
   /** Principal headers for an ad-hoc user. */
   asUser(input: { userId: string; permissions: PermissionKey[]; scope?: 'own' | 'managed' | 'organization' | 'platform'; organizationId?: string }): Promise<Record<string, string>>;
   /** Lesson grant for an assessment lesson, signed like learning-service does. */
@@ -121,7 +121,7 @@ export async function createAssessmentHarness(name: string, options: HarnessOpti
     ns,
     config,
     clock,
-    as: (person) => principalHeaders(principalDataFor(person)),
+    as: (person, patch = {}) => principalHeaders({ ...principalDataFor(person), ...patch }),
     asUser: (input) =>
       principalHeaders({
         userId: input.userId,

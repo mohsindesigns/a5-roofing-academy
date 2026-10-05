@@ -69,14 +69,22 @@ export interface PoolRule {
   tags: readonly string[];
 }
 
-/** Active questions whose current version matches a pool rule, in a stable order. */
-export async function poolCandidates(db: DbOrTrx, organizationId: string, rule: PoolRule): Promise<CandidateQuestion[]> {
-  let query = candidateQuery(db, organizationId).where('q.bank_id', '=', rule.bankId).where('q.status', '=', 'active');
+/**
+ * Ids of active questions whose current version matches a pool rule, in a stable order. Only ids are
+ * loaded: banks can hold thousands of questions and counting candidates must not read their content.
+ */
+export async function poolCandidateIds(db: DbOrTrx, organizationId: string, rule: PoolRule): Promise<string[]> {
+  let query = db
+    .selectFrom('questions as q')
+    .innerJoin('question_versions as v', 'v.id', 'q.current_version_id')
+    .select('q.id')
+    .where('q.organization_id', '=', organizationId)
+    .where('q.bank_id', '=', rule.bankId)
+    .where('q.status', '=', 'active');
   if (rule.categoryId) query = query.where('v.category_id', '=', rule.categoryId);
   if (rule.difficulty) query = query.where('v.difficulty', '=', rule.difficulty);
   if (rule.tags.length) query = query.where(sql<boolean>`v.tags @> ${sql.val([...rule.tags])}::text[]`);
-  const rows = await query.orderBy('q.id').execute();
-  return rows.map(toCandidate);
+  return (await query.orderBy('q.id').execute()).map((r) => r.id);
 }
 
 export function poolRuleOf(item: AssessmentItemRow): PoolRule {
@@ -93,7 +101,7 @@ export type ValidationIssue = assessment.AssessmentValidation['issues'][number];
 export interface ItemPlan {
   issues: ValidationIssue[];
   fixed: Array<{ item: AssessmentItemRow; question: CandidateQuestion }>;
-  pools: Array<{ item: AssessmentItemRow; candidates: CandidateQuestion[] }>;
+  pools: Array<{ item: AssessmentItemRow; candidates: string[] }>;
 }
 
 async function describePools(db: DbOrTrx, items: readonly AssessmentItemRow[]): Promise<Map<string, string>> {
@@ -147,7 +155,7 @@ export async function planItems(db: DbOrTrx, organizationId: string, items: read
   const names = poolItems.length ? await describePools(db, poolItems) : new Map<string, string>();
   const pools: ItemPlan['pools'] = [];
   for (const item of poolItems) {
-    const candidates = (await poolCandidates(db, organizationId, poolRuleOf(item))).filter((c) => !fixedIds.has(c.questionId));
+    const candidates = (await poolCandidateIds(db, organizationId, poolRuleOf(item))).filter((id) => !fixedIds.has(id));
     pools.push({ item, candidates });
     if (candidates.length < item.pool_count!) {
       issues.push({
@@ -160,7 +168,7 @@ export async function planItems(db: DbOrTrx, organizationId: string, items: read
   }
 
   if (pools.length > 1 && !issues.some((i) => i.code === 'POOL_TOO_SMALL')) {
-    const allocation = allocatePools(pools.map((p) => ({ key: p.item.id, count: p.item.pool_count!, candidates: p.candidates.map((c) => c.questionId) })));
+    const allocation = allocatePools(pools.map((p) => ({ key: p.item.id, count: p.item.pool_count!, candidates: p.candidates })));
     for (const shortfall of allocation.shortfalls) {
       const item = poolItems.find((i) => i.id === shortfall.key)!;
       issues.push({
@@ -215,12 +223,14 @@ export async function drawQuestions(
   if (plan.issues.length) throw new DrawError(plan.issues);
 
   const allocation = allocatePools(
-    plan.pools.map((p) => ({ key: p.item.id, count: p.item.pool_count!, candidates: p.candidates.map((c) => c.questionId) })),
+    plan.pools.map((p) => ({ key: p.item.id, count: p.item.pool_count!, candidates: p.candidates })),
     rng,
   );
   if (!allocation.ok) {
     throw new DrawError([{ code: 'POOLS_OVERLAP', message: 'The question pools cannot be filled with distinct questions.', itemId: null, position: null }]);
   }
+  // Only the drawn questions are loaded in full.
+  const drawnVersions = await currentVersions(db, organizationId, [...allocation.assigned.values()].flat());
 
   const sequence: Array<Omit<DrawnQuestion, 'optionOrder'>> = [];
   for (const item of [...items].sort((a, b) => a.position - b.position)) {
@@ -228,10 +238,11 @@ export async function drawQuestions(
       const entry = plan.fixed.find((f) => f.item.id === item.id)!;
       sequence.push({ itemId: item.id, source: 'question', question: entry.question, points: item.points ?? entry.question.points });
     } else {
-      const pool = plan.pools.find((p) => p.item.id === item.id)!;
-      const byId = new Map(pool.candidates.map((c) => [c.questionId, c]));
       for (const questionId of allocation.assigned.get(item.id) ?? []) {
-        const question = byId.get(questionId)!;
+        const question = drawnVersions.get(questionId);
+        if (!question) {
+          throw new DrawError([{ code: 'QUESTION_MISSING', message: 'A drawn question was removed while the attempt was being prepared. Try again.', itemId: item.id, position: item.position }]);
+        }
         sequence.push({ itemId: item.id, source: 'pool', question, points: item.points ?? question.points });
       }
     }

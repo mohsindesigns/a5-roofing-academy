@@ -43,7 +43,7 @@ afterAll(() => h?.close());
 async function outbox(type: string, attemptId: string) {
   const rows = await h.db.selectFrom('outbox_events').select('envelope').where('type', '=', type).orderBy('created_at').execute();
   return rows
-    .map((r) => r.envelope as { payload: Record<string, any>; subject: { id: string } | null; actor: { id: string | null } })
+    .map((r) => r.envelope as { payload: Record<string, unknown>; subject: { id: string } | null; actor: { id: string | null } })
     .filter((e) => e.subject?.id === attemptId);
 }
 
@@ -243,7 +243,7 @@ describe('score overrides', () => {
     expect(events[1]!.actor.id).toBe(PEOPLE.grant.id);
 
     const audit = (await h.db.selectFrom('outbox_events').select('envelope').where('type', '=', 'audit.recorded').execute())
-      .map((r) => r.envelope as { payload: Record<string, any> })
+      .map((r) => r.envelope as { payload: Record<string, unknown> })
       .find((e) => e.payload.action === 'assessment.score.overridden' && e.payload.resourceId === a.id);
     expect(audit!.payload).toMatchObject({
       resourceType: 'assessment_attempt',

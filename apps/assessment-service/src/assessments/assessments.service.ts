@@ -7,7 +7,7 @@ import { uuidv7 } from '@a5/observability';
 import type { z } from 'zod';
 import { People, refOrNull } from '../common/people.js';
 import type { AssessmentItemRow, AssessmentRow, Db, DbOrTrx, Trx } from '../database/index.js';
-import { DrawError, drawQuestions, planItems, poolCandidates, validateItems } from '../engine/draw.js';
+import { DrawError, drawQuestions, planItems, poolCandidateIds, validateItems } from '../engine/draw.js';
 import { correctAnswer, learnerQuestion, round2 } from '../engine/question-types.js';
 import { randomRng } from '../engine/random.js';
 
@@ -184,7 +184,7 @@ export class AssessmentsService {
           },
         });
       } else {
-        const available = await poolCandidates(db, organizationId, {
+        const available = await poolCandidateIds(db, organizationId, {
           bankId: i.pool_bank_id!,
           categoryId: i.pool_category_id,
           difficulty: i.pool_difficulty,
