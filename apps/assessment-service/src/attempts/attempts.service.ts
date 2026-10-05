@@ -4,6 +4,7 @@ import type { assessment } from '@a5/contracts';
 import { sql } from '@a5/database';
 import { AppError, ConflictError, InjectDb, NotFoundError, PreconditionError, ValidationError } from '@a5/nest-kit';
 import type { z } from 'zod';
+import { Clock } from '../common/clock.js';
 import { withIntegrityErrors } from '../common/db-errors.js';
 import { effectiveScore, latestOverrides } from '../common/effective-score.js';
 import { ASSESSMENT_CONFIG, type AssessmentConfig } from '../config.js';
@@ -34,6 +35,7 @@ export class AttemptsService {
     private readonly engine: AttemptEngine,
     private readonly lifecycle: AttemptLifecycle,
     @Inject(ASSESSMENT_CONFIG) private readonly config: AssessmentConfig,
+    private readonly clock: Clock,
   ) {}
 
   // ---------------------------------------------------------------- access
@@ -166,7 +168,7 @@ export class AttemptsService {
   async intro(p: Principal, assessmentId: string, grant?: string): Promise<assessment.AssessmentIntro> {
     const { assessment: a } = await this.target(p, { grant }, assessmentId);
     await this.lifecycle.expireOverdueFor(a.id, p.userId);
-    const now = new Date();
+    const now = this.clock.now();
     const attempts = await this.attemptsOf(this.db, a.id, p.userId);
     const summaries = await this.summaries(attempts);
     const open = attempts.find((t) => t.status === 'in_progress') ?? null;
@@ -222,7 +224,7 @@ export class AttemptsService {
       throw new PreconditionError('ASSESSMENT_NOT_AVAILABLE', `This ${noun} is not open for attempts right now. Contact your trainer if you expected it to be available.`);
     }
     await this.lifecycle.expireOverdueFor(a.id, p.userId);
-    const now = new Date();
+    const now = this.clock.now();
     const outcome = await this.db.transaction().execute(async (trx) => {
       // Serialise starts per learner and assessment; the partial unique index backs this up.
       await sql`select pg_advisory_xact_lock(hashtextextended(${`attempt-start:${a.id}:${p.userId}`}, 0))`.execute(trx);
@@ -296,7 +298,7 @@ export class AttemptsService {
       .execute();
   }
 
-  private async view(attempt: AttemptRow, resumed: boolean, now: Date = new Date()): Promise<assessment.LearnerAttempt> {
+  private async view(attempt: AttemptRow, resumed: boolean, now: Date = this.clock.now()): Promise<assessment.LearnerAttempt> {
     const rows = await this.questionRows(this.db, attempt.id);
     const open = attempt.status === 'in_progress';
     return {
@@ -362,7 +364,7 @@ export class AttemptsService {
     return withIntegrityErrors(
       () =>
         this.db.transaction().execute(async (trx) => {
-          const now = new Date();
+          const now = this.clock.now();
           const locked = await trx.selectFrom('attempts').selectAll().where('id', '=', attemptId).forShare().executeTakeFirstOrThrow();
           if (locked.status !== 'in_progress') throw new ConflictError('ATTEMPT_SUBMITTED', `This ${noun} attempt has already been submitted.`);
           if (this.lifecycle.isOverdue(locked, now)) {
@@ -440,7 +442,7 @@ export class AttemptsService {
       attemptsUsed: attempts.length,
       maxAttempts,
     });
-    const now = new Date();
+    const now = this.clock.now();
     const retakeAt =
       score.passed === false && remaining !== 0 && assessmentRow.status === 'published' && attempts[0]?.id === attempt.id
         ? (this.cooldownUntil(assessmentRow, attempts, now) ?? now)

@@ -6,6 +6,7 @@ import { userScopeCondition } from '@a5/directory';
 import { ConflictError, EventBus, InjectDb, NotFoundError, PreconditionError, ValidationError } from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import type { PermissionKey } from '@a5/permissions';
+import { Clock } from '../common/clock.js';
 import { withIntegrityErrors } from '../common/db-errors.js';
 import { effectiveScore, latestOverrides } from '../common/effective-score.js';
 import { People, refOrNull } from '../common/people.js';
@@ -47,6 +48,7 @@ export class ReviewService {
     private readonly engine: AttemptEngine,
     private readonly events: EventBus,
     private readonly people: People,
+    private readonly clock: Clock,
   ) {}
 
   private scoped(db: DbOrTrx, p: Principal, permission: PermissionKey) {
@@ -229,7 +231,7 @@ export class ReviewService {
     await this.scopedAttempt(this.db, p, 'assessment_attempts.grade', id);
     await withIntegrityErrors(() =>
       this.db.transaction().execute(async (trx) => {
-        const now = new Date();
+        const now = this.clock.now();
         let attempt = await trx.selectFrom('attempts').selectAll().where('id', '=', id).forUpdate().executeTakeFirstOrThrow();
         if (attempt.status === 'in_progress') {
           throw new ConflictError('ATTEMPT_NOT_SUBMITTED', 'This attempt has not been submitted yet. Answers can be graded after the learner submits.');
@@ -307,7 +309,7 @@ export class ReviewService {
       if (previous.scorePercent === newPercent && previous.passed === newPassed) {
         throw new PreconditionError('OVERRIDE_UNCHANGED', 'The new score and result are the same as the current ones. Nothing was changed.');
       }
-      const now = new Date();
+      const now = this.clock.now();
       await trx
         .insertInto('score_overrides')
         .values({

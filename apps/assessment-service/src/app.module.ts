@@ -4,6 +4,7 @@ import { CoreModule, DatabaseModule, EventsModule, RedisModule } from '@a5/nest-
 import type { Logger } from '@a5/observability';
 import { AssessmentsModule } from './assessments/assessments.module.js';
 import { AttemptsModule } from './attempts/attempts.module.js';
+import { Clock } from './common/clock.js';
 import { CommonModule } from './common/common.module.js';
 import { ASSESSMENT_CONFIG, type AssessmentConfig } from './config.js';
 import { migrations } from './database/migrations/index.js';
@@ -24,7 +25,7 @@ class AssessmentConfigModule {
 
 @Module({})
 export class AppModule {
-  static register(config: AssessmentConfig, logger: Logger): DynamicModule {
+  static register(config: AssessmentConfig, logger: Logger, options: { clock?: Clock } = {}): DynamicModule {
     return {
       module: AppModule,
       imports: [
@@ -34,7 +35,7 @@ export class AppModule {
         RedisModule,
         EventsModule.forRoot(),
         DirectoryModule,
-        CommonModule,
+        CommonModule.register(options.clock),
         QuestionBankModule,
         AssessmentsModule,
         AttemptsModule,

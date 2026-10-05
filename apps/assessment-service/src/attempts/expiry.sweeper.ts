@@ -2,6 +2,7 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { QueueFactory } from '@a5/messaging';
 import { InjectDb, LOGGER, runsWorkers } from '@a5/nest-kit';
 import type { Logger } from '@a5/observability';
+import { Clock } from '../common/clock.js';
 import { ASSESSMENT_CONFIG, type AssessmentConfig } from '../config.js';
 import type { Db } from '../database/index.js';
 import { AttemptLifecycle } from './attempt-lifecycle.js';
@@ -25,6 +26,7 @@ export class ExpirySweeper implements OnModuleInit {
     private readonly queues: QueueFactory,
     @Inject(ASSESSMENT_CONFIG) private readonly config: AssessmentConfig,
     @Inject(LOGGER) private readonly logger: Logger,
+    private readonly clock: Clock,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -48,7 +50,7 @@ export class ExpirySweeper implements OnModuleInit {
     await this.queues.add(EXPIRY_QUEUE, 'sweep', {}, { jobId });
   }
 
-  async sweep(now: Date = new Date()): Promise<{ expired: number; graded: number }> {
+  async sweep(now: Date = this.clock.now()): Promise<{ expired: number; graded: number }> {
     const deadline = new Date(now.getTime() - this.config.attempts.deadlineGraceMs);
     const overdue = await this.db
       .selectFrom('attempts')
