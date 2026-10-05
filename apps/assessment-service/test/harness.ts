@@ -338,12 +338,16 @@ export async function createAssessment(
     .set(a.headers)
     .send({ title: input.title, kind: input.kind ?? 'quiz', config: { allowStandalone: true, ...input.config } });
   if (created.status !== 201) throw new Error(`createAssessment failed: ${created.status} ${JSON.stringify(created.body)}`);
-  const items = await a.http
-    .put(`/api/v1/assessments/${created.body.id}/items`)
-    .set(a.headers)
-    .send({ items: input.items.map((item, index) => ({ ...item, position: index + 1 })) });
-  if (items.status !== 200) throw new Error(`setItems failed: ${items.status} ${JSON.stringify(items.body)}`);
-  if (input.publish === false) return items.body;
+  let detail = created.body as assessment.AssessmentDetail;
+  if (input.items.length) {
+    const items = await a.http
+      .put(`/api/v1/assessments/${created.body.id}/items`)
+      .set(a.headers)
+      .send({ items: input.items.map((item, index) => ({ position: index + 1, ...item })) });
+    if (items.status !== 200) throw new Error(`setItems failed: ${items.status} ${JSON.stringify(items.body)}`);
+    detail = items.body;
+  }
+  if (input.publish === false) return detail;
   const published = await a.http.post(`/api/v1/assessments/${created.body.id}/publish`).set(a.headers);
   if (published.status !== 200) throw new Error(`publish failed: ${published.status} ${JSON.stringify(published.body)}`);
   return published.body;

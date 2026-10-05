@@ -614,10 +614,7 @@ export const assessmentConfigSchema = z.object({
   /** Minutes a learner waits after an attempt before starting another (0 = no wait). */
   retryCooldownMinutes: z.int().min(0).max(60 * 24 * 30),
   /** Notify the learner's managers when an attempt ends with these outcomes. */
-  notifyManagerOn: z
-    .array(managerNotifyOutcomeSchema)
-    .max(2)
-    .transform((v) => [...new Set(v)]),
+  notifyManagerOn: z.array(managerNotifyOutcomeSchema).transform((v) => [...new Set(v)]),
   /** Allow attempts outside a lesson (practice from the assessment library). */
   allowStandalone: z.boolean(),
 });
