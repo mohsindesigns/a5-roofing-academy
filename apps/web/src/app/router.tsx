@@ -109,6 +109,13 @@ export const routes: RouteObject[] = [
                 lazy: page(() => import('@/features/learning/lesson-page'), 'LessonPage'),
               },
               {
+                path: 'training/:programId/lessons/:lessonId/assessment',
+                lazy: page(
+                  () => import('@/features/assessments/learner/assessment-page'),
+                  'AssessmentTakePage',
+                ),
+              },
+              {
                 path: 'notifications',
                 lazy: page(
                   () => import('@/features/notifications/notifications-page'),
