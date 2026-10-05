@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ASSESSMENTS, JOURNEYS, LOCATIONS, PEOPLE, SEED_NOW, TEAMS, completedLessonKeys, type PersonKey } from '@a5/seed-data';
+import { principalHeaders } from '@a5/nest-kit/testing';
 import { createAnalyticsHarness, type AnalyticsHarness } from './harness.js';
 
 let h: AnalyticsHarness;
@@ -192,6 +193,40 @@ describe('permissions', () => {
     const company = await h.http.get('/api/v1/analytics/dashboards/company').set(await h.as('ruth'));
     expect(company.status).toBe(200);
     expect(company.body.meta.scope).toBe('organization');
+  });
+
+  it('gives platform administrators the same organization numbers, never other organizations', async () => {
+    const platform = await h.http.get('/api/v1/analytics/dashboards/company').set(await h.as('priya'));
+    expect(platform.status).toBe(200);
+    expect(platform.body.meta.scope).toBe('platform');
+    const admin = await h.http.get('/api/v1/analytics/dashboards/company').set(await h.as('grant'));
+    expect(platform.body.kpis).toEqual(admin.body.kpis);
+  });
+
+  it('never shows one organization\'s data to another, whatever the scope', async () => {
+    const foreign = '0190a3b2-0000-7000-8000-0000000000b2';
+    for (const scope of ['organization', 'platform'] as const) {
+      const who = await principalHeaders({
+        userId: '0190a3b2-0000-7000-8000-0000000000c3',
+        organizationId: foreign,
+        permissions: { 'analytics.view': scope, 'reports.view': scope, 'reports.export': scope },
+      });
+      const company = await h.http.get('/api/v1/analytics/dashboards/company').set(who);
+      expect(company.status, scope).toBe(200);
+      expect(company.body.kpis, scope).toMatchObject({ headcount: 0, enrollments: 0, assessmentAttempts: 0, aiSessions: 0, certifiedCount: 0 });
+      expect(company.body.breakdowns, scope).toEqual({ byLocation: [], byTeam: [] });
+      expect(company.body.dropOffLessons, scope).toEqual([]);
+      expect(JSON.stringify(company.body), scope).not.toMatch(/Marcus|Ashlyn|Dallas/);
+      const team = await h.http.get('/api/v1/analytics/dashboards/team').set(who);
+      expect(team.body.recentActivity, scope).toEqual([]);
+      for (const key of ['training-completion', 'assessment-performance', 'certification-status', 'course-effectiveness']) {
+        expect((await h.http.get(`/api/v1/reports/${key}`).set(who)).body.total, `${scope} ${key}`).toBe(0);
+      }
+      const trend = await h.http.get('/api/v1/analytics/trends/lessons_completed?from=2024-01-01&to=2026-10-05&interval=month').set(who);
+      expect(trend.body.points.every((p: { value: number }) => p.value === 0), scope).toBe(true);
+      const summary = await h.http.get(`/api/v1/analytics/learners/${PEOPLE.marcus.id}/summary`).set(who);
+      expect(summary.status, scope).toBe(404);
+    }
   });
 
   it('keeps rollup rebuilds and settings changes for organization administrators', async () => {

@@ -157,6 +157,27 @@ describe('learning facts', () => {
     expect(row.completed_at?.toISOString()).toBe('2026-09-14T10:00:00.000Z');
   });
 
+  it('clears the overdue flag on completion, whichever event arrives first', async () => {
+    const overdue = (r: ReturnType<typeof ref>, key: string) =>
+      evt(learningEvents.enrollmentOverdue, { ...r, programTitle: PROGRAM.title, dueAt: '2026-09-29T14:00:00Z', progressPercent: 40 }, '2026-09-29T15:00:00Z', key);
+    const done = (r: ReturnType<typeof ref>, key: string) =>
+      evt(learningEvents.programCompleted, { ...r, programTitle: PROGRAM.title, completedAt: '2026-10-02T14:00:00Z' }, '2026-10-02T14:00:00Z', key);
+
+    const late = ref('overdue-then-done', 'ethan');
+    await consumer.onEnrolled(enrolled(late, '2026-09-01T14:00:00Z'));
+    await consumer.onOverdue(overdue(late, 'od:1'));
+    expect((await enrollmentRow(late.enrollmentId)).overdue).toBe(true);
+    await consumer.onProgramCompleted(done(late, 'done:1'));
+    expect(await enrollmentRow(late.enrollmentId)).toMatchObject({ status: 'completed', overdue: false });
+
+    // Delivered the other way round, the older overdue notice must not flag a completed enrollment.
+    const reversed = ref('done-then-overdue', 'darius');
+    await consumer.onEnrolled(enrolled(reversed, '2026-09-01T14:00:00Z'));
+    await consumer.onProgramCompleted(done(reversed, 'done:2'));
+    await consumer.onOverdue(overdue(reversed, 'od:2'));
+    expect(await enrollmentRow(reversed.enrollmentId)).toMatchObject({ status: 'completed', overdue: false });
+  });
+
   it('ignores events that carry no organization', async () => {
     const r = ref('orgless', 'devon');
     const e = { ...enrolled(r, '2026-09-03T14:00:00Z'), organizationId: null };
@@ -207,6 +228,68 @@ describe('program dimension', () => {
 
     await h.apply(evt(learningEvents.programArchived, { programId: PROGRAM.id }, '2026-09-01T10:00:00Z', 'archived'));
     expect((await h.db.selectFrom('dim_programs').select('archived').where('id', '=', PROGRAM.id).executeTakeFirstOrThrow()).archived).toBe(true);
+  });
+});
+
+describe('events without the optional detail', () => {
+  it('derives required lessons from the published ids when no outline is sent', async () => {
+    const programId = seedId('test-program:minimal');
+    const a = { id: seedId('test-lesson:minimal:1') };
+    const b = { id: seedId('test-lesson:minimal:2') };
+    await h.apply(
+      evt(
+        learningEvents.programPublished,
+        {
+          programId,
+          title: 'Storm Response Basics',
+          version: 1,
+          phases: [{ phaseId: seedId('test-phase:minimal'), title: 'Week 1', position: 1 }],
+          requiredLessonIds: [a.id, b.id],
+          assessments: [],
+          aiScenarios: [],
+        },
+        '2026-07-01T10:00:00Z',
+        'publish:minimal',
+      ),
+    );
+    expect(await h.db.selectFrom('dim_programs').select(['title', 'required_lesson_count']).where('id', '=', programId).executeTakeFirstOrThrow()).toEqual({
+      title: 'Storm Response Basics',
+      required_lesson_count: 2,
+    });
+    const rows = await h.db.selectFrom('dim_lessons').select(['id', 'required', 'title']).where('program_id', '=', programId).orderBy('id').execute();
+    expect(rows.map((r) => r.id).sort()).toEqual([a.id, b.id].sort());
+    expect(rows.every((r) => r.required === true && r.title === null)).toBe(true);
+  });
+
+  it('stores question results that carry no prompt or category name', async () => {
+    const attemptId = seedId('test-attempt:bare');
+    await h.apply(
+      evt(
+        assessmentEvents.attemptGraded,
+        {
+          attemptId,
+          assessmentId: seedId('assessment:quiz-w2'),
+          assessmentTitle: 'Week 2 Knowledge Check',
+          kind: 'quiz',
+          userId: PEOPLE.jordan.id,
+          attemptNumber: 1,
+          scorePercent: 50,
+          passed: false,
+          passingPercent: 80,
+          gradedAt: '2026-09-07T10:00:00Z',
+          overridden: false,
+          context: {},
+          questionResults: [
+            { questionId: seedId('question:bare:1'), questionVersionId: seedId('question-version:bare:1'), categoryId: null, correct: false, awardedPoints: 0, possiblePoints: 1 },
+          ],
+        },
+        '2026-09-07T10:00:00Z',
+        'bare',
+      ),
+    );
+    expect(await h.db.selectFrom('fact_question_results').select(['category_id', 'correct']).where('attempt_id', '=', attemptId).execute()).toEqual([{ category_id: null, correct: false }]);
+    expect(await h.db.selectFrom('dim_questions').select(['prompt', 'category_id']).where('id', '=', seedId('question:bare:1')).executeTakeFirstOrThrow()).toEqual({ prompt: null, category_id: null });
+    expect(await h.db.selectFrom('fact_assessment_attempts').select(['program_id', 'enrollment_id']).where('attempt_id', '=', attemptId).executeTakeFirstOrThrow()).toEqual({ program_id: null, enrollment_id: null });
   });
 });
 

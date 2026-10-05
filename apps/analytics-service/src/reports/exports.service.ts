@@ -131,7 +131,12 @@ export class ExportsService implements OnModuleInit {
       });
       return inserted;
     });
-    await this.enqueue(id);
+    try {
+      await this.enqueue(id);
+    } catch (err) {
+      // The row is committed; the maintenance job re-enqueues jobs that never reached the queue.
+      this.logger.warn({ err, exportId: id }, 'could not enqueue report export; it will be retried');
+    }
     return this.toDto(row);
   }
 
@@ -196,6 +201,13 @@ export class ExportsService implements OnModuleInit {
       throw new ConflictError('EXPORT_NOT_READY', 'The export is still being prepared. Check again in a moment.');
     }
     const ttl = this.config.exports.linkTtlSeconds;
+    await this.events.audit(this.db, {
+      action: 'report.export_downloaded',
+      resourceType: 'report_export',
+      resourceId: row.id,
+      actorDisplay: p.displayName,
+      after: { report: row.report, format: row.format, fileName: row.file_name },
+    });
     const url = await this.storage.storage.signedGetUrl(row.file_key, {
       expiresInSeconds: ttl,
       downloadName: row.file_name,

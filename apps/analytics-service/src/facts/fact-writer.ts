@@ -261,6 +261,7 @@ export class FactWriter {
           when (progress_at is null or progress_at <= ${at}::timestamptz) and required_total is not null then required_total
           else required_completed end,
         progress_at = greatest(progress_at, ${at}::timestamptz),
+        overdue = case when overdue_at is null or overdue_at <= ${at}::timestamptz then false else overdue end,
         program_title = coalesce(program_title, ${p.programTitle})
       where enrollment_id = ${p.enrollmentId}
     `.execute(trx);
@@ -301,7 +302,7 @@ export class FactWriter {
     await sql`
       update fact_enrollments set
         due_at = case when overdue_at is null or overdue_at <= ${at}::timestamptz then ${new Date(p.dueAt)}::timestamptz else due_at end,
-        overdue = true,
+        overdue = case when status = 'active' then true else overdue end,
         overdue_at = greatest(overdue_at, ${at}::timestamptz),
         program_title = coalesce(program_title, ${p.programTitle})
       where enrollment_id = ${p.enrollmentId}
