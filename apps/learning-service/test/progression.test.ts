@@ -194,9 +194,12 @@ describe('lesson grants', () => {
       enrollmentId,
       lessonId: built.lessons.video,
       resource: { type: 'media', id: mediaId },
-      // 90 is the program default watch percentage; the lesson did not set its own.
-      policy: { minWatchPercent: 90, allowSkipping: false, maxCreditedPlaybackRate: 1.5 },
+      // 90 is the program default watch percentage; the lesson did not set its own. The keys are
+      // the ones media-service reads (allowSkipping is sent as allowSeekAhead).
+      policy: { minWatchPercent: 90, allowSeekAhead: false, maxCreditedPlaybackRate: 1.5 },
     });
+    expect(grant.policy).not.toHaveProperty('allowSkipping');
+    expect(grant.policy).not.toHaveProperty('completion');
     expect(video.grant.resource).toEqual({ type: 'media', id: mediaId });
     expect(new Date(video.grant.expiresAt).getTime()).toBeGreaterThan(Date.now());
 
@@ -245,6 +248,22 @@ describe('lesson grants', () => {
     const aiGrant = await verifyLessonGrant(ai.grant.token, TEST_INTERNAL_SECRET);
     expect(aiGrant.resource).toEqual({ type: 'ai_scenario', id: scenarioId });
     expect(aiGrant.policy).toMatchObject({ minScore: 80 });
+  });
+});
+
+describe('video grant policy', () => {
+  it('maps lesson settings onto the policy keys media-service reads', async () => {
+    const mediaId = randomId();
+    const built = await buildProgram(h, admin, {
+      title: 'Seekable Video Program',
+      phases: [{ key: 'p1', lessons: [{ key: 'video', type: 'video', config: { mediaAssetId: mediaId, allowSkipping: true, minWatchPercent: 80 } }] }],
+    });
+    await enroll(h, admin, built.id, ['ethan']);
+    const detail = await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.video}`).set(await h.as('ethan'));
+    expect(detail.body.grant.resource).toEqual({ type: 'media', id: mediaId });
+    expect(detail.body.grant.policy).toEqual({ minWatchPercent: 80, allowSeekAhead: true, maxCreditedPlaybackRate: 2 });
+    const verified = await verifyLessonGrant(detail.body.grant.token, TEST_INTERNAL_SECRET);
+    expect(verified.policy).toEqual({ minWatchPercent: 80, allowSeekAhead: true, maxCreditedPlaybackRate: 2 });
   });
 });
 

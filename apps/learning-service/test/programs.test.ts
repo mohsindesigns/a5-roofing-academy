@@ -17,20 +17,20 @@ describe('access control', () => {
     const rep = await h.as('marcus');
     const someId = randomId();
     const calls = [
-      h.http.get('/api/v1/programs'),
-      h.http.post('/api/v1/programs').send({ title: 'Rogue program' }),
-      h.http.get(`/api/v1/programs/${someId}`),
-      h.http.post(`/api/v1/programs/${someId}/publish`).send({ changeNote: 'nope' }),
-      h.http.post('/api/v1/lessons').send({ moduleId: someId, type: 'article', title: 'x' }),
-      h.http.delete(`/api/v1/lessons/${someId}`),
-      h.http.get('/api/v1/enrollments'),
-      h.http.post('/api/v1/enrollments').send({ programId: someId, userIds: [PEOPLE.marcus.id] }),
-      h.http.get('/api/v1/progress/team'),
-      h.http.get('/api/v1/learning/approvals'),
-      h.http.get(`/internal/programs/${someId}/summary`),
+      () => h.http.get('/api/v1/programs'),
+      () => h.http.post('/api/v1/programs').send({ title: 'Rogue program' }),
+      () => h.http.get(`/api/v1/programs/${someId}`),
+      () => h.http.post(`/api/v1/programs/${someId}/publish`).send({ changeNote: 'nope' }),
+      () => h.http.post('/api/v1/lessons').send({ moduleId: someId, type: 'article', title: 'x' }),
+      () => h.http.delete(`/api/v1/lessons/${someId}`),
+      () => h.http.get('/api/v1/enrollments'),
+      () => h.http.post('/api/v1/enrollments').send({ programId: someId, userIds: [PEOPLE.marcus.id] }),
+      () => h.http.get('/api/v1/progress/team'),
+      () => h.http.get('/api/v1/learning/approvals'),
+      () => h.http.get(`/internal/programs/${someId}/summary`),
     ];
     const statuses: number[] = [];
-    for (const call of calls) statuses.push((await call.set(rep)).status);
+    for (const call of calls) statuses.push((await call().set(rep)).status);
     expect(statuses.slice(0, 10)).toEqual(Array(10).fill(403));
     // Internal routes need a service token, not a principal.
     expect(statuses[10]).toBe(401);

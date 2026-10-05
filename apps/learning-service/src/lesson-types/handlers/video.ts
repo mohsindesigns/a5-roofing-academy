@@ -29,14 +29,18 @@ export const videoLesson = defineLessonType<VideoConfig>({
       ? `Completes automatically when you have watched ${min}% of the video.`
       : `Watch at least ${min}% of the video, then mark it complete.`;
   },
+  /**
+   * Policy keys are the ones media-service reads: `minWatchPercent`, `allowSeekAhead` (our
+   * `allowSkipping`) and `maxCreditedPlaybackRate`. `completionPercent` is left to media's default
+   * (98); whether the lesson is complete stays decided here, from video.progressed/completed.
+   */
   grant(config, settings) {
     return {
       resource: { type: 'media', id: config.mediaAssetId },
       policy: {
         minWatchPercent: effectiveMinWatchPercent(config, settings),
-        allowSkipping: config.allowSkipping,
+        allowSeekAhead: config.allowSkipping,
         maxCreditedPlaybackRate: config.maxCreditedPlaybackRate,
-        completion: config.completion,
       },
     };
   },

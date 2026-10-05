@@ -66,10 +66,12 @@ export class TeamProgressService {
   private flags(now: Date) {
     const inactivityDays = sql<number>`coalesce((pr.settings->>'inactivityAlertDays')::int, 7)`;
     const cutoff = sql`${now}::timestamptz - (${inactivityDays} * interval '1 day')`;
+    const approval = sql<boolean>`exists (select 1 from approval_requests a where a.enrollment_id = e.id and a.status = 'pending')`;
     return {
       inactivityDays,
       overdue: sql<boolean>`(e.status = 'active' and e.due_at is not null and e.due_at < ${now})`,
-      inactive: sql<boolean>`(e.status = 'active' and e.started_at is not null and coalesce(e.last_activity_at, e.started_at) < ${cutoff})`,
+      // Waiting on a reviewer is not the learner standing still, so a pending approval suppresses it.
+      inactive: sql<boolean>`(e.status = 'active' and e.started_at is not null and coalesce(e.last_activity_at, e.started_at) < ${cutoff} and not ${approval})`,
       notStarted: sql<boolean>`(e.status = 'active' and e.started_at is null and e.enrolled_at < ${cutoff})`,
       failing: sql<boolean>`(e.status = 'active' and exists (
         select 1 from learner_assessment_scores s
@@ -77,7 +79,7 @@ export class TeamProgressService {
           and l.type in ('quiz', 'final_assessment') and l.config->>'assessmentId' = s.assessment_id::text
         where s.user_id = e.user_id and s.passed = false
       ))`,
-      approval: sql<boolean>`exists (select 1 from approval_requests a where a.enrollment_id = e.id and a.status = 'pending')`,
+      approval,
     };
   }
 

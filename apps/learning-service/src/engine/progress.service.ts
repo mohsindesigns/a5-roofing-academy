@@ -234,6 +234,9 @@ export class ProgressService {
   ): Promise<SyncResult> {
     const at = opts.at ?? new Date();
     const { facts, ev } = await this.evaluate(trx, tree, enrollment);
+    // A completed enrollment is a record (certificates were issued from it): later changes to the
+    // program do not reopen it or change its numbers.
+    if (enrollment.status === 'completed') return { enrollment, ev, facts, changed: false };
     const active = enrollment.status !== 'withdrawn';
 
     if (active) {

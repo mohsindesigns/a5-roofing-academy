@@ -135,6 +135,7 @@ export const videoLessonConfigSchema = z.object({
   mediaAssetId: mediaAssetIdSchema,
   /** Null uses the program's default minimum watch percentage. */
   minWatchPercent: z.int().min(0).max(100).nullable().default(null),
+  /** Lets the viewer seek ahead; sent to media-service in the grant policy as `allowSeekAhead`. */
   allowSkipping: z.boolean().default(false),
   /** Playback above this rate earns no additional watch credit. */
   maxCreditedPlaybackRate: z.number().min(1).max(4).default(2),

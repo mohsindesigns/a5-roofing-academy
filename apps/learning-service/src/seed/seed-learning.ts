@@ -238,10 +238,6 @@ async function seedProgram(trx: Trx): Promise<void> {
 
 // ---------------------------------------------------------------- learner journeys
 
-interface Timeline {
-  completions: Map<string, Date>;
-}
-
 /**
  * Spread lesson completions between the first activity and the last one, honoring fixed anchor
  * times (AI role-plays have recorded dates). Completions stay in program order and inside working

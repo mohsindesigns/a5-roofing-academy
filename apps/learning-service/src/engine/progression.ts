@@ -166,7 +166,10 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
   const phaseCounts = new Map<string, ReturnType<typeof counts>>();
   for (const phase of tree.phases) {
     for (const module of phase.modules) moduleCounts.set(module.id, counts(module.lessons, done));
-    phaseCounts.set(phase.id, counts(phase.modules.flatMap((m) => m.lessons), done));
+    const measured = counts(phase.modules.flatMap((m) => m.lessons), done);
+    // A phase the learner already completed stays completed (and unlocked) even if a required
+    // lesson is added to it later; the new lesson still counts toward program completion.
+    phaseCounts.set(phase.id, facts.phaseCompletedAt.has(phase.id) ? { ...measured, complete: true } : measured);
   }
   const programCounts = counts(
     indexed.map((l) => l.lesson),
