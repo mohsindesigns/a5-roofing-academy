@@ -7,10 +7,15 @@ const base = process.env.BASE_URL ?? 'http://127.0.0.1:5173';
 const out = process.env.OUT ?? './screenshots';
 const email = process.env.EMAIL ?? 'priya.raman@a5roofing.example';
 const password = process.env.PASSWORD ?? 'RidgeLine-2026!';
-const executablePath = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const executablePath =
+  process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const routes = process.argv.slice(2).length ? process.argv.slice(2) : ['/'];
 const viewports = (process.env.VIEWPORTS ?? 'desktop').split(',');
-const sizes = { desktop: { width: 1440, height: 900 }, tablet: { width: 900, height: 1100 }, mobile: { width: 390, height: 844 } };
+const sizes = {
+  desktop: { width: 1440, height: 900 },
+  tablet: { width: 900, height: 1100 },
+  mobile: { width: 390, height: 844 },
+};
 
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath });
@@ -27,8 +32,14 @@ for (const vp of viewports) {
   }
   for (const route of routes) {
     await page.goto(`${base}${route}`);
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(400);
+    // The notification SSE stream keeps the network busy, so networkidle never settles.
+    await page.waitForLoadState('domcontentloaded');
+    await page
+      .locator('h1')
+      .first()
+      .waitFor({ timeout: 15000 })
+      .catch(() => {});
+    await page.waitForTimeout(1200);
     const name = `${vp}${route.replace(/[/?=&]+/g, '_') || '_home'}.png`;
     await page.screenshot({ path: `${out}/${name}`, fullPage: process.env.FULL === '1' });
     console.log('saved', name);

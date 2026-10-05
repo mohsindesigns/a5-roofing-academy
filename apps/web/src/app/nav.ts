@@ -43,7 +43,6 @@ export const NAV: NavSection[] = [
       { to: '/', label: 'Home', icon: LayoutDashboard, mobile: true, visible: () => true },
       {
         to: '/training',
-        ready: false,
         label: 'Training',
         icon: GraduationCap,
         mobile: true,

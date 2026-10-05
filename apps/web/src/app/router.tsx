@@ -96,6 +96,25 @@ export const routes: RouteObject[] = [
                 path: 'admin/settings',
                 lazy: page(() => import('@/features/settings/settings-page'), 'SettingsPage'),
               },
+              {
+                path: 'training',
+                lazy: page(() => import('@/features/learning/training-page'), 'TrainingPage'),
+              },
+              {
+                path: 'training/:programId',
+                lazy: page(() => import('@/features/learning/program-page'), 'ProgramPage'),
+              },
+              {
+                path: 'training/:programId/lessons/:lessonId',
+                lazy: page(() => import('@/features/learning/lesson-page'), 'LessonPage'),
+              },
+              {
+                path: 'notifications',
+                lazy: page(
+                  () => import('@/features/notifications/notifications-page'),
+                  'NotificationsPage',
+                ),
+              },
               { path: '*', element: <NotFoundPage /> },
             ],
           },

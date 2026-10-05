@@ -49,7 +49,7 @@ function EnrollmentRow({ e }: { e: learning.MyEnrollment }) {
             {e.currentPhase && !done && (
               <>
                 {' '}
-                · {e.currentPhase.label} {e.currentPhase.position + 1}: {e.currentPhase.title}
+                · {e.currentPhase.label}: {e.currentPhase.title}
               </>
             )}
             {!done && e.estimatedRemainingMinutes > 0 && (

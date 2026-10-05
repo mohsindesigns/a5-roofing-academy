@@ -604,7 +604,7 @@ export function LessonPage() {
         breadcrumbs={[
           { label: 'Training', to: '/training' },
           { label: d.program.title, to: `/training/${programId}` },
-          { label: `${d.phase.label} ${d.phase.position + 1}: ${d.phase.title}` },
+          { label: `${d.phase.label}: ${d.phase.title}` },
         ]}
         title={d.lesson.title}
         description={d.lesson.summary}

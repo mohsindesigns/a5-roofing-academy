@@ -70,9 +70,7 @@ function Phase({
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 hover:bg-surface-hover [&::-webkit-details-marker]:hidden">
         <StateMark state={p.state} />
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-text-tertiary">
-            {p.label} {p.position + 1}
-          </p>
+          <p className="text-xs text-text-tertiary">{p.label}</p>
           <p className="text-md font-semibold">{p.title}</p>
         </div>
         <div className="hidden w-40 sm:block">
@@ -90,10 +88,7 @@ function Phase({
       <div className="border-t border-divider">
         {locked && (
           <div className="px-4 py-3">
-            <Requirements
-              items={p.requirements}
-              title={`To unlock ${p.label.toLowerCase()} ${p.position + 1}`}
-            />
+            <Requirements items={p.requirements} title={`To unlock ${p.label.toLowerCase()}`} />
           </div>
         )}
         {p.summary && !locked && (
