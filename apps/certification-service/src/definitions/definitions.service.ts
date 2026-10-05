@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { jsonb } from '../common/jsonb.js';
 import type { Principal } from '@a5/auth';
 import { certification } from '@a5/contracts';
 import { isUniqueViolation, likePattern, paginate, sql, type Page, type Selectable } from '@a5/database';
@@ -349,7 +350,7 @@ export class DefinitionsService {
       badge: state.badge,
       public_verification_enabled: state.publicVerificationEnabled,
       number_pattern: state.numberPattern,
-      custom_variables: state.customVariables,
+      custom_variables: jsonb(state.customVariables),
     };
   }
 

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { jsonb } from '../common/jsonb.js';
 import { sql } from '@a5/database';
 import { aiEvents, assessmentEvents, learningEvents, type EventEnvelope, type EventPayload } from '@a5/events';
 import { processOnce } from '@a5/messaging';
@@ -77,7 +78,7 @@ export class ProjectionsConsumer {
       if (current && current.version >= p.version) return;
       await trx
         .insertInto('program_catalog')
-        .values({ program_id: p.programId, organization_id: event.organizationId, title: p.title, version: p.version, phases: p.phases, archived: false })
+        .values({ program_id: p.programId, organization_id: event.organizationId, title: p.title, version: p.version, phases: jsonb(p.phases), archived: false })
         .onConflict((oc) =>
           oc.column('program_id').doUpdateSet((eb) => ({
             title: eb.ref('excluded.title'),

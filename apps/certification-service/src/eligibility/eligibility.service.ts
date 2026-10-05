@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { jsonb } from '../common/jsonb.js';
 import type { certification } from '@a5/contracts';
 import type { Selectable } from '@a5/database';
 import { certificationEvents } from '@a5/events';
@@ -147,7 +148,7 @@ export class EligibilityService {
           purpose: 'initial',
           cycle: 1,
           renewal_id: null,
-          requirements: [],
+          requirements: jsonb([]),
           met_count: 0,
           total_count: 0,
           auto_requirements_met: false,
@@ -230,7 +231,7 @@ export class EligibilityService {
         .updateTable('certification_candidates')
         .set({
           status,
-          requirements: outcome.requirements,
+          requirements: jsonb(outcome.requirements),
           met_count: outcome.metCount,
           total_count: outcome.totalCount,
           auto_requirements_met: outcome.autoSatisfied,

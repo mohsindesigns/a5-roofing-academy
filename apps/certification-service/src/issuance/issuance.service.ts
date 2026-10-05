@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { jsonb } from '../common/jsonb.js';
 import { certification } from '@a5/contracts';
 import { isUniqueViolation } from '@a5/database';
 import { certificationEvents } from '@a5/events';
@@ -11,7 +12,7 @@ import type { CertificationDefinitionsTable, Db, IssueMode, IssuedCertificatesTa
 import type { Selectable } from '@a5/database';
 import { assetsByIds, currentSignatures, currentStampImages, inEffect, type AssetRow, type CurrentImage } from '../common/artwork-repo.js';
 import { calendarDate, computeExpiry } from '../common/dates.js';
-import { RecipientResolver } from '../common/recipients.js';
+import { RecipientResolver, type Recipient } from '../common/recipients.js';
 import { loadSettings, organizationCode, verificationUrl } from '../common/settings.js';
 import { InjectStorage, extensionFor, storageKeys } from '../common/storage.js';
 import { recordCertificateEvent } from '../common/timeline.js';
@@ -41,8 +42,10 @@ export interface IssueParams {
   clearHold?: boolean;
   /** Issue date; defaults to now (seeds use historical dates). */
   issuedAt?: Date;
-  /** Seeds only: name to print instead of the identity value (historical corrections). */
-  recipientNameOverride?: string;
+  /** Seeds only: use this recipient instead of resolving one (historical data, e.g. a misspelled original). */
+  recipient?: Recipient;
+  /** Seeds only: write no domain events or audit entries and do not enqueue the PDF (historical data). */
+  silent?: boolean;
 }
 
 export interface IssueResult {
@@ -83,7 +86,7 @@ export class IssuanceService {
       }
       throw err;
     }
-    await this.enqueuePdf(result.certificateId);
+    if (!params.silent) await this.enqueuePdf(result.certificateId);
     return result;
   }
 
@@ -137,8 +140,8 @@ export class IssuanceService {
 
     const settings = await loadSettings(this.db, def.organization_id, this.config.publicAppUrl);
     const artwork = await this.resolveArtwork(def, now, settings.timezone);
-    const recipient = await this.recipients.resolve(params.userId, def.organization_id);
-    const legalName = params.recipientNameOverride ?? recipient.legalName;
+    const recipient = params.recipient ?? (await this.recipients.resolve(params.userId, def.organization_id));
+    const legalName = recipient.legalName;
 
     let expiresAt: Date | null;
     if (params.mode === 'reissue') {
@@ -245,7 +248,7 @@ export class IssuanceService {
             purpose: 'initial',
             cycle: 1,
             renewal_id: null,
-            requirements: [],
+            requirements: jsonb([]),
             met_count: 0,
             total_count: 0,
             auto_requirements_met: false,
@@ -421,50 +424,52 @@ export class IssuanceService {
           subject: { type: 'certificate', id: certificateId },
           ...(params.actor.userId ? { actor: { type: 'user' as const, id: params.actor.userId } } : {}),
         };
-        await this.events.emit(
-          trx,
-          certificationEvents.issued,
-          {
-            certificateId,
-            definitionId: def.id,
-            definitionName: def.name,
-            userId: params.userId,
-            certificateNumber,
-            issuedAt: now.toISOString(),
-            expiresAt: expiresAt?.toISOString() ?? null,
-            mode: params.mode,
-          },
-          eventOptions,
-        );
-        if (params.reissue) {
+        if (!params.silent) {
           await this.events.emit(
             trx,
-            certificationEvents.reissued,
+            certificationEvents.issued,
             {
               certificateId,
               definitionId: def.id,
               definitionName: def.name,
               userId: params.userId,
-              originalCertificateId: params.reissue.originalCertificateId,
-              reason: params.reissue.reasonCode,
+              certificateNumber,
+              issuedAt: now.toISOString(),
+              expiresAt: expiresAt?.toISOString() ?? null,
+              mode: params.mode,
+            },
+            eventOptions,
+          );
+          if (params.reissue) {
+            await this.events.emit(
+              trx,
+              certificationEvents.reissued,
+              {
+                certificateId,
+                definitionId: def.id,
+                definitionName: def.name,
+                userId: params.userId,
+                originalCertificateId: params.reissue.originalCertificateId,
+                reason: params.reissue.reasonCode,
+              },
+              eventOptions,
+            );
+          }
+          await this.events.audit(
+            trx,
+            {
+              action: params.mode === 'reissue' ? 'certificate.reissued' : 'certificate.issued',
+              resourceType: 'certificate',
+              resourceId: certificateId,
+              actorDisplay: params.actor.displayName,
+              after: { certificateNumber, definitionId: def.id, userId: params.userId, mode: params.mode, expiresAt: expiresAt?.toISOString() ?? null },
+              ...(supersede && { before: { certificateId: supersede.id, certificateNumber: supersede.certificate_number } }),
+              reason: params.overrideReason ?? params.reissue?.note ?? null,
+              metadata: { templateVersionId: artwork.template.versionId, recipientSource: recipient.source },
             },
             eventOptions,
           );
         }
-        await this.events.audit(
-          trx,
-          {
-            action: params.mode === 'reissue' ? 'certificate.reissued' : 'certificate.issued',
-            resourceType: 'certificate',
-            resourceId: certificateId,
-            actorDisplay: params.actor.displayName,
-            after: { certificateNumber, definitionId: def.id, userId: params.userId, mode: params.mode, expiresAt: expiresAt?.toISOString() ?? null },
-            ...(supersede && { before: { certificateId: supersede.id, certificateNumber: supersede.certificate_number } }),
-            reason: params.overrideReason ?? params.reissue?.note ?? null,
-            metadata: { templateVersionId: artwork.template.versionId, recipientSource: recipient.source },
-          },
-          eventOptions,
-        );
         return { certificateId, certificateNumber };
       });
     } catch (err) {
