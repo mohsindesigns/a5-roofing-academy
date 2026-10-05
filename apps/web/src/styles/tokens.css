@@ -61,3 +61,18 @@
   --a5-sidebar-width: 236px;
   --a5-sidebar-collapsed: 60px;
 }
+
+/*
+ * Data-visualisation palette (validated: adjacent CVD ΔE ≥ 9.1, normal-vision ΔE ≥ 22.9 for slots
+ * 1–4 on light surfaces). Slots are assigned in fixed order, never cycled. Slots 3–4 sit below 3:1
+ * contrast, so charts always ship direct labels or a table view.
+ */
+:root {
+  --a5-series-1: #2a78d6;
+  --a5-series-2: #eb6834;
+  --a5-series-3: #1baf7a;
+  --a5-series-4: #eda100;
+  --a5-series-muted: #b9b5ad;
+  --a5-chart-grid: #ebe8e2;
+  --a5-chart-track: #e7eef8;
+}
