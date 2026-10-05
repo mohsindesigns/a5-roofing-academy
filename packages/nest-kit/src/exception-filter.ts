@@ -41,9 +41,9 @@ export class AppExceptionFilter implements ExceptionFilter {
     body.error.requestId = requestId;
 
     if (status >= 500) {
-      this.logger.error({ err: exception, status, path: req.originalUrl }, 'request failed');
+      this.logger.error({ err: exception, status, path: req.path }, 'request failed');
     } else if (status !== 404 && status !== 401) {
-      this.logger.info({ status, code: body.error.code, path: req.originalUrl }, 'request rejected');
+      this.logger.info({ status, code: body.error.code, path: req.path }, 'request rejected');
     }
     if (exception instanceof AppError && exception.status === 429 && exception.details?.retryAfterSeconds) {
       res.setHeader('Retry-After', String(exception.details.retryAfterSeconds));

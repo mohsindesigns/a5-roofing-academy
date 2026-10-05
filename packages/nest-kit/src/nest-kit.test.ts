@@ -148,6 +148,31 @@ describe('contracts', () => {
   });
 });
 
+describe('logging', () => {
+  it('never writes query strings (signed tokens) to logs', async () => {
+    const lines: string[] = [];
+    const { pino } = await import('pino');
+    const { Writable } = await import('node:stream');
+    const sink = new Writable({
+      write(chunk, _e, cb) {
+        lines.push(String(chunk));
+        cb();
+      },
+    });
+    const cfg = testServiceConfig('learning-service');
+    @Module({ imports: [CoreModule.forRoot(cfg, pino({ level: 'info' }, sink))], controllers: [WidgetController] })
+    class LoggedModule {}
+    const logged = await createTestApp(LoggedModule, cfg);
+    const headers = await principalHeaders({ userId: USER, organizationId: ORG, permissions: ['programs.create'] });
+    const res = await request(logged.getHttpServer()).get('/api/v1/widgets?token=super-secret-playback-token').set(headers);
+    expect(res.status).toBe(403);
+    await closeApp(logged);
+    const all = lines.join('');
+    expect(all).toContain('request rejected');
+    expect(all).not.toContain('super-secret-playback-token');
+  });
+});
+
 describe('request context and health', () => {
   it('echoes a valid incoming request id', async () => {
     const res = await request(app.getHttpServer()).get('/health/live').set('x-request-id', 'req-12345678');
