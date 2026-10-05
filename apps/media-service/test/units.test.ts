@@ -1,11 +1,12 @@
 import { createServer, type Server, type Socket } from 'node:net';
 import { writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ConfigError } from '@a5/config';
 import { TEST_INTERNAL_SECRET, testLogger } from '@a5/nest-kit/testing';
-import { loadMediaConfig } from '../src/config.js';
+import { loadMediaConfig, resolveStorageRoot } from '../src/config.js';
 import { parseMasterPlaylist } from '../src/processing/ffmpeg-hls.transcoder.js';
 import { planLadder } from '../src/processing/transcoder.js';
 import { parsePlaybackPolicy } from '../src/playback/playback-policy.js';
@@ -186,6 +187,17 @@ describe('configuration', () => {
     expect(c.media.scanner).toEqual({ kind: 'none' });
     const app = loadMediaConfig({ ...base, STORAGE_SIGNING_SECRET: 's'.repeat(32) });
     expect(app.media.storage).toMatchObject({ publicBaseUrl: 'http://localhost:5173/api/v1/media/dev-storage' });
+  });
+
+  it('keeps development storage out of the package: relative roots resolve against the workspace root', () => {
+    const pkg = dirname(dirname(fileURLToPath(import.meta.url)));
+    const workspaceRoot = join(pkg, '..', '..');
+    expect(resolveStorageRoot('./storage', pkg)).toBe(join(workspaceRoot, 'storage'));
+    expect(resolveStorageRoot('./storage', join(pkg, 'src'))).toBe(join(workspaceRoot, 'storage'));
+    expect(resolveStorageRoot('/var/a5/objects', pkg)).toBe('/var/a5/objects');
+    // Outside any workspace the working directory is used.
+    expect(resolveStorageRoot('data/objects', '/')).toBe('/data/objects');
+    expect(loadMediaConfig({ ...base, STORAGE_SIGNING_SECRET: 's'.repeat(32), STORAGE_LOCAL_ROOT: './storage' }).media.storage).toMatchObject({ root: join(workspaceRoot, 'storage') });
   });
 
   it('honours the per-kind size limits', () => {

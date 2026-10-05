@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { ConfigError, assertProductionSafe, env, loadEnv, z } from '@a5/config';
 import type { MediaKind } from '@a5/contracts/media';
 import { loadServiceConfig } from '@a5/nest-kit';
@@ -74,6 +75,21 @@ const MB = 1024 * 1024;
 
 type StorageEnv = z.infer<typeof storageEnv>;
 
+/**
+ * Relative `STORAGE_LOCAL_ROOT` values (the root `.env` uses `./storage`, ignored by the root
+ * `.gitignore`) resolve against the workspace root, so development files never land inside a
+ * package's source tree where linters and builds would pick them up. Outside a workspace they
+ * resolve against the working directory.
+ */
+export function resolveStorageRoot(value: string, cwd: string = process.cwd()): string {
+  if (isAbsolute(value)) return value;
+  for (let dir = cwd, i = 0; i < 8; i++, dir = dirname(dir)) {
+    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return resolve(dir, value);
+    if (dirname(dir) === dir) break;
+  }
+  return resolve(cwd, value);
+}
+
 function publicApiBase(e: StorageEnv): string {
   return (e.PUBLIC_API_URL ?? e.PUBLIC_APP_URL).replace(/\/$/, '');
 }
@@ -84,7 +100,7 @@ function storageConfig(e: StorageEnv, issues: string[], signingSecretFallback?: 
     if (!signingSecret) issues.push('STORAGE_SIGNING_SECRET is required when STORAGE_DRIVER=local (run `pnpm keys:generate`)');
     return {
       driver: 'local',
-      root: resolve(process.cwd(), e.STORAGE_LOCAL_ROOT),
+      root: resolveStorageRoot(e.STORAGE_LOCAL_ROOT),
       signingSecret: signingSecret ?? '',
       publicBaseUrl: `${publicApiBase(e)}/api/v1/media/dev-storage`,
     };
