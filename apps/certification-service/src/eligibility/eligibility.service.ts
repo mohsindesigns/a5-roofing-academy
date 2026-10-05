@@ -219,7 +219,8 @@ export class EligibilityService {
           await this.ensureApproval(trx, def, cand, now);
         } else {
           status = requiresApproval ? 'approved' : 'eligible';
-          if (def.automatic_issuance) {
+          // Renewals without any requirement are never automatic: renewing proves nothing, so a person decides.
+          if (def.automatic_issuance && !(cand.purpose === 'renewal' && outcome.totalCount === 0)) {
             pending.issue = { mode: cand.purpose === 'renewal' ? 'renewal' : requiresApproval ? 'approval' : 'automatic', renewalId: cand.renewal_id };
           }
         }

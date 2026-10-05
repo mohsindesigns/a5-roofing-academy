@@ -681,6 +681,8 @@ export const renewalListItemSchema = certificateRenewalSchema.extend({
   progress: z.object({ status: candidateStatusSchema, metCount: z.int(), totalCount: z.int() }).nullable(),
 });
 
+export const listRevocationsQuerySchema = pageQuerySchema.extend({ definitionId: z.uuid().optional() });
+
 export const listRenewalsQuerySchema = pageQuerySchema.extend({
   status: queryList(z.enum(['open', 'completed', 'lapsed', 'cancelled'])),
   definitionId: z.uuid().optional(),
@@ -689,6 +691,7 @@ export const listRenewalsQuerySchema = pageQuerySchema.extend({
 // ------------------------------------------------------------------ team & dashboard
 
 export const teamFilterSchema = z.enum(['certified', 'not_certified', 'eligible', 'pending_approval', 'expiring', 'expired', 'revoked']);
+export type TeamFilter = z.infer<typeof teamFilterSchema>;
 export const teamStateSchema = z.enum([
   'certified',
   'expiring',
@@ -699,6 +702,8 @@ export const teamStateSchema = z.enum([
   'eligible',
   'in_progress',
 ]);
+
+export type TeamState = z.infer<typeof teamStateSchema>;
 
 export const teamStatusQuerySchema = pageQuerySchema.extend({
   definitionId: z.uuid().optional(),
@@ -718,6 +723,8 @@ export const teamStatusRowSchema = z.object({
     .object({ id: z.uuid(), certificateNumber: z.string(), status: certificateStatusSchema, issuedAt: isoDateTime, expiresAt: isoDateTime.nullable() })
     .nullable(),
 });
+
+export type TeamStatusRow = z.infer<typeof teamStatusRowSchema>;
 
 export const dashboardSchema = z.object({
   issued: z.int(),

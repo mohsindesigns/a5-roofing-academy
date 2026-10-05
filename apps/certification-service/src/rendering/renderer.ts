@@ -215,7 +215,7 @@ function drawLine(doc: Doc, el: DesignElement, box: Box) {
 function drawImage(doc: Doc, el: DesignElement, box: Box, image: Buffer | null) {
   if (!image) return;
   doc.save();
-  doc.image(image, box.x, box.y, { fit: [box.w, box.h], align: el.align, valign: 'center' });
+  doc.image(image, box.x, box.y, { fit: [box.w, box.h], ...(el.align !== 'left' && { align: el.align }), valign: 'center' });
   doc.restore();
 }
 

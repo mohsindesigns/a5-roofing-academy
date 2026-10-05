@@ -130,7 +130,7 @@ export class IssuanceService {
     const renewal = params.renewalId
       ? await this.db.selectFrom('certificate_renewals').selectAll().where('id', '=', params.renewalId).executeTakeFirst()
       : null;
-    if (params.renewalId && (!renewal || renewal.definition_id !== def.id || renewal.user_id !== params.userId || renewal.status === 'completed')) {
+    if (params.renewalId && (!renewal || renewal.definition_id !== def.id || renewal.user_id !== params.userId || renewal.status === 'completed' || renewal.status === 'cancelled')) {
       throw new ConflictError('RENEWAL_CLOSED', 'This renewal is no longer open.');
     }
     if (supersede && params.mode === 'renewal' && renewal && supersede.id !== renewal.certificate_id) supersede = null;
@@ -264,6 +264,7 @@ export class IssuanceService {
           .updateTable('certification_candidates')
           .set({
             status: 'issued',
+            purpose: 'initial',
             certificate_id: certificateId,
             issue_error: null,
             renewal_id: null,
@@ -273,6 +274,14 @@ export class IssuanceService {
           .where('user_id', '=', params.userId)
           .returning(['id', 'eligible_at'])
           .executeTakeFirstOrThrow();
+
+        // A manual issuance can overtake an open approval request; it no longer needs a decision.
+        await trx
+          .updateTable('certificate_approvals')
+          .set({ status: 'cancelled', decided_at: now, comment: 'A certificate was issued.' })
+          .where('candidate_id', '=', candidate.id)
+          .where('status', '=', 'pending')
+          .execute();
 
         const snapshot: CertificateSnapshotData = {
           schemaVersion: SNAPSHOT_SCHEMA_VERSION,
