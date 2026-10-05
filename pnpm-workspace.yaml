@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+onlyBuiltDependencies:
+  - "@swc/core"
+  - esbuild
+  - msgpackr-extract
+ignoredBuiltDependencies:
+  - protobufjs
+  - "@scarf/scarf"
