@@ -3,7 +3,8 @@ import { Cache } from '@a5/messaging';
 import { InjectDb } from '@a5/nest-kit';
 import { LEARNING_CONFIG, type LearningConfig } from '../config.js';
 import type { Db, DbOrTrx } from '../database/index.js';
-import { assembleTree, treeFromSnapshot, type ProgramTree } from './tree.js';
+import { treeFromSnapshot, type ProgramTree } from './tree.js';
+import { loadWorkingTree } from './tree-loader.js';
 
 /**
  * Loads program trees. The published tree (what learners see) is an immutable snapshot cached in
@@ -49,25 +50,7 @@ export class TreeService {
   }
 
   /** The working copy without archived nodes (previews, publishing). Not cached. */
-  async working(programId: string, db: DbOrTrx = this.db): Promise<ProgramTree | null> {
-    const program = await db.selectFrom('programs').selectAll().where('id', '=', programId).executeTakeFirst();
-    if (!program) return null;
-    const [phases, modules, lessons] = await Promise.all([
-      db.selectFrom('program_phases').selectAll().where('program_id', '=', programId).execute(),
-      db.selectFrom('program_modules').selectAll().where('program_id', '=', programId).execute(),
-      db.selectFrom('lessons').selectAll().where('program_id', '=', programId).execute(),
-    ]);
-    const resources = lessons.length
-      ? await db
-          .selectFrom('lesson_resources')
-          .selectAll()
-          .where(
-            'lesson_id',
-            'in',
-            lessons.map((l) => l.id),
-          )
-          .execute()
-      : [];
-    return assembleTree(program, { phases, modules, lessons, resources }, 0);
+  working(programId: string, db: DbOrTrx = this.db): Promise<ProgramTree | null> {
+    return loadWorkingTree(db, programId);
   }
 }
