@@ -1,0 +1,2 @@
+# Local object storage used by STORAGE_DRIVER=local in development.
+storage/
