@@ -3,7 +3,7 @@ import { uuidv7 } from '@a5/observability';
 import { waitFor } from '@a5/testing';
 import { MEDIA_PROCESS_QUEUE, ProcessingWorker } from '../src/processing/processing.queue.js';
 import type { MediaProbe, Transcoder } from '../src/processing/transcoder.js';
-import { PNG, outboxEvents, uploadFile } from './fixtures.js';
+import { PNG, outboxEvents } from './fixtures.js';
 import { ORG, createMediaHarness, type MediaHarness } from './harness.js';
 
 /** Fails the first `failures` probes with a transient error, then behaves. */
