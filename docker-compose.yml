@@ -1,0 +1,235 @@
+# A5 Roofing Sales Academy — local environment.
+#
+#   pnpm keys:generate                       # writes secrets into .env (read by compose)
+#   docker compose up -d postgres redis minio mailpit   # infrastructure only (run apps with `pnpm dev`)
+#   docker compose up --build                # everything in containers
+#   docker compose run --rm identity-service node dist/seed/seed.js   # seed demo data (repeat per service)
+#
+# Web: http://localhost:8080 (containers) or http://localhost:5173 (pnpm dev)
+# Mailpit: http://localhost:8025   MinIO console: http://localhost:9001
+
+x-service-env: &service-env
+  NODE_ENV: ${NODE_ENV:-development}
+  SERVICE_ROLE: all
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  REDIS_URL: redis://redis:6379
+  REDIS_NAMESPACE: a5
+  INTERNAL_AUTH_SECRET: ${INTERNAL_AUTH_SECRET:?run pnpm keys:generate}
+  PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8080}
+  IDENTITY_SERVICE_URL: http://identity-service:4010
+  LEARNING_SERVICE_URL: http://learning-service:4020
+  MEDIA_SERVICE_URL: http://media-service:4030
+  ASSESSMENT_SERVICE_URL: http://assessment-service:4040
+  AI_SERVICE_URL: http://ai-coaching-service:4050
+  CERTIFICATION_SERVICE_URL: http://certification-service:4060
+  NOTIFICATION_SERVICE_URL: http://notification-service:4070
+  ANALYTICS_SERVICE_URL: http://analytics-service:4080
+  AUDIT_SERVICE_URL: http://audit-service:4090
+  STORAGE_DRIVER: s3
+  STORAGE_SIGNING_SECRET: ${STORAGE_SIGNING_SECRET:?run pnpm keys:generate}
+  S3_BUCKET: a5-academy
+  S3_REGION: us-east-1
+  S3_ENDPOINT: http://minio:9000
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+  S3_ACCESS_KEY_ID: a5minio
+  S3_SECRET_ACCESS_KEY: a5minio-secret
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+
+x-service: &service
+  restart: unless-stopped
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  command: ['sh', '-c', 'node dist/database/migrate.js latest && node dist/main.js']
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: a5
+      POSTGRES_PASSWORD: a5_dev_password
+      POSTGRES_DB: postgres
+    ports: ['5432:5432']
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/001-databases.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U a5']
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports: ['6379:6379']
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: a5minio
+      MINIO_ROOT_PASSWORD: a5minio-secret
+    ports: ['9000:9000', '9001:9001']
+    volumes: [miniodata:/data]
+
+  minio-setup:
+    image: minio/mc:latest
+    depends_on: [minio]
+    entrypoint: >
+      sh -c "until mc alias set local http://minio:9000 a5minio a5minio-secret; do sleep 1; done;
+             mc mb --ignore-existing local/a5-academy;
+             mc anonymous set none local/a5-academy"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ['8025:8025', '1025:1025']
+
+  # Optional malware scanning: docker compose --profile scanning up -d clamav
+  clamav:
+    image: clamav/clamav:stable
+    profiles: [scanning]
+    ports: ['3310:3310']
+
+  identity-service:
+    <<: *service
+    build:
+      { context: ., dockerfile: infra/docker/service.Dockerfile, args: { APP: identity-service } }
+    environment:
+      <<: *service-env
+      PORT: 4010
+      DATABASE_URL: postgres://a5:a5_dev_password@postgres:5432/a5_identity
+      AUTH_JWT_PRIVATE_KEY: ${AUTH_JWT_PRIVATE_KEY:?run pnpm keys:generate}
+      AUTH_JWT_PUBLIC_KEY: ${AUTH_JWT_PUBLIC_KEY:?run pnpm keys:generate}
+      COOKIE_SECURE: 'false'
+      EXPOSE_ACTIVATION_LINKS: 'true'
+
+  learning-service:
+    <<: *service
+    build:
+      { context: ., dockerfile: infra/docker/service.Dockerfile, args: { APP: learning-service } }
+    environment:
+      {
+        <<: *service-env,
+        PORT: 4020,
+        DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_learning',
+      }
+
+  media-service:
+    <<: *service
+    build:
+      {
+        context: .,
+        dockerfile: infra/docker/service.Dockerfile,
+        args: { APP: media-service, WITH_FFMPEG: 'true' },
+      }
+    environment:
+      {
+        <<: *service-env,
+        PORT: 4030,
+        DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_media',
+      }
+
+  assessment-service:
+    <<: *service
+    build:
+      { context: ., dockerfile: infra/docker/service.Dockerfile, args: { APP: assessment-service } }
+    environment:
+      {
+        <<: *service-env,
+        PORT: 4040,
+        DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_assessment',
+      }
+
+  ai-coaching-service:
+    <<: *service
+    build:
+      {
+        context: .,
+        dockerfile: infra/docker/service.Dockerfile,
+        args: { APP: ai-coaching-service },
+      }
+    environment:
+      <<: *service-env
+      PORT: 4050
+      DATABASE_URL: postgres://a5:a5_dev_password@postgres:5432/a5_ai
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+  certification-service:
+    <<: *service
+    build:
+      {
+        context: .,
+        dockerfile: infra/docker/service.Dockerfile,
+        args: { APP: certification-service },
+      }
+    environment:
+      {
+        <<: *service-env,
+        PORT: 4060,
+        DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_certification',
+      }
+
+  notification-service:
+    <<: *service
+    build:
+      {
+        context: .,
+        dockerfile: infra/docker/service.Dockerfile,
+        args: { APP: notification-service },
+      }
+    environment:
+      <<: *service-env
+      PORT: 4070
+      DATABASE_URL: postgres://a5:a5_dev_password@postgres:5432/a5_notification
+      SMTP_URL: smtp://mailpit:1025
+      EMAIL_FROM: 'A5 Sales Academy <academy@a5roofing.example>'
+
+  analytics-service:
+    <<: *service
+    build:
+      { context: ., dockerfile: infra/docker/service.Dockerfile, args: { APP: analytics-service } }
+    environment:
+      {
+        <<: *service-env,
+        PORT: 4080,
+        DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_analytics',
+      }
+
+  audit-service:
+    <<: *service
+    build: { context: ., dockerfile: infra/docker/service.Dockerfile, args: { APP: audit-service } }
+    environment:
+      {
+        <<: *service-env,
+        PORT: 4090,
+        DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_audit',
+      }
+
+  gateway:
+    restart: unless-stopped
+    build: { context: ., dockerfile: infra/docker/service.Dockerfile, args: { APP: gateway } }
+    depends_on:
+      redis: { condition: service_healthy }
+      identity-service: { condition: service_started }
+    environment:
+      <<: *service-env
+      PORT: 4000
+      AUTH_JWT_PUBLIC_KEY: ${AUTH_JWT_PUBLIC_KEY:?run pnpm keys:generate}
+      CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+    ports: ['4000:4000']
+
+  web:
+    build: { context: ., dockerfile: infra/docker/web.Dockerfile }
+    depends_on: [gateway]
+    ports: ['8080:8080']
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

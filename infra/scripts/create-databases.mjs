@@ -2,7 +2,8 @@
 // Creates one database per service on the configured PostgreSQL server (idempotent).
 import pg from 'pg';
 
-const admin = process.env.POSTGRES_ADMIN_URL ?? 'postgres://a5:a5_dev_password@127.0.0.1:5432/postgres';
+const admin =
+  process.env.POSTGRES_ADMIN_URL ?? 'postgres://a5:a5_dev_password@127.0.0.1:5432/postgres';
 const databases = [
   'a5_identity',
   'a5_learning',
@@ -17,7 +18,9 @@ const databases = [
 const client = new pg.Client({ connectionString: admin });
 await client.connect();
 try {
-  const existing = new Set((await client.query('select datname from pg_database')).rows.map((r) => r.datname));
+  const existing = new Set(
+    (await client.query('select datname from pg_database')).rows.map((r) => r.datname),
+  );
   for (const db of databases) {
     if (existing.has(db)) {
       console.log(`exists   ${db}`);

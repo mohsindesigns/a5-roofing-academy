@@ -24,7 +24,9 @@ let content = readFileSync(envPath, 'utf8');
 for (const [key, value] of Object.entries(values)) {
   const line = `${key}=${value}`;
   const pattern = new RegExp(`^${key}=.*$`, 'm');
-  content = pattern.test(content) ? content.replace(pattern, line) : `${content.trimEnd()}\n${line}\n`;
+  content = pattern.test(content)
+    ? content.replace(pattern, line)
+    : `${content.trimEnd()}\n${line}\n`;
 }
 writeFileSync(envPath, content);
 console.log('Wrote development keys to .env');
