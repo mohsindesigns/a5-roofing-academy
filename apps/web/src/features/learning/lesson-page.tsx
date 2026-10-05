@@ -16,6 +16,7 @@ import {
   toast,
 } from '@/components/ui';
 import { Markdown } from '@/components/markdown';
+import { AiSimulationLesson } from '@/features/ai-coach/lesson-practice';
 import { api } from '@/lib/api/client';
 import { ApiError, errorMessage } from '@/lib/api/errors';
 import { cn } from '@/lib/cn';
@@ -520,6 +521,7 @@ function Body({ detail, programId }: { detail: Detail; programId: string }) {
   if (t === 'manager_approval') return <ApprovalLesson detail={detail} />;
   if (t === 'quiz' || t === 'final_assessment')
     return <AssessmentLesson detail={detail} programId={programId} />;
+  if (t === 'ai_simulation') return <AiSimulationLesson detail={detail} />;
   return null;
 }
 

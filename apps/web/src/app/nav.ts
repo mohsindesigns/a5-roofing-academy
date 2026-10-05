@@ -50,7 +50,6 @@ export const NAV: NavSection[] = [
       },
       {
         to: '/ai-coach',
-        ready: false,
         label: 'AI Coach',
         icon: MessagesSquare,
         mobile: true,
@@ -109,7 +108,6 @@ export const NAV: NavSection[] = [
       },
       {
         to: '/content/ai-scenarios',
-        ready: false,
         label: 'AI scenarios',
         icon: MessagesSquare,
         visible: (p) => p.has('ai_scenarios.view'),
