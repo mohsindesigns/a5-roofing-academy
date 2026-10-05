@@ -24,7 +24,10 @@ function sanitize(node: unknown): unknown {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
     if (UNSUPPORTED.has(key)) continue;
-    out[key] = key === 'properties' ? Object.fromEntries(Object.entries(value as object).map(([k, v]) => [k, sanitize(v)])) : sanitize(value);
+    out[key] =
+      key === 'properties'
+        ? Object.fromEntries(Object.entries(value as object).map(([k, v]) => [k, sanitize(v)]))
+        : sanitize(value);
   }
   if (out.type === 'object' || out.properties) {
     out.additionalProperties = false;
@@ -32,7 +35,12 @@ function sanitize(node: unknown): unknown {
   }
   // `type: ["string", "null"]` → `anyOf`, the nullable form every structured-output mode accepts.
   if (Array.isArray(out.type)) {
-    const { type, enum: values, description, ...rest } = out as { type: string[]; enum?: unknown[]; description?: string };
+    const {
+      type,
+      enum: values,
+      description,
+      ...rest
+    } = out as { type: string[]; enum?: unknown[]; description?: string };
     const anyOf = type.map((t) => {
       if (t === 'null') return { type: 'null' };
       const branch: Record<string, unknown> = { ...rest, type: t };
@@ -50,7 +58,11 @@ function sanitize(node: unknown): unknown {
  * strict tool use / structured outputs require; numeric and length bounds are re-checked by Zod.
  */
 export function providerJsonSchema(schema: z.ZodType): Record<string, unknown> {
-  const generated = z.toJSONSchema(schema, { target: 'draft-2020-12', io: 'output', unrepresentable: 'any' });
+  const generated = z.toJSONSchema(schema, {
+    target: 'draft-2020-12',
+    io: 'output',
+    unrepresentable: 'any',
+  });
   return sanitize(generated) as Record<string, unknown>;
 }
 

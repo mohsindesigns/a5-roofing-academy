@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import type { ai } from '@a5/contracts';
-import { isUniqueViolation, likePattern, paginate, sql, type Insertable, type Page, type Selectable } from '@a5/database';
+import {
+  isUniqueViolation,
+  likePattern,
+  paginate,
+  sql,
+  type Insertable,
+  type Page,
+  type Selectable,
+} from '@a5/database';
 import { ConflictError, EventBus, InjectDb, NotFoundError, ValidationError } from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import { iso, isoOrNull } from '../common/people.js';
@@ -36,7 +44,9 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 /** Column values for a scenario from the API shape. */
-export function scenarioColumns(input: Partial<ai.CreateScenarioRequest>): Partial<Insertable<AiScenariosTable>> {
+export function scenarioColumns(
+  input: Partial<ai.CreateScenarioRequest>,
+): Partial<Insertable<AiScenariosTable>> {
   const out: Partial<Insertable<AiScenariosTable>> = {};
   if (input.title !== undefined) out.title = input.title;
   if (input.category !== undefined) out.category = input.category;
@@ -49,7 +59,8 @@ export function scenarioColumns(input: Partial<ai.CreateScenarioRequest>): Parti
   if (input.trigger !== undefined) out.trigger = input.trigger;
   if (input.hiddenConcern !== undefined) out.hidden_concern = input.hiddenConcern;
   if (input.expectedBehaviors !== undefined) out.expected_behaviors = input.expectedBehaviors;
-  if (input.requiredTalkingPoints !== undefined) out.required_talking_points = input.requiredTalkingPoints;
+  if (input.requiredTalkingPoints !== undefined)
+    out.required_talking_points = input.requiredTalkingPoints;
   if (input.forbiddenClaims !== undefined) out.forbidden_claims = input.forbiddenClaims;
   if (input.aiInstructions !== undefined) out.ai_instructions = input.aiInstructions;
   if (input.openingLine !== undefined) out.opening_line = input.openingLine;
@@ -77,12 +88,16 @@ function scenarioQuery(executor: DbOrTrx, organizationId: string) {
       'rv.version as rubric_version',
       'pv.version as prompt_version',
       'pv.created_at as prompt_version_created_at',
-      sql<number>`(select count(*)::int from ai_sessions x where x.scenario_id = s.id and not x.is_test)`.as('session_count'),
+      sql<number>`(select count(*)::int from ai_sessions x where x.scenario_id = s.id and not x.is_test)`.as(
+        'session_count',
+      ),
     ])
     .where('s.organization_id', '=', organizationId);
 }
 
-type ScenarioDetailRow = Awaited<ReturnType<ReturnType<typeof scenarioQuery>['executeTakeFirstOrThrow']>>;
+type ScenarioDetailRow = Awaited<
+  ReturnType<ReturnType<typeof scenarioQuery>['executeTakeFirstOrThrow']>
+>;
 
 @Injectable()
 export class ScenariosService {
@@ -107,7 +122,11 @@ export class ScenariosService {
       model: r.model,
       currentPromptVersion:
         r.current_prompt_version_id && r.prompt_version !== null && r.prompt_version_created_at
-          ? { id: r.current_prompt_version_id, version: r.prompt_version, createdAt: iso(r.prompt_version_created_at) }
+          ? {
+              id: r.current_prompt_version_id,
+              version: r.prompt_version,
+              createdAt: iso(r.prompt_version_created_at),
+            }
           : null,
       sessionCount: Number(r.session_count),
       publishedAt: isoOrNull(r.published_at),
@@ -132,29 +151,51 @@ export class ScenariosService {
 
   async list(
     p: Principal,
-    q: { q?: string; status?: string; category?: string; difficulty?: string; personaId?: string; page: number; pageSize: number },
+    q: {
+      q?: string;
+      status?: string;
+      category?: string;
+      difficulty?: string;
+      personaId?: string;
+      page: number;
+      pageSize: number;
+    },
   ): Promise<Page<ai.ScenarioDetail>> {
     let query = scenarioQuery(this.db, p.organizationId);
     if (q.status) query = query.where('s.status', '=', q.status as ScenarioRow['status']);
     else query = query.where('s.status', '<>', 'archived');
     if (q.category) query = query.where('s.category', '=', q.category);
-    if (q.difficulty) query = query.where('s.difficulty', '=', q.difficulty as ScenarioRow['difficulty']);
+    if (q.difficulty)
+      query = query.where('s.difficulty', '=', q.difficulty as ScenarioRow['difficulty']);
     if (q.personaId) query = query.where('s.persona_id', '=', q.personaId);
     if (q.q) {
       const pattern = likePattern(q.q);
-      query = query.where((eb) => eb.or([eb('s.title', 'ilike', pattern), eb('s.objection', 'ilike', pattern), eb('s.category', 'ilike', pattern)]));
+      query = query.where((eb) =>
+        eb.or([
+          eb('s.title', 'ilike', pattern),
+          eb('s.objection', 'ilike', pattern),
+          eb('s.category', 'ilike', pattern),
+        ]),
+      );
     }
     const page = await paginate(query.orderBy('s.category').orderBy('s.title'), q);
     return { ...page, items: page.items.map((r) => this.summary(r)) };
   }
 
   async get(p: Principal, id: string, executor: DbOrTrx = this.db): Promise<ai.ScenarioDetail> {
-    const row = await scenarioQuery(executor, p.organizationId).where('s.id', '=', id).executeTakeFirst();
+    const row = await scenarioQuery(executor, p.organizationId)
+      .where('s.id', '=', id)
+      .executeTakeFirst();
     if (!row) throw new NotFoundError('Scenario');
     return this.summary(row);
   }
 
-  private async assertReferences(executor: DbOrTrx, organizationId: string, personaId: string | undefined, rubricId: string | undefined) {
+  private async assertReferences(
+    executor: DbOrTrx,
+    organizationId: string,
+    personaId: string | undefined,
+    rubricId: string | undefined,
+  ) {
     const fields: Array<{ path: string; message: string }> = [];
     if (personaId) {
       const persona = await executor
@@ -180,7 +221,13 @@ export class ScenariosService {
   }
 
   /** Insert a scenario and its first prompt version inside a transaction (API and seed). */
-  async insert(trx: Trx, organizationId: string, actorId: string | null, input: ai.CreateScenarioRequest, options: { id?: string; status?: ScenarioRow['status'] } = {}) {
+  async insert(
+    trx: Trx,
+    organizationId: string,
+    actorId: string | null,
+    input: ai.CreateScenarioRequest,
+    options: { id?: string; status?: ScenarioRow['status'] } = {},
+  ) {
     const id = options.id ?? uuidv7();
     const status = options.status ?? 'draft';
     await trx
@@ -197,7 +244,12 @@ export class ScenariosService {
         updated_by: actorId,
       })
       .execute();
-    const version = await this.versions.sync(trx, id, actorId, input.changeNote ?? 'Initial version');
+    const version = await this.versions.sync(
+      trx,
+      id,
+      actorId,
+      input.changeNote ?? 'Initial version',
+    );
     return { id, version };
   }
 
@@ -209,22 +261,40 @@ export class ScenariosService {
         const created = await this.insert(trx, p.organizationId, p.userId, input);
         await this.events.audit(
           trx,
-          { action: 'ai.scenario.created', resourceType: 'ai_scenario', resourceId: created.id, actorDisplay: p.displayName, after: { title: input.title, promptVersion: created.version.version } },
+          {
+            action: 'ai.scenario.created',
+            resourceType: 'ai_scenario',
+            resourceId: created.id,
+            actorDisplay: p.displayName,
+            after: { title: input.title, promptVersion: created.version.version },
+          },
           { organizationId: p.organizationId },
         );
         return created.id;
       });
     } catch (err) {
-      if (isUniqueViolation(err)) throw new ConflictError('SCENARIO_TITLE_TAKEN', `A scenario titled "${input.title}" already exists. Choose another title.`);
+      if (isUniqueViolation(err))
+        throw new ConflictError(
+          'SCENARIO_TITLE_TAKEN',
+          `A scenario titled "${input.title}" already exists. Choose another title.`,
+        );
       throw err;
     }
     return this.get(p, id);
   }
 
   /** Edits are live; prompt-relevant changes create a new immutable prompt version. */
-  async update(p: Principal, id: string, input: ai.UpdateScenarioRequest): Promise<ai.ScenarioDetail> {
+  async update(
+    p: Principal,
+    id: string,
+    input: ai.UpdateScenarioRequest,
+  ): Promise<ai.ScenarioDetail> {
     const before = await this.get(p, id);
-    if (before.status === 'archived') throw new ConflictError('SCENARIO_ARCHIVED', 'This scenario is archived. Duplicate it to make changes.');
+    if (before.status === 'archived')
+      throw new ConflictError(
+        'SCENARIO_ARCHIVED',
+        'This scenario is archived. Duplicate it to make changes.',
+      );
     await this.assertReferences(this.db, p.organizationId, input.personaId, input.rubricId);
     const { changeNote, ...fields } = input;
     const changed = Object.keys(fields).filter((k) => FIELD_LABELS[k]);
@@ -232,10 +302,19 @@ export class ScenariosService {
       await this.db.transaction().execute(async (trx) => {
         await trx
           .updateTable('ai_scenarios')
-          .set({ ...scenarioColumns(fields), revision: sql<number>`revision + 1`, updated_by: p.userId })
+          .set({
+            ...scenarioColumns(fields),
+            revision: sql<number>`revision + 1`,
+            updated_by: p.userId,
+          })
           .where('id', '=', id)
           .execute();
-        const version = await this.versions.sync(trx, id, p.userId, changeNote ?? `Edited ${changed.map((k) => FIELD_LABELS[k]).join(', ')}`);
+        const version = await this.versions.sync(
+          trx,
+          id,
+          p.userId,
+          changeNote ?? `Edited ${changed.map((k) => FIELD_LABELS[k]).join(', ')}`,
+        );
         await this.events.audit(
           trx,
           {
@@ -243,7 +322,9 @@ export class ScenariosService {
             resourceType: 'ai_scenario',
             resourceId: id,
             actorDisplay: p.displayName,
-            before: Object.fromEntries(changed.map((k) => [k, (before as Record<string, unknown>)[k]])),
+            before: Object.fromEntries(
+              changed.map((k) => [k, (before as Record<string, unknown>)[k]]),
+            ),
             after: fields,
             metadata: { promptVersion: version.version, newPromptVersion: version.created },
           },
@@ -251,7 +332,11 @@ export class ScenariosService {
         );
       });
     } catch (err) {
-      if (isUniqueViolation(err)) throw new ConflictError('SCENARIO_TITLE_TAKEN', `A scenario titled "${input.title}" already exists. Choose another title.`);
+      if (isUniqueViolation(err))
+        throw new ConflictError(
+          'SCENARIO_TITLE_TAKEN',
+          `A scenario titled "${input.title}" already exists. Choose another title.`,
+        );
       throw err;
     }
     return this.get(p, id);
@@ -260,11 +345,28 @@ export class ScenariosService {
   async publish(p: Principal, id: string): Promise<ai.ScenarioDetail> {
     const scenario = await this.get(p, id);
     if (scenario.status === 'published') return scenario;
-    if (scenario.status === 'archived') throw new ConflictError('SCENARIO_ARCHIVED', 'Archived scenarios cannot be published. Duplicate it instead.');
+    if (scenario.status === 'archived')
+      throw new ConflictError(
+        'SCENARIO_ARCHIVED',
+        'Archived scenarios cannot be published. Duplicate it instead.',
+      );
     await this.assertReferences(this.db, p.organizationId, scenario.persona.id, scenario.rubric.id);
     await this.db.transaction().execute(async (trx) => {
-      await trx.updateTable('ai_scenarios').set({ status: 'published', published_at: new Date(), updated_by: p.userId }).where('id', '=', id).execute();
-      await this.events.audit(trx, { action: 'ai.scenario.published', resourceType: 'ai_scenario', resourceId: id, actorDisplay: p.displayName }, { organizationId: p.organizationId });
+      await trx
+        .updateTable('ai_scenarios')
+        .set({ status: 'published', published_at: new Date(), updated_by: p.userId })
+        .where('id', '=', id)
+        .execute();
+      await this.events.audit(
+        trx,
+        {
+          action: 'ai.scenario.published',
+          resourceType: 'ai_scenario',
+          resourceId: id,
+          actorDisplay: p.displayName,
+        },
+        { organizationId: p.organizationId },
+      );
     });
     return this.get(p, id);
   }
@@ -273,8 +375,21 @@ export class ScenariosService {
     const scenario = await this.get(p, id);
     if (scenario.status === 'archived') return scenario;
     await this.db.transaction().execute(async (trx) => {
-      await trx.updateTable('ai_scenarios').set({ status: 'archived', archived_at: new Date(), updated_by: p.userId }).where('id', '=', id).execute();
-      await this.events.audit(trx, { action: 'ai.scenario.archived', resourceType: 'ai_scenario', resourceId: id, actorDisplay: p.displayName }, { organizationId: p.organizationId });
+      await trx
+        .updateTable('ai_scenarios')
+        .set({ status: 'archived', archived_at: new Date(), updated_by: p.userId })
+        .where('id', '=', id)
+        .execute();
+      await this.events.audit(
+        trx,
+        {
+          action: 'ai.scenario.archived',
+          resourceType: 'ai_scenario',
+          resourceId: id,
+          actorDisplay: p.displayName,
+        },
+        { organizationId: p.organizationId },
+      );
     });
     return this.get(p, id);
   }

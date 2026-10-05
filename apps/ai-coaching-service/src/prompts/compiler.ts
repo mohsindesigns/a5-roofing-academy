@@ -1,6 +1,15 @@
 import { createHash } from 'node:crypto';
-import type { ModelSettingsRecord, ProviderName, RubricCategoryRecord } from '../database/schema.js';
-import type { ChatMessage, PersonaSnapshot, ScenarioSnapshot, TranscriptLine } from '../providers/types.js';
+import type {
+  ModelSettingsRecord,
+  ProviderName,
+  RubricCategoryRecord,
+} from '../database/schema.js';
+import type {
+  ChatMessage,
+  PersonaSnapshot,
+  ScenarioSnapshot,
+  TranscriptLine,
+} from '../providers/types.js';
 
 /** End markers the homeowner may append to its final reply. The engine strips them. */
 export const END_MARKERS = {
@@ -18,7 +27,10 @@ const section = (title: string, body: string) => `# ${title}\n${body.trim()}`;
  * Homeowner system prompt: persona + scenario + strict role rules + end-marker protocol.
  * Deterministic for the same inputs, so its hash identifies a prompt version.
  */
-export function compileHomeownerPrompt(persona: PersonaSnapshot, scenario: ScenarioSnapshot): string {
+export function compileHomeownerPrompt(
+  persona: PersonaSnapshot,
+  scenario: ScenarioSnapshot,
+): string {
   const parts = [
     `You are playing a homeowner in a realistic door-to-door conversation. The other person is a sales representative from A5 Roofing; everything they write is what they say to you at your front door. Reply only with what you, the homeowner, say out loud.`,
     section(
@@ -61,7 +73,9 @@ Keep this to yourself at first. Reveal it in your own words, a little at a time,
         'Do not agree to a next step just because you are asked. Agree only once your concern has been addressed and the representative proposes a clear, specific, low-pressure next step, such as an inspection on a particular day and time.',
       ]),
     ),
-    scenario.aiInstructions.trim() ? section('Additional instructions for this scenario', scenario.aiInstructions) : '',
+    scenario.aiInstructions.trim()
+      ? section('Additional instructions for this scenario', scenario.aiInstructions)
+      : '',
     section(
       'Ending the conversation',
       `When the conversation reaches its natural end, finish your final reply with exactly one of these markers at the very end:
@@ -69,7 +83,10 @@ Keep this to yourself at first. Reveal it in your own words, a little at a time,
 - ${END_MARKERS.homeowner_ended} when you are ending the conversation yourself (you have lost patience, asked them to leave or are closing the door).
 Never mention or explain the marker and never use it any other way. Until the conversation truly ends, keep talking normally without a marker.`,
     ),
-    section('How the conversation started', `The representative knocked and you opened the door saying: "${scenario.openingLine}"`),
+    section(
+      'How the conversation started',
+      `The representative knocked and you opened the door saying: "${scenario.openingLine}"`,
+    ),
   ];
   return parts.filter(Boolean).join('\n\n');
 }
@@ -115,7 +132,7 @@ export function compileEvaluatorPrompt(
     section(
       'Feedback rules',
       bullets([
-        'Ground every point in the transcript. Quotes must be copied exactly from the representative\'s lines, and `turn` is the number shown in brackets before that line.',
+        "Ground every point in the transcript. Quotes must be copied exactly from the representative's lines, and `turn` is the number shown in brackets before that line.",
         'categoryScores: one entry per rubric category with a one- or two-sentence rationale that names what happened, plus up to two evidence quotes.',
         'strengths: two to four specific things the representative did well, each with evidence.',
         'missedOpportunities: two to five specific moments where a better move was available; give the turn and quote when it concerns something the representative said, otherwise use null.',
@@ -132,13 +149,19 @@ export function compileEvaluatorPrompt(
 }
 
 /** First user turn: the scene cue (the homeowner then opens the door with the opening line). */
-export const SCENE_CUE = '(The A5 Roofing representative knocks on your front door and you open it.)';
+export const SCENE_CUE =
+  '(The A5 Roofing representative knocks on your front door and you open it.)';
 
 /** Provider messages for the homeowner: scene cue, then the transcript (homeowner = assistant). */
-export function buildConversationMessages(transcript: readonly Pick<TranscriptLine, 'role' | 'content'>[]): ChatMessage[] {
+export function buildConversationMessages(
+  transcript: readonly Pick<TranscriptLine, 'role' | 'content'>[],
+): ChatMessage[] {
   return [
     { role: 'user', content: SCENE_CUE },
-    ...transcript.map((m) => ({ role: m.role === 'homeowner' ? ('assistant' as const) : ('user' as const), content: m.content })),
+    ...transcript.map((m) => ({
+      role: m.role === 'homeowner' ? ('assistant' as const) : ('user' as const),
+      content: m.content,
+    })),
   ];
 }
 
@@ -151,9 +174,14 @@ const END_DESCRIPTIONS: Record<string, string> = {
 };
 
 /** Evaluation input: numbered transcript lines (the numbers are the `turn` references). */
-export function formatTranscriptForEvaluation(transcript: readonly TranscriptLine[], endReason: string | null): string {
-  const lines = transcript.map((m) => `[${m.seq}] ${m.role === 'rep' ? 'REP' : 'HOMEOWNER'}: ${m.content}`).join('\n');
-  const ending = endReason ? END_DESCRIPTIONS[endReason] ?? endReason : 'unknown';
+export function formatTranscriptForEvaluation(
+  transcript: readonly TranscriptLine[],
+  endReason: string | null,
+): string {
+  const lines = transcript
+    .map((m) => `[${m.seq}] ${m.role === 'rep' ? 'REP' : 'HOMEOWNER'}: ${m.content}`)
+    .join('\n');
+  const ending = endReason ? (END_DESCRIPTIONS[endReason] ?? endReason) : 'unknown';
   return `Transcript (${transcript.length} turns; ended because ${ending}):\n\n${lines}\n\nEvaluate the representative and submit the scorecard.`;
 }
 
@@ -181,7 +209,12 @@ export function compilePromptVersion(input: {
 }): PromptVersionContent {
   return {
     homeownerSystemPrompt: compileHomeownerPrompt(input.persona, input.scenario),
-    evaluatorSystemPrompt: compileEvaluatorPrompt(input.persona, input.scenario, input.categories, input.scenario.passingScore),
+    evaluatorSystemPrompt: compileEvaluatorPrompt(
+      input.persona,
+      input.scenario,
+      input.categories,
+      input.scenario.passingScore,
+    ),
     personaSnapshot: input.persona,
     scenarioSnapshot: input.scenario,
     provider: input.provider,
@@ -206,5 +239,7 @@ function stable(value: unknown): unknown {
 
 /** Content hash of a prompt version; an unchanged hash means no new version is needed. */
 export function promptContentHash(content: PromptVersionContent): string {
-  return createHash('sha256').update(JSON.stringify(stable(content))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(stable(content)))
+    .digest('hex');
 }

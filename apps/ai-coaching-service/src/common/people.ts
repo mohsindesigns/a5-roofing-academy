@@ -14,7 +14,12 @@ export class People {
   async refs(ids: ReadonlyArray<string | null | undefined>): Promise<Map<string, PersonRef>> {
     const wanted = [...new Set(ids.filter((id): id is string => Boolean(id)))];
     const users = await this.directory.getUsers(wanted);
-    return new Map(wanted.map((id) => [id, { id, displayName: users.get(id)?.displayName ?? 'Former team member' }]));
+    return new Map(
+      wanted.map((id) => [
+        id,
+        { id, displayName: users.get(id)?.displayName ?? 'Former team member' },
+      ]),
+    );
   }
 
   async ref(id: string | null | undefined): Promise<PersonRef | null> {
@@ -23,5 +28,7 @@ export class People {
   }
 }
 
-export const iso = (d: Date | string): string => (d instanceof Date ? d : new Date(d)).toISOString();
-export const isoOrNull = (d: Date | string | null | undefined): string | null => (d ? iso(d) : null);
+export const iso = (d: Date | string): string =>
+  (d instanceof Date ? d : new Date(d)).toISOString();
+export const isoOrNull = (d: Date | string | null | undefined): string | null =>
+  d ? iso(d) : null;

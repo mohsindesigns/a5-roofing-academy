@@ -30,7 +30,9 @@ export const evaluationOutputSchema = z.object({
     }),
   ),
   questionsToAsk: z.array(z.object({ question: z.string(), why: z.string() })),
-  riskyStatements: z.array(z.object({ turn: z.int(), quote: z.string(), issue: z.string(), saferAlternative: z.string() })),
+  riskyStatements: z.array(
+    z.object({ turn: z.int(), quote: z.string(), issue: z.string(), saferAlternative: z.string() }),
+  ),
   recommendedResponses: z.array(
     z.object({
       turn: z.int().nullable(),

@@ -19,7 +19,12 @@ export class SessionLifecycle {
   ) {}
 
   /** Call inside the transaction that holds the session row lock. */
-  async end(trx: Trx, session: SessionRow, reason: EndReason, at: Date = new Date()): Promise<SessionStatus> {
+  async end(
+    trx: Trx,
+    session: SessionRow,
+    reason: EndReason,
+    at: Date = new Date(),
+  ): Promise<SessionStatus> {
     const status: SessionStatus = session.turn_count > 0 ? 'ended' : 'abandoned';
     await trx
       .updateTable('ai_sessions')
@@ -37,9 +42,15 @@ export class SessionLifecycle {
           userId: session.user_id,
           endReason: reason,
           turnCount: session.turn_count,
-          durationSeconds: Math.max(0, Math.round((at.getTime() - new Date(session.started_at).getTime()) / 1000)),
+          durationSeconds: Math.max(
+            0,
+            Math.round((at.getTime() - new Date(session.started_at).getTime()) / 1000),
+          ),
         },
-        { subject: { type: 'ai_session', id: session.id }, organizationId: session.organization_id },
+        {
+          subject: { type: 'ai_session', id: session.id },
+          organizationId: session.organization_id,
+        },
       );
     }
     return status;
@@ -51,7 +62,10 @@ export class SessionLifecycle {
     try {
       await this.evaluation.enqueue(sessionId);
     } catch (err) {
-      this.logger.error({ err, sessionId }, 'could not queue AI evaluation; the maintenance sweep will retry');
+      this.logger.error(
+        { err, sessionId },
+        'could not queue AI evaluation; the maintenance sweep will retry',
+      );
     }
   }
 }

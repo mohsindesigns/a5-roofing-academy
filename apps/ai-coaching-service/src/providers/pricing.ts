@@ -28,7 +28,12 @@ export const DEFAULT_MODEL_PRICES: ModelPriceTable = {
   'claude-sonnet-5': { inputPerMTok: 2, outputPerMTok: 10 },
   'claude-sonnet-4-6': { inputPerMTok: 3, outputPerMTok: 15 },
   'claude-haiku-4-5': { inputPerMTok: 1, outputPerMTok: 5 },
-  'a5-dev-simulator-v1': { inputPerMTok: 0, outputPerMTok: 0, cacheReadPerMTok: 0, cacheWritePerMTok: 0 },
+  'a5-dev-simulator-v1': {
+    inputPerMTok: 0,
+    outputPerMTok: 0,
+    cacheReadPerMTok: 0,
+    cacheWritePerMTok: 0,
+  },
 };
 
 const priceSchema = z.object({
@@ -44,11 +49,15 @@ export function parsePriceTable(raw: string | undefined): ModelPriceTable {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error('Invalid configuration:\n  - AI_MODEL_PRICES: must be a JSON object of model id → prices');
+    throw new Error(
+      'Invalid configuration:\n  - AI_MODEL_PRICES: must be a JSON object of model id → prices',
+    );
   }
   const result = z.record(z.string(), priceSchema).safeParse(parsed);
   if (!result.success) {
-    throw new Error(`Invalid configuration:\n  - AI_MODEL_PRICES: ${result.error.issues[0]?.message ?? 'invalid'}`);
+    throw new Error(
+      `Invalid configuration:\n  - AI_MODEL_PRICES: ${result.error.issues[0]?.message ?? 'invalid'}`,
+    );
   }
   return { ...DEFAULT_MODEL_PRICES, ...result.data };
 }
@@ -62,7 +71,11 @@ export function priceFor(model: string, table: ModelPriceTable): ModelPrice | nu
   return base ? table[base]! : null;
 }
 
-export function estimateCostUsd(model: string, usage: TokenUsage, table: ModelPriceTable): { costUsd: number; priced: boolean } {
+export function estimateCostUsd(
+  model: string,
+  usage: TokenUsage,
+  table: ModelPriceTable,
+): { costUsd: number; priced: boolean } {
   const price = priceFor(model, table);
   if (!price) return { costUsd: 0, priced: false };
   const cacheRead = price.cacheReadPerMTok ?? price.inputPerMTok * 0.1;

@@ -20,9 +20,18 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-function usageFor(options: ProviderCallOptions, messages: readonly ChatMessage[], output: string): TokenUsage {
+function usageFor(
+  options: ProviderCallOptions,
+  messages: readonly ChatMessage[],
+  output: string,
+): TokenUsage {
   const input = options.system + messages.map((m) => m.content).join('\n');
-  return { inputTokens: estimateTokens(input), outputTokens: estimateTokens(output), cacheReadTokens: 0, cacheWriteTokens: 0 };
+  return {
+    inputTokens: estimateTokens(input),
+    outputTokens: estimateTokens(output),
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+  };
 }
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
@@ -31,7 +40,11 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
     const t = setTimeout(resolve, ms);
     signal?.addEventListener('abort', () => {
       clearTimeout(t);
-      reject(new ProviderError('dev_simulator', 'aborted', 'The request was cancelled.', undefined, { retryable: false }));
+      reject(
+        new ProviderError('dev_simulator', 'aborted', 'The request was cancelled.', undefined, {
+          retryable: false,
+        }),
+      );
     });
   });
 }
@@ -51,16 +64,27 @@ export class DevSimulatorProvider implements AIProvider {
   private reply(messages: ChatMessage[], options: ProviderCallOptions): string {
     const sim = options.simulation;
     if (sim?.kind !== 'conversation') {
-      throw new ProviderError('dev_simulator', 'bad_request', 'The development simulator needs the scenario context to play the homeowner.', undefined, {
-        retryable: false,
-      });
+      throw new ProviderError(
+        'dev_simulator',
+        'bad_request',
+        'The development simulator needs the scenario context to play the homeowner.',
+        undefined,
+        {
+          retryable: false,
+        },
+      );
     }
     return simulateHomeownerReply(sim.persona, sim.scenario, messages);
   }
 
   async complete(messages: ChatMessage[], options: ProviderCallOptions): Promise<CompletionResult> {
     const text = this.reply(messages, options);
-    return { text, usage: usageFor(options, messages, text), model: DEV_SIMULATOR_MODEL, stopReason: 'end_turn' };
+    return {
+      text,
+      usage: usageFor(options, messages, text),
+      model: DEV_SIMULATOR_MODEL,
+      stopReason: 'end_turn',
+    };
   }
 
   async *stream(messages: ChatMessage[], options: ProviderCallOptions): AsyncIterable<StreamChunk> {
@@ -70,15 +94,31 @@ export class DevSimulatorProvider implements AIProvider {
       await sleep(this.streamDelayMs, options.signal);
       yield { type: 'delta', text: part };
     }
-    yield { type: 'done', text, usage: usageFor(options, messages, text), model: DEV_SIMULATOR_MODEL, stopReason: 'end_turn' };
+    yield {
+      type: 'done',
+      text,
+      usage: usageFor(options, messages, text),
+      model: DEV_SIMULATOR_MODEL,
+      stopReason: 'end_turn',
+    };
   }
 
-  async structured<S extends z.ZodType>(schema: S, messages: ChatMessage[], options: StructuredCallOptions): Promise<StructuredResult<z.infer<S>>> {
+  async structured<S extends z.ZodType>(
+    schema: S,
+    messages: ChatMessage[],
+    options: StructuredCallOptions,
+  ): Promise<StructuredResult<z.infer<S>>> {
     const sim = options.simulation;
     if (sim?.kind !== 'evaluation') {
-      throw new ProviderError('dev_simulator', 'bad_request', `The development simulator cannot produce ${options.schemaName}.`, undefined, {
-        retryable: false,
-      });
+      throw new ProviderError(
+        'dev_simulator',
+        'bad_request',
+        `The development simulator cannot produce ${options.schemaName}.`,
+        undefined,
+        {
+          retryable: false,
+        },
+      );
     }
     const output = simulateEvaluation({
       persona: sim.persona,
@@ -89,11 +129,21 @@ export class DevSimulatorProvider implements AIProvider {
     });
     const parsed = schema.safeParse(output);
     if (!parsed.success) {
-      throw new ProviderError('dev_simulator', 'invalid_output', `Simulated output does not match ${options.schemaName}.`, undefined, {
-        cause: parsed.error,
-        retryable: false,
-      });
+      throw new ProviderError(
+        'dev_simulator',
+        'invalid_output',
+        `Simulated output does not match ${options.schemaName}.`,
+        undefined,
+        {
+          cause: parsed.error,
+          retryable: false,
+        },
+      );
     }
-    return { value: parsed.data, usage: usageFor(options, messages, JSON.stringify(output)), model: DEV_SIMULATOR_MODEL };
+    return {
+      value: parsed.data,
+      usage: usageFor(options, messages, JSON.stringify(output)),
+      model: DEV_SIMULATOR_MODEL,
+    };
   }
 }

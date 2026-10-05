@@ -53,7 +53,12 @@ export interface AiProviderSettings {
     evaluationModel: string;
     serverFallback: boolean;
   };
-  openai: { apiKey: string | null; baseUrl: string | undefined; conversationModel: string; evaluationModel: string };
+  openai: {
+    apiKey: string | null;
+    baseUrl: string | undefined;
+    conversationModel: string;
+    evaluationModel: string;
+  };
   defaultProvider: 'auto' | 'anthropic' | 'openai' | 'dev_simulator';
   devSimulatorEnabled: boolean;
   simulatorStreamDelayMs: number;

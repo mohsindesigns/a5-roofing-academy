@@ -33,7 +33,11 @@ export class PracticeController {
   @Get('scenarios')
   @RequirePermissions('ai_practice.use')
   @ZResponse(ai.practiceScenarioPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(ai.listPracticeScenariosQuerySchema) q: z.infer<typeof ai.listPracticeScenariosQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(ai.listPracticeScenariosQuerySchema)
+    q: z.infer<typeof ai.listPracticeScenariosQuerySchema>,
+  ) {
     return this.catalog.list(p, q);
   }
 
@@ -57,7 +61,10 @@ export class SessionsController {
   @Post()
   @RequirePermissions('ai_practice.use')
   @ZResponse(ai.sessionSchema)
-  start(@CurrentPrincipal() p: Principal, @ZBody(ai.startSessionRequestSchema) body: ai.StartSessionRequest) {
+  start(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(ai.startSessionRequestSchema) body: ai.StartSessionRequest,
+  ) {
     return this.sessions.start(p, body);
   }
 
@@ -77,7 +84,9 @@ export class SessionsController {
   @HttpCode(200)
   @RequireAnyPermission('ai_practice.use', 'ai_scenarios.update')
   @ApiProduces('text/event-stream', 'application/json')
-  @ApiOkResponse({ description: 'SSE stream (accepted, delta, done, error) or JSON (Accept: application/json)' })
+  @ApiOkResponse({
+    description: 'SSE stream (accepted, delta, done, error) or JSON (Accept: application/json)',
+  })
   async send(
     @Req() req: Request,
     @Res() res: Response,
@@ -85,12 +94,16 @@ export class SessionsController {
     @ZParam('id') id: string,
     @ZBody(ai.sendMessageRequestSchema) body: ai.SendMessageRequest,
   ): Promise<void> {
-    const turn = this.engine.handleTurn({ userId: p.userId, organizationId: p.organizationId }, id, {
-      text: body.text,
-      audio: body.audioRef ? { ref: body.audioRef } : undefined,
-      retry: body.retry,
-      clientMessageId: body.clientMessageId,
-    });
+    const turn = this.engine.handleTurn(
+      { userId: p.userId, organizationId: p.organizationId },
+      id,
+      {
+        text: body.text,
+        audio: body.audioRef ? { ref: body.audioRef } : undefined,
+        retry: body.retry,
+        clientMessageId: body.clientMessageId,
+      },
+    );
     // Validation, ownership and concurrency errors surface here, before any byte is written,
     // and are answered by the regular JSON error filter.
     const first = await turn.next();
@@ -163,7 +176,11 @@ export class SessionsController {
       // The turn runs to completion even if the client disconnects, so the reply is saved.
       for await (const event of turn) send(event);
     } catch {
-      write('error', { code: 'AI_TURN_FAILED', message: 'The homeowner simulator is unavailable. Your conversation is saved — retry.', retryable: true });
+      write('error', {
+        code: 'AI_TURN_FAILED',
+        message: 'The homeowner simulator is unavailable. Your conversation is saved — retry.',
+        retryable: true,
+      });
     } finally {
       clearInterval(heartbeat);
       if (open()) res.end();
@@ -194,7 +211,10 @@ export class MySessionsController {
   @Get('sessions')
   @RequirePermissions('ai_practice.use')
   @ZResponse(ai.sessionPageSchema)
-  history(@CurrentPrincipal() p: Principal, @ZQuery(ai.mySessionsQuerySchema) q: z.infer<typeof ai.mySessionsQuerySchema>) {
+  history(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(ai.mySessionsQuerySchema) q: z.infer<typeof ai.mySessionsQuerySchema>,
+  ) {
     return this.sessions.history(p, q);
   }
 }

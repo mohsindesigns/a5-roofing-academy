@@ -8,8 +8,10 @@ export type ProviderName = 'anthropic' | 'openai' | 'dev_simulator';
 export type ProviderPreference = 'auto' | ProviderName;
 export type ScenarioStatus = 'draft' | 'published' | 'archived';
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced' | 'expert';
-export type SessionStatus = 'active' | 'ended' | 'evaluating' | 'evaluated' | 'evaluation_failed' | 'abandoned';
-export type EndReason = 'rep_ended' | 'objective_reached' | 'homeowner_ended' | 'max_turns' | 'timeout';
+export type SessionStatus =
+  'active' | 'ended' | 'evaluating' | 'evaluated' | 'evaluation_failed' | 'abandoned';
+export type EndReason =
+  'rep_ended' | 'objective_reached' | 'homeowner_ended' | 'max_turns' | 'timeout';
 export type Modality = 'text' | 'voice';
 export type MessageRole = 'homeowner' | 'rep';
 export type UsagePurpose = 'conversation' | 'evaluation';
@@ -214,10 +216,16 @@ export interface AiEvaluationsTable {
   passing_score: number;
   category_scores: Json<CategoryScoreRecord[]>;
   strengths: Json<Array<{ point: string; evidence: EvidenceRecord[] }>>;
-  missed_opportunities: Json<Array<{ point: string; seq: number | null; quote: string | null; betterApproach: string }>>;
+  missed_opportunities: Json<
+    Array<{ point: string; seq: number | null; quote: string | null; betterApproach: string }>
+  >;
   questions_to_ask: Json<Array<{ question: string; why: string }>>;
-  risky_statements: Json<Array<{ seq: number; quote: string; issue: string; saferAlternative: string }>>;
-  recommended_responses: Json<Array<{ seq: number | null; repSaid: string | null; betterResponse: string; why: string }>>;
+  risky_statements: Json<
+    Array<{ seq: number; quote: string; issue: string; saferAlternative: string }>
+  >;
+  recommended_responses: Json<
+    Array<{ seq: number | null; repSaid: string | null; betterResponse: string; why: string }>
+  >;
   next_goal: string;
   summary: string;
   provider: ProviderName;

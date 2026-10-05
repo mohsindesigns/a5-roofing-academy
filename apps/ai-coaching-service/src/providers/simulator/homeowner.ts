@@ -3,6 +3,7 @@ import type { ChatMessage, PersonaSnapshot, ScenarioSnapshot } from '../types.js
 import {
   PATTERNS,
   affirmedMatches,
+  forbiddenClaimSentences,
   hash,
   isDiscoveryQuestion,
   normalize,
@@ -25,24 +26,51 @@ interface Voice {
 function voiceOf(persona: PersonaSnapshot): Voice {
   const t = normalize(`${persona.name} ${persona.temperament} ${persona.traits.join(' ')}`);
   if (/(busy|impatient|rushed|short on time|hurried)/.test(t)) {
-    return { prefix: ['Look, ', '', 'Listen, '], agreeClosing: ['Just keep it quick.', "Text me before you come, I'm usually running behind."] };
+    return {
+      prefix: ['Look, ', '', 'Listen, '],
+      agreeClosing: ['Just keep it quick.', "Text me before you come, I'm usually running behind."],
+    };
   }
   if (/(burned|distrust|suspicious|guarded)/.test(t)) {
-    return { prefix: ['', 'Mm. ', 'See, '], agreeClosing: ["But I'm not signing anything that day.", 'And I want everything in writing.'] };
+    return {
+      prefix: ['', 'Mm. ', 'See, '],
+      agreeClosing: ["But I'm not signing anything that day.", 'And I want everything in writing.'],
+    };
   }
   if (/(skeptic|doubt)/.test(t)) {
-    return { prefix: ['', 'Mm-hm. ', 'Okay, but '], agreeClosing: ["I'll want to see the photos myself.", "Don't make me regret it."] };
+    return {
+      prefix: ['', 'Mm-hm. ', 'Okay, but '],
+      agreeClosing: ["I'll want to see the photos myself.", "Don't make me regret it."],
+    };
   }
   if (/(price|budget|frugal|cost)/.test(t)) {
-    return { prefix: ['', 'Well, ', 'See, '], agreeClosing: ['As long as it costs me nothing to look.', 'I still want to compare numbers, though.'] };
+    return {
+      prefix: ['', 'Well, ', 'See, '],
+      agreeClosing: [
+        'As long as it costs me nothing to look.',
+        'I still want to compare numbers, though.',
+      ],
+    };
   }
   if (/(difficult|irritable|confrontational|blunt)/.test(t)) {
-    return { prefix: ['', 'Yeah, ', 'Listen, '], agreeClosing: ['Be on time.', "And if you're late, don't bother."] };
+    return {
+      prefix: ['', 'Yeah, ', 'Listen, '],
+      agreeClosing: ['Be on time.', "And if you're late, don't bother."],
+    };
   }
   if (/(informed|research|analytical|detail)/.test(t)) {
-    return { prefix: ['', 'Right, but ', 'Okay. '], agreeClosing: ['Bring the measurements and photos with you.', "I'll have my policy pulled up."] };
+    return {
+      prefix: ['', 'Right, but ', 'Okay. '],
+      agreeClosing: [
+        'Bring the measurements and photos with you.',
+        "I'll have my policy pulled up.",
+      ],
+    };
   }
-  return { prefix: ['', 'Oh, ', 'Well, '], agreeClosing: ['Thanks for actually listening.', 'I appreciate you not being pushy about it.'] };
+  return {
+    prefix: ['', 'Oh, ', 'Well, '],
+    agreeClosing: ['Thanks for actually listening.', 'I appreciate you not being pushy about it.'],
+  };
 }
 
 function lowerFirst(s: string): string {
@@ -82,8 +110,15 @@ function concernText(scenario: ScenarioSnapshot): string {
  * marker when the rep proposes a clear next step after addressing the concern (or after repeated
  * pressure).
  */
-export function simulateHomeownerReply(persona: PersonaSnapshot, scenario: ScenarioSnapshot, messages: readonly ChatMessage[]): string {
-  const turns = messages[0]?.role === 'user' && messages[0].content === SCENE_CUE ? messages.slice(1) : [...messages];
+export function simulateHomeownerReply(
+  persona: PersonaSnapshot,
+  scenario: ScenarioSnapshot,
+  messages: readonly ChatMessage[],
+): string {
+  const turns =
+    messages[0]?.role === 'user' && messages[0].content === SCENE_CUE
+      ? messages.slice(1)
+      : [...messages];
   // Consecutive trailing rep messages (e.g. resent after an error) are answered together.
   let tail = turns.length;
   while (tail > 0 && turns[tail - 1]!.role === 'user') tail--;
@@ -102,25 +137,42 @@ export function simulateHomeownerReply(persona: PersonaSnapshot, scenario: Scena
 
   if (!latest) return `${prefix}${scenario.objection}`;
 
-  const concernRevealed = homeownerLines.some((line) => overlap(line, scenario.hiddenConcern).ratio >= 0.35);
-  const revealIndex = homeownerLines.findIndex((line) => overlap(line, scenario.hiddenConcern).ratio >= 0.35);
+  const concernRevealed = homeownerLines.some(
+    (line) => overlap(line, scenario.hiddenConcern).ratio >= 0.35,
+  );
+  const revealIndex = homeownerLines.findIndex(
+    (line) => overlap(line, scenario.hiddenConcern).ratio >= 0.35,
+  );
   const latestQuestions = questions(latest);
   const isolationQuestion = latestQuestions.some((q) => PATTERNS.isolation.test(normalize(q)));
   const latestDiscovery = latestQuestions.some(isDiscoveryQuestion) || isolationQuestion;
-  const forbidden = affirmedMatches(latest, PATTERNS.forbidden);
+  const forbidden = forbiddenClaimSentences(latest);
   const pressure = affirmedMatches(latest, PATTERNS.pressure);
   const earlierPushes = earlierRep.reduce(
-    (n, line) => n + affirmedMatches(line, PATTERNS.forbidden).length + affirmedMatches(line, PATTERNS.pressure).length,
+    (n, line) =>
+      n + forbiddenClaimSentences(line).length + affirmedMatches(line, PATTERNS.pressure).length,
     0,
   );
   const empathy = PATTERNS.empathy.test(latestNorm);
-  const nextStepAsk =
-    PATTERNS.nextStep.test(latestNorm) && (latest.includes('?') || /\b(let me|i can|i could|we can|we could|how about|why don't|i'd like to)\b/.test(latestNorm));
-  const earlierNextStepAsks = earlierRep.filter((l) => PATTERNS.nextStep.test(normalize(l)) && l.includes('?')).length;
+  const isNextStepAsk = (text: string) => {
+    const n = normalize(text);
+    return (
+      (PATTERNS.nextStep.test(n) &&
+        (text.includes('?') ||
+          /\b(let me|i can|i could|we can|we could|how about|why don't|i'd like to)\b/.test(n))) ||
+      (PATTERNS.specificTime.test(n) &&
+        text.includes('?') &&
+        /\b(work|works|suit|suits|available|good for you)\b/.test(n))
+    );
+  };
+  const nextStepAsk = isNextStepAsk(latest);
+  const earlierNextStepAsks = earlierRep.filter((l) => isNextStepAsk(l) && l.includes('?')).length;
   const repAfterReveal = revealIndex >= 0 ? [...earlierRep.slice(revealIndex), latest] : [];
   const concernAddressed =
     concernRevealed &&
-    repAfterReveal.some((l) => PATTERNS.empathy.test(normalize(l)) || overlap(l, scenario.hiddenConcern).hits >= 2);
+    repAfterReveal.some(
+      (l) => PATTERNS.empathy.test(normalize(l)) || overlap(l, scenario.hiddenConcern).hits >= 2,
+    );
 
   // 1. Never break character, even when asked directly.
   if (PATTERNS.aiProbe.test(latestNorm)) {
@@ -139,7 +191,8 @@ export function simulateHomeownerReply(persona: PersonaSnapshot, scenario: Scena
     const pushback = forbidden.length
       ? "Hold on. Nobody can promise that before anyone has even looked at it, and that's exactly the kind of thing that makes me nervous."
       : "I'm not making any decisions on the spot, and pushing me isn't going to help.";
-    if (earlierPushes >= 1) return `${pushback} I think we're done here. Have a good day. ${END_MARKERS.homeowner_ended}`;
+    if (earlierPushes >= 1)
+      return `${pushback} I think we're done here. Have a good day. ${END_MARKERS.homeowner_ended}`;
     return pushback;
   }
 
@@ -147,7 +200,9 @@ export function simulateHomeownerReply(persona: PersonaSnapshot, scenario: Scena
   if (nextStepAsk && !(latestDiscovery && !concernRevealed)) {
     if (concernRevealed && (concernAddressed || scenario.difficulty === 'beginner')) {
       const time = proposedTime(latest);
-      const agree = time ? `Okay. ${upperFirst(time)} works for me.` : "Okay, that's fair. Let's set it up.";
+      const agree = time
+        ? `Okay. ${upperFirst(time)} works for me.`
+        : "Okay, that's fair. Let's set it up.";
       return `${agree} ${pick(voice.agreeClosing, seed)} ${END_MARKERS.objective_reached}`;
     }
     if (earlierNextStepAsks >= 2) {
@@ -178,7 +233,14 @@ export function simulateHomeownerReply(persona: PersonaSnapshot, scenario: Scena
   // 6. Empathy warms the homeowner up.
   if (empathy) {
     if (concernRevealed) {
-      return pick(["I appreciate that. So what are you suggesting?", "Thank you. So what would the next step even look like?", "Okay. I appreciate you hearing me out."], seed);
+      return pick(
+        [
+          'I appreciate that. So what are you suggesting?',
+          'Thank you. So what would the next step even look like?',
+          'Okay. I appreciate you hearing me out.',
+        ],
+        seed,
+      );
     }
     return `I appreciate that. ${prefix ? upperFirst(prefix.trim().replace(/,$/, '')) + ', ' : ''}${prefix ? lowerFirst(scenario.objection) : scenario.objection}`;
   }

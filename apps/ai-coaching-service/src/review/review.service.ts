@@ -43,7 +43,10 @@ export class ReviewService {
   ) {}
 
   private scope(p: Principal, permission: PermissionKey) {
-    return userScopeCondition(p.scopeFilter(permission), { userColumn: 's.user_id', orgColumn: 's.organization_id' });
+    return userScopeCondition(p.scopeFilter(permission), {
+      userColumn: 's.user_id',
+      orgColumn: 's.organization_id',
+    });
   }
 
   async list(p: Principal, q: ReviewListQuery): Promise<Page<ai.ReviewSessionSummary>> {
@@ -67,8 +70,12 @@ export class ReviewService {
         'pv.scenario_snapshot',
         'e.overall_score',
         'e.passed',
-        sql<number>`(select count(*)::int from ai_session_reviews r where r.session_id = s.id)`.as('review_count'),
-        sql<Date | null>`(select max(r.created_at) from ai_session_reviews r where r.session_id = s.id)`.as('last_reviewed_at'),
+        sql<number>`(select count(*)::int from ai_session_reviews r where r.session_id = s.id)`.as(
+          'review_count',
+        ),
+        sql<Date | null>`(select max(r.created_at) from ai_session_reviews r where r.session_id = s.id)`.as(
+          'last_reviewed_at',
+        ),
       ])
       .where('s.organization_id', '=', p.organizationId)
       .where(this.scope(p, 'ai_sessions.view'));
@@ -76,13 +83,27 @@ export class ReviewService {
     if (q.userId) query = query.where('s.user_id', '=', q.userId);
     if (q.scenarioId) query = query.where('s.scenario_id', '=', q.scenarioId);
     if (q.status) query = query.where('s.status', '=', q.status);
-    if (q.teamId) query = query.where(sql<boolean>`s.user_id in (select user_id from dir_user_teams where team_id = ${q.teamId})`);
+    if (q.teamId)
+      query = query.where(
+        sql<boolean>`s.user_id in (select user_id from dir_user_teams where team_id = ${q.teamId})`,
+      );
     if (q.minScore !== undefined) query = query.where('e.overall_score', '>=', q.minScore);
     if (q.maxScore !== undefined) query = query.where('e.overall_score', '<=', q.maxScore);
     if (q.from) query = query.where('s.started_at', '>=', new Date(`${q.from}T00:00:00Z`));
-    if (q.to) query = query.where('s.started_at', '<', new Date(Date.parse(`${q.to}T00:00:00Z`) + 86_400_000));
-    if (q.reviewed === true) query = query.where(sql<boolean>`exists (select 1 from ai_session_reviews r where r.session_id = s.id)`);
-    if (q.reviewed === false) query = query.where(sql<boolean>`not exists (select 1 from ai_session_reviews r where r.session_id = s.id)`);
+    if (q.to)
+      query = query.where(
+        's.started_at',
+        '<',
+        new Date(Date.parse(`${q.to}T00:00:00Z`) + 86_400_000),
+      );
+    if (q.reviewed === true)
+      query = query.where(
+        sql<boolean>`exists (select 1 from ai_session_reviews r where r.session_id = s.id)`,
+      );
+    if (q.reviewed === false)
+      query = query.where(
+        sql<boolean>`not exists (select 1 from ai_session_reviews r where r.session_id = s.id)`,
+      );
     if (q.q) {
       const pattern = `%${q.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
       query = query.where(
@@ -116,29 +137,61 @@ export class ReviewService {
 
   async detail(p: Principal, id: string): Promise<ai.ReviewSessionDetail> {
     const row = await this.inScope(p, id, 'ai_sessions.view');
-    const [session, learner] = await Promise.all([this.view.build(row), this.people.ref(row.user_id)]);
-    return { ...session, learner: learner ?? { id: row.user_id, displayName: 'Former team member' } };
+    const [session, learner] = await Promise.all([
+      this.view.build(row),
+      this.people.ref(row.user_id),
+    ]);
+    return {
+      ...session,
+      learner: learner ?? { id: row.user_id, displayName: 'Former team member' },
+    };
   }
 
   /** Coaching feedback from a trainer or manager in scope. Emits ai.session.reviewed. */
-  async addReview(p: Principal, id: string, input: ai.CreateReviewRequest): Promise<ai.ReviewSessionDetail> {
+  async addReview(
+    p: Principal,
+    id: string,
+    input: ai.CreateReviewRequest,
+  ): Promise<ai.ReviewSessionDetail> {
     const row = await this.inScope(p, id, 'ai_sessions.review');
-    const pv = await this.db.selectFrom('ai_prompt_versions').select('scenario_snapshot').where('id', '=', row.prompt_version_id).executeTakeFirstOrThrow();
+    const pv = await this.db
+      .selectFrom('ai_prompt_versions')
+      .select('scenario_snapshot')
+      .where('id', '=', row.prompt_version_id)
+      .executeTakeFirstOrThrow();
     const reviewId = uuidv7();
     await this.db.transaction().execute(async (trx) => {
       await trx
         .insertInto('ai_session_reviews')
-        .values({ id: reviewId, session_id: id, organization_id: p.organizationId, reviewer_id: p.userId, comment: input.comment, recommendation: input.recommendation })
+        .values({
+          id: reviewId,
+          session_id: id,
+          organization_id: p.organizationId,
+          reviewer_id: p.userId,
+          comment: input.comment,
+          recommendation: input.recommendation,
+        })
         .execute();
       await this.events.emit(
         trx,
         aiEvents.sessionReviewed,
-        { sessionId: id, scenarioTitle: readScenarioSnapshot(pv.scenario_snapshot).title, userId: row.user_id, reviewerId: p.userId },
+        {
+          sessionId: id,
+          scenarioTitle: readScenarioSnapshot(pv.scenario_snapshot).title,
+          userId: row.user_id,
+          reviewerId: p.userId,
+        },
         { subject: { type: 'ai_session', id }, organizationId: p.organizationId },
       );
       await this.events.audit(
         trx,
-        { action: 'ai.session.reviewed', resourceType: 'ai_session', resourceId: id, actorDisplay: p.displayName, after: { reviewId, recommendation: input.recommendation } },
+        {
+          action: 'ai.session.reviewed',
+          resourceType: 'ai_session',
+          resourceId: id,
+          actorDisplay: p.displayName,
+          after: { reviewId, recommendation: input.recommendation },
+        },
         { organizationId: p.organizationId },
       );
     });

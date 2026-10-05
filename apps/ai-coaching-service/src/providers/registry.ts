@@ -5,7 +5,11 @@ import { AI_CONFIG, type AiConfig } from '../config.js';
 import type { ProviderPreference } from '../database/schema.js';
 import { ClaudeProvider } from './claude.provider.js';
 import { OpenAIProvider } from './openai.provider.js';
-import { DEV_SIMULATOR_LABEL, DEV_SIMULATOR_MODEL, DevSimulatorProvider } from './simulator/simulator.provider.js';
+import {
+  DEV_SIMULATOR_LABEL,
+  DEV_SIMULATOR_MODEL,
+  DevSimulatorProvider,
+} from './simulator/simulator.provider.js';
 import type { AIProvider, ProviderName } from './types.js';
 
 export type Purpose = 'conversation' | 'evaluation';
@@ -44,7 +48,11 @@ export interface ResolveInput {
   provider: ProviderName | null;
   /** Purpose-specific model of the scenario (null = organization default). */
   model: string | null;
-  settings: { defaultProvider: ProviderPreference; conversationModel: string | null; evaluationModel: string | null };
+  settings: {
+    defaultProvider: ProviderPreference;
+    conversationModel: string | null;
+    evaluationModel: string | null;
+  };
 }
 
 export interface Resolved {
@@ -69,9 +77,20 @@ export class ProviderRegistry {
   ) {
     const p = config.ai.providers;
     if (p.anthropic.apiKey) {
-      this.providers.set('anthropic', new ClaudeProvider({ apiKey: p.anthropic.apiKey, baseUrl: p.anthropic.baseUrl, serverFallback: p.anthropic.serverFallback }));
+      this.providers.set(
+        'anthropic',
+        new ClaudeProvider({
+          apiKey: p.anthropic.apiKey,
+          baseUrl: p.anthropic.baseUrl,
+          serverFallback: p.anthropic.serverFallback,
+        }),
+      );
     }
-    if (p.openai.apiKey) this.providers.set('openai', new OpenAIProvider({ apiKey: p.openai.apiKey, baseUrl: p.openai.baseUrl }));
+    if (p.openai.apiKey)
+      this.providers.set(
+        'openai',
+        new OpenAIProvider({ apiKey: p.openai.apiKey, baseUrl: p.openai.baseUrl }),
+      );
     if (p.devSimulatorEnabled) this.providers.set('dev_simulator', simulator);
   }
 
@@ -98,16 +117,23 @@ export class ProviderRegistry {
 
   defaultModel(name: ProviderName, purpose: Purpose): string {
     const p = this.config.ai.providers;
-    if (name === 'anthropic') return purpose === 'conversation' ? p.anthropic.conversationModel : p.anthropic.evaluationModel;
-    if (name === 'openai') return purpose === 'conversation' ? p.openai.conversationModel : p.openai.evaluationModel;
+    if (name === 'anthropic')
+      return purpose === 'conversation'
+        ? p.anthropic.conversationModel
+        : p.anthropic.evaluationModel;
+    if (name === 'openai')
+      return purpose === 'conversation' ? p.openai.conversationModel : p.openai.evaluationModel;
     return DEV_SIMULATOR_MODEL;
   }
 
   resolve(purpose: Purpose, input: ResolveInput): Resolved {
-    const preference: ProviderPreference = input.provider ?? input.settings.defaultProvider ?? this.config.ai.providers.defaultProvider;
+    const preference: ProviderPreference =
+      input.provider ?? input.settings.defaultProvider ?? this.config.ai.providers.defaultProvider;
     const firstAvailable = this.available()[0];
     if (!firstAvailable) {
-      throw new ServiceUnavailableError('No AI provider is configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY for this service.');
+      throw new ServiceUnavailableError(
+        'No AI provider is configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY for this service.',
+      );
     }
     let name: ProviderName;
     let fellBack = false;
@@ -116,10 +142,18 @@ export class ProviderRegistry {
     else {
       name = firstAvailable;
       fellBack = true;
-      this.logger.warn({ preferred: preference, using: name, purpose }, 'preferred AI provider is not configured; falling back');
+      this.logger.warn(
+        { preferred: preference, using: name, purpose },
+        'preferred AI provider is not configured; falling back',
+      );
     }
-    const orgModel = purpose === 'conversation' ? input.settings.conversationModel : input.settings.evaluationModel;
-    const model = [input.model, orgModel].find((m) => m && providerForModel(m) === name) ?? this.defaultModel(name, purpose);
+    const orgModel =
+      purpose === 'conversation'
+        ? input.settings.conversationModel
+        : input.settings.evaluationModel;
+    const model =
+      [input.model, orgModel].find((m) => m && providerForModel(m) === name) ??
+      this.defaultModel(name, purpose);
     return { provider: this.get(name), model, fellBack };
   }
 

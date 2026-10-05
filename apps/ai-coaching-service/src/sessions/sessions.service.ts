@@ -4,7 +4,14 @@ import type { ai } from '@a5/contracts';
 import { paginate, sql, type Page } from '@a5/database';
 import { aiEvents } from '@a5/events';
 import { DistributedLock } from '@a5/messaging';
-import { AppError, ConflictError, EventBus, InjectDb, NotFoundError, PreconditionError } from '@a5/nest-kit';
+import {
+  AppError,
+  ConflictError,
+  EventBus,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+} from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import { AI_CONFIG, type AiConfig } from '../config.js';
 import { iso, isoOrNull } from '../common/people.js';
@@ -25,9 +32,18 @@ export interface StartInput {
 
 /** Seconds until the next local midnight in a time zone. */
 function secondsUntilMidnight(timezone: string, now = new Date()): number {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(now);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(now);
   const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0) % 24;
-  const elapsed = get('hour') * 3600 + Number(parts.find((p) => p.type === 'minute')?.value ?? 0) * 60 + Number(parts.find((p) => p.type === 'second')?.value ?? 0);
+  const elapsed =
+    get('hour') * 3600 +
+    Number(parts.find((p) => p.type === 'minute')?.value ?? 0) * 60 +
+    Number(parts.find((p) => p.type === 'second')?.value ?? 0);
   return Math.max(60, 86_400 - elapsed);
 }
 
@@ -47,7 +63,11 @@ export class SessionsService {
   ) {}
 
   /** Verify a lesson grant from learning-service for this learner and scenario. */
-  private async verifyGrant(p: Principal, token: string, scenarioId: string): Promise<SessionContextRecord> {
+  private async verifyGrant(
+    p: Principal,
+    token: string,
+    scenarioId: string,
+  ): Promise<SessionContextRecord> {
     let grant;
     try {
       grant = await verifyLessonGrant(token, this.config.ai.lessonGrantSecret);
@@ -56,18 +76,37 @@ export class SessionsService {
         throw new AppError(
           403,
           'GRANT_INVALID',
-          err.code === 'expired' ? 'This lesson link has expired. Reopen the lesson to start the practice session.' : 'This lesson link is not valid. Reopen the lesson to start the practice session.',
+          err.code === 'expired'
+            ? 'This lesson link has expired. Reopen the lesson to start the practice session.'
+            : 'This lesson link is not valid. Reopen the lesson to start the practice session.',
         );
       }
       throw err;
     }
-    if (grant.userId !== p.userId || grant.organizationId !== p.organizationId || grant.resource.type !== 'ai_scenario' || grant.resource.id !== scenarioId) {
-      throw new AppError(403, 'GRANT_MISMATCH', 'This lesson link is for a different practice scenario or learner. Reopen the lesson and try again.');
+    if (
+      grant.userId !== p.userId ||
+      grant.organizationId !== p.organizationId ||
+      grant.resource.type !== 'ai_scenario' ||
+      grant.resource.id !== scenarioId
+    ) {
+      throw new AppError(
+        403,
+        'GRANT_MISMATCH',
+        'This lesson link is for a different practice scenario or learner. Reopen the lesson and try again.',
+      );
     }
-    return { programId: grant.programId, enrollmentId: grant.enrollmentId, lessonId: grant.lessonId };
+    return {
+      programId: grant.programId,
+      enrollmentId: grant.enrollmentId,
+      lessonId: grant.lessonId,
+    };
   }
 
-  private async assertDailyLimit(p: Principal, limit: number | null, timezone: string): Promise<void> {
+  private async assertDailyLimit(
+    p: Principal,
+    limit: number | null,
+    timezone: string,
+  ): Promise<void> {
     if (!limit) return;
     const { n } = await this.db
       .selectFrom('ai_sessions')
@@ -75,39 +114,73 @@ export class SessionsService {
       .where('user_id', '=', p.userId)
       .where('organization_id', '=', p.organizationId)
       .where('is_test', '=', false)
-      .where('started_at', '>=', sql<Date>`date_trunc('day', now() at time zone ${timezone}) at time zone ${timezone}`)
+      .where(
+        'started_at',
+        '>=',
+        sql<Date>`date_trunc('day', now() at time zone ${timezone}) at time zone ${timezone}`,
+      )
       .executeTakeFirstOrThrow();
     if (Number(n) >= limit) {
       const retryAfter = secondsUntilMidnight(timezone);
-      throw new AppError(429, 'DAILY_SESSION_LIMIT', `You've reached today's limit of ${limit} practice sessions. Your limit resets at midnight.`, {
-        limit,
-        retryAfterSeconds: retryAfter,
-      });
+      throw new AppError(
+        429,
+        'DAILY_SESSION_LIMIT',
+        `You've reached today's limit of ${limit} practice sessions. Your limit resets at midnight.`,
+        {
+          limit,
+          retryAfterSeconds: retryAfter,
+        },
+      );
     }
   }
 
   /** Start a practice (or lesson-assigned) session; returns it with the homeowner's opening line. */
-  async start(p: Principal, input: StartInput, options: { test?: boolean } = {}): Promise<ai.Session> {
+  async start(
+    p: Principal,
+    input: StartInput,
+    options: { test?: boolean } = {},
+  ): Promise<ai.Session> {
     const scenario = await this.db
       .selectFrom('ai_scenarios')
       .select(['id', 'status', 'current_prompt_version_id'])
       .where('id', '=', input.scenarioId)
       .where('organization_id', '=', p.organizationId)
       .executeTakeFirst();
-    const startable = scenario && scenario.current_prompt_version_id && (options.test ? scenario.status !== 'archived' : scenario.status === 'published');
+    const startable =
+      scenario &&
+      scenario.current_prompt_version_id &&
+      (options.test ? scenario.status !== 'archived' : scenario.status === 'published');
     if (!startable) throw new NotFoundError('Scenario');
-    if (options.test && input.lessonGrant) throw new PreconditionError('TEST_SESSION_GRANT', 'Test runs cannot be attached to a lesson.');
-    const context = input.lessonGrant ? await this.verifyGrant(p, input.lessonGrant, scenario.id) : {};
+    if (options.test && input.lessonGrant)
+      throw new PreconditionError(
+        'TEST_SESSION_GRANT',
+        'Test runs cannot be attached to a lesson.',
+      );
+    const context = input.lessonGrant
+      ? await this.verifyGrant(p, input.lessonGrant, scenario.id)
+      : {};
     if (input.modality === 'voice' && !this.engine.voiceAvailable) {
-      throw new PreconditionError('VOICE_NOT_AVAILABLE', 'Voice practice is not available yet. Start a text session instead.');
+      throw new PreconditionError(
+        'VOICE_NOT_AVAILABLE',
+        'Voice practice is not available yet. Start a text session instead.',
+      );
     }
     const settings = await this.settings.get(p.organizationId);
-    const pv = await this.db.selectFrom('ai_prompt_versions').selectAll().where('id', '=', scenario.current_prompt_version_id!).executeTakeFirstOrThrow();
+    const pv = await this.db
+      .selectFrom('ai_prompt_versions')
+      .selectAll()
+      .where('id', '=', scenario.current_prompt_version_id!)
+      .executeTakeFirstOrThrow();
     const snapshot = readScenarioSnapshot(pv.scenario_snapshot);
-    const { provider, model } = this.registry.resolve('conversation', { provider: pv.provider, model: pv.model, settings });
+    const { provider, model } = this.registry.resolve('conversation', {
+      provider: pv.provider,
+      model: pv.model,
+      settings,
+    });
 
     const create = async (): Promise<SessionRow> => {
-      if (!options.test) await this.assertDailyLimit(p, settings.maxSessionsPerLearnerPerDay, settings.timezone);
+      if (!options.test)
+        await this.assertDailyLimit(p, settings.maxSessionsPerLearnerPerDay, settings.timezone);
       const id = uuidv7();
       const now = new Date();
       return this.db.transaction().execute(async (trx) => {
@@ -161,7 +234,13 @@ export class SessionsService {
           await this.events.emit(
             trx,
             aiEvents.sessionStarted,
-            { sessionId: id, scenarioId: scenario.id, userId: p.userId, mode: input.lessonGrant ? 'assigned' : 'practice', context },
+            {
+              sessionId: id,
+              scenarioId: scenario.id,
+              userId: p.userId,
+              mode: input.lessonGrant ? 'assigned' : 'practice',
+              context,
+            },
             { subject: { type: 'ai_session', id }, organizationId: p.organizationId },
           );
         }
@@ -169,7 +248,9 @@ export class SessionsService {
       });
     };
     // Serialise starts per learner so concurrent requests cannot exceed the daily limit.
-    const row = options.test ? await create() : await this.lock.withLock(`ai:start:${p.userId}`, 10_000, create, { waitMs: 5_000 });
+    const row = options.test
+      ? await create()
+      : await this.lock.withLock(`ai:start:${p.userId}`, 10_000, create, { waitMs: 5_000 });
     return this.view.build(row);
   }
 
@@ -190,30 +271,51 @@ export class SessionsService {
     return this.view.build(await this.ownSession(p, id));
   }
 
-  async status(id: string): Promise<{ status: SessionStatus; turnCount: number; turnsRemaining: number }> {
-    const s = await this.db.selectFrom('ai_sessions').select(['status', 'turn_count', 'max_turns']).where('id', '=', id).executeTakeFirstOrThrow();
-    return { status: s.status, turnCount: s.turn_count, turnsRemaining: s.status === 'active' ? Math.max(0, s.max_turns - s.turn_count) : 0 };
+  async status(
+    id: string,
+  ): Promise<{ status: SessionStatus; turnCount: number; turnsRemaining: number }> {
+    const s = await this.db
+      .selectFrom('ai_sessions')
+      .select(['status', 'turn_count', 'max_turns'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    return {
+      status: s.status,
+      turnCount: s.turn_count,
+      turnsRemaining: s.status === 'active' ? Math.max(0, s.max_turns - s.turn_count) : 0,
+    };
   }
 
   /** The representative ends the conversation; scoring is queued when they said anything. */
   async end(p: Principal, id: string): Promise<ai.Session> {
     await this.ownSession(p, id);
-    const status = await this.lock.withLock(
-      ConversationEngine.lockName(id),
-      15_000,
-      () =>
-        this.db.transaction().execute(async (trx) => {
-          const locked = await trx.selectFrom('ai_sessions').selectAll().where('id', '=', id).forUpdate().executeTakeFirstOrThrow();
-          if (locked.status !== 'active') throw new ConflictError('SESSION_ENDED', 'This conversation has already ended.');
-          return this.lifecycle.end(trx, locked, 'rep_ended');
-        }),
-      { waitMs: 3_000 },
-    ).catch((err: unknown) => {
-      if ((err as Error).name === 'LockNotAcquiredError') {
-        throw new ConflictError('TURN_IN_PROGRESS', 'The homeowner is still answering. End the session once the reply arrives.');
-      }
-      throw err;
-    });
+    const status = await this.lock
+      .withLock(
+        ConversationEngine.lockName(id),
+        15_000,
+        () =>
+          this.db.transaction().execute(async (trx) => {
+            const locked = await trx
+              .selectFrom('ai_sessions')
+              .selectAll()
+              .where('id', '=', id)
+              .forUpdate()
+              .executeTakeFirstOrThrow();
+            if (locked.status !== 'active')
+              throw new ConflictError('SESSION_ENDED', 'This conversation has already ended.');
+            return this.lifecycle.end(trx, locked, 'rep_ended');
+          }),
+        { waitMs: 3_000 },
+      )
+      .catch((err: unknown) => {
+        if ((err as Error).name === 'LockNotAcquiredError') {
+          throw new ConflictError(
+            'TURN_IN_PROGRESS',
+            'The homeowner is still answering. End the session once the reply arrives.',
+          );
+        }
+        throw err;
+      });
     await this.lifecycle.afterCommit(id, status);
     return this.get(p, id);
   }
@@ -222,7 +324,12 @@ export class SessionsService {
   async retryEvaluation(p: Principal, id: string): Promise<ai.Session> {
     const session = await this.ownSession(p, id);
     if (session.status !== 'evaluation_failed') {
-      throw new ConflictError('EVALUATION_NOT_FAILED', session.status === 'evaluated' ? 'This session is already scored.' : 'Scoring is not in a failed state, so there is nothing to retry.');
+      throw new ConflictError(
+        'EVALUATION_NOT_FAILED',
+        session.status === 'evaluated'
+          ? 'This session is already scored.'
+          : 'Scoring is not in a failed state, so there is nothing to retry.',
+      );
     }
     await this.db
       .updateTable('ai_sessions')
@@ -235,7 +342,10 @@ export class SessionsService {
   }
 
   /** The learner's history, newest first, with scores. Test runs are excluded. */
-  async history(p: Principal, q: { scenarioId?: string; status?: SessionStatus; page: number; pageSize: number }): Promise<Page<ai.SessionSummary>> {
+  async history(
+    p: Principal,
+    q: { scenarioId?: string; status?: SessionStatus; page: number; pageSize: number },
+  ): Promise<Page<ai.SessionSummary>> {
     let query = this.db
       .selectFrom('ai_sessions as s')
       .innerJoin('ai_prompt_versions as pv', 'pv.id', 's.prompt_version_id')
@@ -285,7 +395,13 @@ export function summaryDto(r: {
   const s = readScenarioSnapshot(r.scenario_snapshot);
   return {
     id: r.id,
-    scenario: { id: r.scenario_id, title: s.title, category: s.category, difficulty: s.difficulty, objection: s.objection },
+    scenario: {
+      id: r.scenario_id,
+      title: s.title,
+      category: s.category,
+      difficulty: s.difficulty,
+      objection: s.objection,
+    },
     mode: r.mode,
     isTest: r.is_test,
     status: r.status,

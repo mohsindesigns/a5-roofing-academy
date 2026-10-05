@@ -39,7 +39,13 @@ export async function withRetry<T>(
     try {
       return await fn(attempt);
     } catch (err) {
-      if (!(err instanceof ProviderError) || !err.retryable || attempt >= policy.maxRetries || signal?.aborted) throw err;
+      if (
+        !(err instanceof ProviderError) ||
+        !err.retryable ||
+        attempt >= policy.maxRetries ||
+        signal?.aborted
+      )
+        throw err;
       const delay = backoffDelay(attempt, policy.baseDelayMs, policy.maxDelayMs);
       policy.onRetry?.(err, attempt + 1, delay);
       await sleep(delay, signal);
@@ -54,9 +60,23 @@ export function timeoutSignal(timeoutMs: number, parent?: AbortSignal): AbortSig
 }
 
 /** Map an abort caused by our own timeout to a retryable provider timeout. */
-export function abortToProviderError(provider: ProviderName, err: unknown, signal: AbortSignal | undefined): ProviderError | null {
+export function abortToProviderError(
+  provider: ProviderName,
+  err: unknown,
+  signal: AbortSignal | undefined,
+): ProviderError | null {
   if (!isAbortError(err) && !(signal?.aborted ?? false)) return null;
   const reason = signal?.reason as { name?: string } | undefined;
-  if (reason?.name === 'TimeoutError') return new ProviderError(provider, 'timeout', 'The AI provider did not respond in time.', undefined, { cause: err });
-  return new ProviderError(provider, 'aborted', 'The request was cancelled.', undefined, { cause: err, retryable: false });
+  if (reason?.name === 'TimeoutError')
+    return new ProviderError(
+      provider,
+      'timeout',
+      'The AI provider did not respond in time.',
+      undefined,
+      { cause: err },
+    );
+  return new ProviderError(provider, 'aborted', 'The request was cancelled.', undefined, {
+    cause: err,
+    retryable: false,
+  });
 }

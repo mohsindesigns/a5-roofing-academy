@@ -13,7 +13,11 @@ import { ProviderError } from '../providers/types.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { UsageService } from '../usage/usage.service.js';
 import { normalizeEvaluation } from './normalize.js';
-import { EVALUATION_SCHEMA_DESCRIPTION, EVALUATION_SCHEMA_NAME, evaluationOutputSchema } from './output-schema.js';
+import {
+  EVALUATION_SCHEMA_DESCRIPTION,
+  EVALUATION_SCHEMA_NAME,
+  evaluationOutputSchema,
+} from './output-schema.js';
 
 export const EVALUATION_QUEUE = 'ai.evaluate';
 
@@ -61,7 +65,9 @@ export class EvaluationService implements OnModuleInit {
 
   onModuleInit() {
     if (runsWorkers(this.config)) {
-      this.queues.worker<EvaluateJob>(EVALUATION_QUEUE, (job) => this.processJob(job), { concurrency: 4 });
+      this.queues.worker<EvaluateJob>(EVALUATION_QUEUE, (job) => this.processJob(job), {
+        concurrency: 4,
+      });
     }
   }
 
@@ -69,13 +75,19 @@ export class EvaluationService implements OnModuleInit {
   async enqueue(sessionId: string, { replace = false }: { replace?: boolean } = {}): Promise<void> {
     if (replace) {
       const existing = await this.queues.queue<EvaluateJob>(EVALUATION_QUEUE).getJob(sessionId);
-      if (existing && ((await existing.isFailed()) || (await existing.isCompleted()))) await existing.remove();
+      if (existing && ((await existing.isFailed()) || (await existing.isCompleted())))
+        await existing.remove();
     }
-    await this.queues.add<EvaluateJob>(EVALUATION_QUEUE, 'evaluate', { sessionId }, {
-      jobId: sessionId,
-      attempts: this.config.ai.evaluationAttempts,
-      backoff: { type: 'exponential', delay: this.config.ai.evaluationBackoffMs },
-    });
+    await this.queues.add<EvaluateJob>(
+      EVALUATION_QUEUE,
+      'evaluate',
+      { sessionId },
+      {
+        jobId: sessionId,
+        attempts: this.config.ai.evaluationAttempts,
+        backoff: { type: 'exponential', delay: this.config.ai.evaluationBackoffMs },
+      },
+    );
   }
 
   async processJob(job: Job<JobData<EvaluateJob>>): Promise<void> {
@@ -83,11 +95,17 @@ export class EvaluationService implements OnModuleInit {
     try {
       await this.evaluate(sessionId);
     } catch (err) {
-      const retryable = err instanceof ProviderError ? err.retryable : !(err instanceof AppError && err.status < 500);
+      const retryable =
+        err instanceof ProviderError
+          ? err.retryable
+          : !(err instanceof AppError && err.status < 500);
       const exhausted = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
       if (!retryable || exhausted) {
         await this.markFailed(sessionId, failureMessage(err));
-        this.logger.error({ err, sessionId, attempt: job.attemptsMade + 1 }, 'AI evaluation failed permanently');
+        this.logger.error(
+          { err, sessionId, attempt: job.attemptsMade + 1 },
+          'AI evaluation failed permanently',
+        );
         if (!retryable) return;
       }
       throw err;
@@ -105,11 +123,23 @@ export class EvaluationService implements OnModuleInit {
 
   /** One scoring attempt. Idempotent: a second run for an evaluated session does nothing. */
   async evaluate(sessionId: string): Promise<'evaluated' | 'skipped'> {
-    const session = await this.db.selectFrom('ai_sessions').selectAll().where('id', '=', sessionId).executeTakeFirst();
+    const session = await this.db
+      .selectFrom('ai_sessions')
+      .selectAll()
+      .where('id', '=', sessionId)
+      .executeTakeFirst();
     if (!session || !EVALUABLE.includes(session.status)) return 'skipped';
-    const existing = await this.db.selectFrom('ai_evaluations').select('id').where('session_id', '=', sessionId).executeTakeFirst();
+    const existing = await this.db
+      .selectFrom('ai_evaluations')
+      .select('id')
+      .where('session_id', '=', sessionId)
+      .executeTakeFirst();
     if (existing) {
-      await this.db.updateTable('ai_sessions').set({ status: 'evaluated', evaluation_error: null }).where('id', '=', sessionId).execute();
+      await this.db
+        .updateTable('ai_sessions')
+        .set({ status: 'evaluated', evaluation_error: null })
+        .where('id', '=', sessionId)
+        .execute();
       return 'skipped';
     }
     await this.db
@@ -120,14 +150,31 @@ export class EvaluationService implements OnModuleInit {
       .execute();
 
     const [pv, rubric, transcript] = await Promise.all([
-      this.db.selectFrom('ai_prompt_versions').selectAll().where('id', '=', session.prompt_version_id).executeTakeFirstOrThrow(),
-      this.db.selectFrom('ai_rubric_versions').selectAll().where('id', '=', session.rubric_version_id).executeTakeFirstOrThrow(),
-      this.db.selectFrom('ai_messages').select(['seq', 'role', 'content']).where('session_id', '=', sessionId).orderBy('seq').execute(),
+      this.db
+        .selectFrom('ai_prompt_versions')
+        .selectAll()
+        .where('id', '=', session.prompt_version_id)
+        .executeTakeFirstOrThrow(),
+      this.db
+        .selectFrom('ai_rubric_versions')
+        .selectAll()
+        .where('id', '=', session.rubric_version_id)
+        .executeTakeFirstOrThrow(),
+      this.db
+        .selectFrom('ai_messages')
+        .select(['seq', 'role', 'content'])
+        .where('session_id', '=', sessionId)
+        .orderBy('seq')
+        .execute(),
     ]);
     const persona = readPersonaSnapshot(pv.persona_snapshot);
     const scenario = readScenarioSnapshot(pv.scenario_snapshot);
     const settings = await this.settings.get(session.organization_id);
-    const { provider, model } = this.registry.resolve('evaluation', { provider: pv.provider, model: pv.evaluation_model, settings });
+    const { provider, model } = this.registry.resolve('evaluation', {
+      provider: pv.provider,
+      model: pv.evaluation_model,
+      settings,
+    });
     const usageBase = {
       organizationId: session.organization_id,
       userId: session.user_id,
@@ -141,33 +188,70 @@ export class EvaluationService implements OnModuleInit {
     const started = Date.now();
     let result;
     try {
-      result = await provider.structured(evaluationOutputSchema, [{ role: 'user', content: formatTranscriptForEvaluation(transcript, session.end_reason) }], {
-        model,
-        system: pv.evaluator_system_prompt,
-        maxOutputTokens: this.config.ai.providers.evaluationMaxTokens,
-        timeoutMs: this.config.ai.providers.evaluationTimeoutMs,
-        effort: pv.model_settings.evaluationEffort ?? this.config.ai.providers.evaluationEffort,
-        schemaName: EVALUATION_SCHEMA_NAME,
-        schemaDescription: EVALUATION_SCHEMA_DESCRIPTION,
-        simulation: { kind: 'evaluation', persona, scenario, categories: rubric.categories, transcript, endReason: session.end_reason },
-      });
+      result = await provider.structured(
+        evaluationOutputSchema,
+        [{ role: 'user', content: formatTranscriptForEvaluation(transcript, session.end_reason) }],
+        {
+          model,
+          system: pv.evaluator_system_prompt,
+          maxOutputTokens: this.config.ai.providers.evaluationMaxTokens,
+          timeoutMs: this.config.ai.providers.evaluationTimeoutMs,
+          effort: pv.model_settings.evaluationEffort ?? this.config.ai.providers.evaluationEffort,
+          schemaName: EVALUATION_SCHEMA_NAME,
+          schemaDescription: EVALUATION_SCHEMA_DESCRIPTION,
+          simulation: {
+            kind: 'evaluation',
+            persona,
+            scenario,
+            categories: rubric.categories,
+            transcript,
+            endReason: session.end_reason,
+          },
+        },
+      );
     } catch (err) {
       const perr = err instanceof ProviderError ? err : null;
-      await this.usage.record(null, { ...usageBase, model, usage: perr?.usage, latencyMs: Date.now() - started, success: false, errorCode: perr?.code ?? 'AI_EVALUATION_ERROR' });
+      await this.usage.record(null, {
+        ...usageBase,
+        model,
+        usage: perr?.usage,
+        latencyMs: Date.now() - started,
+        success: false,
+        errorCode: perr?.code ?? 'AI_EVALUATION_ERROR',
+      });
       throw err;
     }
     let card;
     try {
-      card = normalizeEvaluation(provider.name, result.value, rubric.categories, transcript, scenario.passingScore);
+      card = normalizeEvaluation(
+        provider.name,
+        result.value,
+        rubric.categories,
+        transcript,
+        scenario.passingScore,
+      );
     } catch (err) {
-      await this.usage.record(null, { ...usageBase, model: result.model, usage: result.usage, latencyMs: Date.now() - started, success: false, errorCode: (err as ProviderError).code });
+      await this.usage.record(null, {
+        ...usageBase,
+        model: result.model,
+        usage: result.usage,
+        latencyMs: Date.now() - started,
+        success: false,
+        errorCode: (err as ProviderError).code,
+      });
       throw err;
     }
 
     const evaluationId = uuidv7();
     const evaluatedAt = new Date();
     const inserted = await this.db.transaction().execute(async (trx) => {
-      await this.usage.record(trx, { ...usageBase, model: result.model, usage: result.usage, latencyMs: Date.now() - started, success: true });
+      await this.usage.record(trx, {
+        ...usageBase,
+        model: result.model,
+        usage: result.usage,
+        latencyMs: Date.now() - started,
+        success: true,
+      });
       const row = await trx
         .insertInto('ai_evaluations')
         .values({
@@ -217,7 +301,11 @@ export class EvaluationService implements OnModuleInit {
           })),
         )
         .execute();
-      await trx.updateTable('ai_sessions').set({ status: 'evaluated', evaluation_error: null }).where('id', '=', sessionId).execute();
+      await trx
+        .updateTable('ai_sessions')
+        .set({ status: 'evaluated', evaluation_error: null })
+        .where('id', '=', sessionId)
+        .execute();
       if (!session.is_test) {
         await this.events.emit(
           trx,
@@ -232,13 +320,21 @@ export class EvaluationService implements OnModuleInit {
             overallScore: card.overallScore,
             passed: card.passed,
             passingScore: card.passingScore,
-            categoryScores: card.categoryScores.map((c) => ({ key: c.key, label: c.label, score: c.score })),
+            categoryScores: card.categoryScores.map((c) => ({
+              key: c.key,
+              label: c.label,
+              score: c.score,
+            })),
             context: session.context,
             evaluatedAt: evaluatedAt.toISOString(),
             promptVersionId: session.prompt_version_id,
             rubricVersionId: session.rubric_version_id,
           },
-          { subject: { type: 'ai_session', id: sessionId }, organizationId: session.organization_id, actor: { type: 'service', id: 'ai-coaching-service' } },
+          {
+            subject: { type: 'ai_session', id: sessionId },
+            organizationId: session.organization_id,
+            actor: { type: 'service', id: 'ai-coaching-service' },
+          },
         );
       }
       return true;

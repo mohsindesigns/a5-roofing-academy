@@ -1,6 +1,14 @@
 // API contracts for the ai domain (AI homeowner objection trainer). Shared by the service and the web app.
 import { z } from 'zod';
-import { isoDate, isoDateTime, nameString, pageQuerySchema, pageSchema, personRefSchema, queryBoolean } from './common.js';
+import {
+  isoDate,
+  isoDateTime,
+  nameString,
+  pageQuerySchema,
+  pageSchema,
+  personRefSchema,
+  queryBoolean,
+} from './common.js';
 
 // ------------------------------------------------------------------ enums
 
@@ -23,11 +31,24 @@ export type ScenarioStatus = z.infer<typeof scenarioStatusSchema>;
 export const SESSION_MODES = ['practice', 'assigned'] as const;
 export const sessionModeSchema = z.enum(SESSION_MODES);
 
-export const SESSION_STATUSES = ['active', 'ended', 'evaluating', 'evaluated', 'evaluation_failed', 'abandoned'] as const;
+export const SESSION_STATUSES = [
+  'active',
+  'ended',
+  'evaluating',
+  'evaluated',
+  'evaluation_failed',
+  'abandoned',
+] as const;
 export const sessionStatusSchema = z.enum(SESSION_STATUSES);
 export type SessionStatus = z.infer<typeof sessionStatusSchema>;
 
-export const END_REASONS = ['rep_ended', 'objective_reached', 'homeowner_ended', 'max_turns', 'timeout'] as const;
+export const END_REASONS = [
+  'rep_ended',
+  'objective_reached',
+  'homeowner_ended',
+  'max_turns',
+  'timeout',
+] as const;
 export const endReasonSchema = z.enum(END_REASONS);
 export type EndReason = z.infer<typeof endReasonSchema>;
 
@@ -62,8 +83,14 @@ export const DEFAULT_RUBRIC_CATEGORY_KEYS = [
   'compliance',
 ] as const;
 
-const text = (min: number, max: number) => z.string().trim().min(min, min > 0 ? 'Required' : undefined).max(max);
-const lineList = (maxItems: number, maxLength = 300) => z.array(z.string().trim().min(1).max(maxLength)).max(maxItems);
+const text = (min: number, max: number) =>
+  z
+    .string()
+    .trim()
+    .min(min, min > 0 ? 'Required' : undefined)
+    .max(max);
+const lineList = (maxItems: number, maxLength = 300) =>
+  z.array(z.string().trim().min(1).max(maxLength)).max(maxItems);
 const modelId = z
   .string()
   .trim()
@@ -146,8 +173,14 @@ export const rubricCategoriesSchema = z
   .array(rubricCategorySchema)
   .min(1)
   .max(30)
-  .refine((list) => new Set(list.map((c) => c.key)).size === list.length, 'Category keys must be unique')
-  .refine((list) => list.reduce((sum, c) => sum + c.weight, 0) > 0, 'At least one category needs a weight above zero');
+  .refine(
+    (list) => new Set(list.map((c) => c.key)).size === list.length,
+    'Category keys must be unique',
+  )
+  .refine(
+    (list) => list.reduce((sum, c) => sum + c.weight, 0) > 0,
+    'At least one category needs a weight above zero',
+  );
 
 export const rubricVersionSummarySchema = z.object({
   id: z.uuid(),
@@ -279,7 +312,11 @@ export const listScenariosQuerySchema = pageQuerySchema.extend({
   personaId: z.uuid().optional(),
 });
 
-export const promptVersionRefSchema = z.object({ id: z.uuid(), version: z.int(), createdAt: isoDateTime });
+export const promptVersionRefSchema = z.object({
+  id: z.uuid(),
+  version: z.int(),
+  createdAt: isoDateTime,
+});
 
 export const scenarioSummarySchema = z.object({
   id: z.uuid(),
@@ -434,12 +471,24 @@ export const scorecardSchema = z.object({
   ),
   strengths: z.array(z.object({ point: z.string(), evidence: z.array(evidenceSchema) })),
   missedOpportunities: z.array(
-    z.object({ point: z.string(), seq: z.int().nullable(), quote: z.string().nullable(), betterApproach: z.string() }),
+    z.object({
+      point: z.string(),
+      seq: z.int().nullable(),
+      quote: z.string().nullable(),
+      betterApproach: z.string(),
+    }),
   ),
   questionsToAsk: z.array(z.object({ question: z.string(), why: z.string() })),
-  riskyStatements: z.array(z.object({ seq: z.int(), quote: z.string(), issue: z.string(), saferAlternative: z.string() })),
+  riskyStatements: z.array(
+    z.object({ seq: z.int(), quote: z.string(), issue: z.string(), saferAlternative: z.string() }),
+  ),
   recommendedResponses: z.array(
-    z.object({ seq: z.int().nullable(), repSaid: z.string().nullable(), betterResponse: z.string(), why: z.string() }),
+    z.object({
+      seq: z.int().nullable(),
+      repSaid: z.string().nullable(),
+      betterResponse: z.string(),
+      why: z.string(),
+    }),
   ),
   nextGoal: z.string(),
   summary: z.string(),
@@ -532,7 +581,11 @@ export const sendMessageRequestSchema = z
   });
 export type SendMessageRequest = z.infer<typeof sendMessageRequestSchema>;
 
-export const turnErrorSchema = z.object({ code: z.string(), message: z.string(), retryable: z.boolean() });
+export const turnErrorSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  retryable: z.boolean(),
+});
 
 /** JSON response of POST /ai/sessions/:id/messages when the client sends `Accept: application/json`. */
 export const sendMessageResponseSchema = z.object({
@@ -551,7 +604,10 @@ export type SendMessageResponse = z.infer<typeof sendMessageResponseSchema>;
  * Server-Sent Events of POST /ai/sessions/:id/messages (Accept: text/event-stream):
  * `accepted` (rep message saved) → `delta`* (homeowner reply text) → `done` | `error`.
  */
-export const streamAcceptedEventSchema = z.object({ repMessage: messageSchema.nullable(), retried: z.boolean() });
+export const streamAcceptedEventSchema = z.object({
+  repMessage: messageSchema.nullable(),
+  retried: z.boolean(),
+});
 export const streamDeltaEventSchema = z.object({ text: z.string() });
 export const streamDoneEventSchema = z.object({
   messageId: z.uuid(),

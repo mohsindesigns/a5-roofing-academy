@@ -55,7 +55,12 @@ export class CatalogService {
       .where('s.status', '=', 'published');
   }
 
-  private stats(r: { attempts: number | null; best_score: number | null; last_practiced_at: Date | null; passing_score: number }): ai.PracticeScenarioBrief['myStats'] {
+  private stats(r: {
+    attempts: number | null;
+    best_score: number | null;
+    last_practiced_at: Date | null;
+    passing_score: number;
+  }): ai.PracticeScenarioBrief['myStats'] {
     const best = r.best_score === null ? null : Number(r.best_score);
     return {
       attempts: Number(r.attempts ?? 0),
@@ -65,13 +70,22 @@ export class CatalogService {
     };
   }
 
-  async list(p: Principal, q: { q?: string; category?: string; difficulty?: Difficulty; page: number; pageSize: number }) {
+  async list(
+    p: Principal,
+    q: { q?: string; category?: string; difficulty?: Difficulty; page: number; pageSize: number },
+  ) {
     let query = this.query(p);
     if (q.category) query = query.where('s.category', '=', q.category);
     if (q.difficulty) query = query.where('s.difficulty', '=', q.difficulty);
     if (q.q) {
       const pattern = likePattern(q.q);
-      query = query.where((eb) => eb.or([eb('s.title', 'ilike', pattern), eb('s.objection', 'ilike', pattern), eb('s.category', 'ilike', pattern)]));
+      query = query.where((eb) =>
+        eb.or([
+          eb('s.title', 'ilike', pattern),
+          eb('s.objection', 'ilike', pattern),
+          eb('s.category', 'ilike', pattern),
+        ]),
+      );
     }
     const order = sql`case s.difficulty when 'beginner' then 1 when 'intermediate' then 2 when 'advanced' then 3 else 4 end`;
     const page = await paginate(query.orderBy(order).orderBy('s.title'), q);
@@ -111,7 +125,9 @@ export class CatalogService {
       passingScore: r.passing_score,
       maxTurns: r.max_turns,
       myStats: this.stats(r),
-      scoredOn: rubric.categories.filter((c) => c.weight > 0).map((c) => ({ key: c.key, label: c.label })),
+      scoredOn: rubric.categories
+        .filter((c) => c.weight > 0)
+        .map((c) => ({ key: c.key, label: c.label })),
     };
   }
 }

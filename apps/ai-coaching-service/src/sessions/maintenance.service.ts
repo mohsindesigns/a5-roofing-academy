@@ -45,7 +45,10 @@ export class MaintenanceService implements OnApplicationBootstrap, OnApplication
     if (this.running) return;
     this.running = true;
     try {
-      const lock = await this.lock.acquire('ai:maintenance', Math.max(30_000, this.config.ai.sweepIntervalMs));
+      const lock = await this.lock.acquire(
+        'ai:maintenance',
+        Math.max(30_000, this.config.ai.sweepIntervalMs),
+      );
       if (!lock) return;
       try {
         await this.sweep();
@@ -59,20 +62,37 @@ export class MaintenanceService implements OnApplicationBootstrap, OnApplication
     }
   }
 
-  async sweep(now: Date = new Date()): Promise<{ timedOut: number; requeued: number; purged: number }> {
-    return { timedOut: await this.endIdleSessions(now), requeued: await this.requeueLostEvaluations(now), purged: await this.purgeTranscripts(now) };
+  async sweep(
+    now: Date = new Date(),
+  ): Promise<{ timedOut: number; requeued: number; purged: number }> {
+    return {
+      timedOut: await this.endIdleSessions(now),
+      requeued: await this.requeueLostEvaluations(now),
+      purged: await this.purgeTranscripts(now),
+    };
   }
 
   async endIdleSessions(now: Date): Promise<number> {
     const cutoff = new Date(now.getTime() - this.config.ai.idleTimeoutMinutes * 60_000);
-    const idle = await this.db.selectFrom('ai_sessions').select('id').where('status', '=', 'active').where('last_activity_at', '<', cutoff).limit(BATCH).execute();
+    const idle = await this.db
+      .selectFrom('ai_sessions')
+      .select('id')
+      .where('status', '=', 'active')
+      .where('last_activity_at', '<', cutoff)
+      .limit(BATCH)
+      .execute();
     let ended = 0;
     for (const { id } of idle) {
       const turnLock = await this.lock.acquire(ConversationEngine.lockName(id), 15_000);
       if (!turnLock) continue;
       try {
         const status = await this.db.transaction().execute(async (trx) => {
-          const s = await trx.selectFrom('ai_sessions').selectAll().where('id', '=', id).forUpdate().executeTakeFirstOrThrow();
+          const s = await trx
+            .selectFrom('ai_sessions')
+            .selectAll()
+            .where('id', '=', id)
+            .forUpdate()
+            .executeTakeFirstOrThrow();
           if (s.status !== 'active' || s.last_activity_at >= cutoff) return null;
           return this.lifecycle.end(trx, s, 'timeout', now);
         });
@@ -121,10 +141,17 @@ export class MaintenanceService implements OnApplicationBootstrap, OnApplication
       const ids = sessions.map((s) => s.id);
       await this.db.transaction().execute(async (trx) => {
         await trx.deleteFrom('ai_messages').where('session_id', 'in', ids).execute();
-        await trx.updateTable('ai_sessions').set({ transcript_purged_at: sql<Date>`now()` }).where('id', 'in', ids).execute();
+        await trx
+          .updateTable('ai_sessions')
+          .set({ transcript_purged_at: sql<Date>`now()` })
+          .where('id', 'in', ids)
+          .execute();
       });
       purged += ids.length;
-      this.logger.info({ organizationId: policy.organization_id, sessions: ids.length }, 'purged AI transcripts past retention');
+      this.logger.info(
+        { organizationId: policy.organization_id, sessions: ids.length },
+        'purged AI transcripts past retention',
+      );
     }
     return purged;
   }

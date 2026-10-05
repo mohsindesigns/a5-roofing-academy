@@ -13,7 +13,10 @@ export interface AudioInput {
 
 export interface SpeechToTextProvider {
   readonly name: string;
-  transcribe(audio: AudioInput, options: { language?: string; signal?: AbortSignal }): Promise<{ text: string; durationMs?: number }>;
+  transcribe(
+    audio: AudioInput,
+    options: { language?: string; signal?: AbortSignal },
+  ): Promise<{ text: string; durationMs?: number }>;
 }
 
 export interface TextToSpeechProvider {

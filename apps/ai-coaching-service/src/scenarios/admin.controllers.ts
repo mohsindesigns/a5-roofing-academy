@@ -2,7 +2,15 @@ import { Get, HttpCode, Patch, Post } from '@nestjs/common';
 import type { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { ai } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { PersonasService } from '../personas/personas.service.js';
 import { RubricsService } from '../rubrics/rubrics.service.js';
 import { PromptVersionService } from './prompt-versions.service.js';
@@ -15,7 +23,10 @@ export class PersonasController {
   @Get()
   @RequirePermissions('ai_scenarios.view')
   @ZResponse(ai.personaPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(ai.listPersonasQuerySchema) q: z.infer<typeof ai.listPersonasQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(ai.listPersonasQuerySchema) q: z.infer<typeof ai.listPersonasQuerySchema>,
+  ) {
     return this.personas.list(p, q);
   }
 
@@ -29,7 +40,10 @@ export class PersonasController {
   @Post()
   @RequirePermissions('ai_scenarios.create')
   @ZResponse(ai.personaSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(ai.createPersonaRequestSchema) body: ai.CreatePersonaRequest) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(ai.createPersonaRequestSchema) body: ai.CreatePersonaRequest,
+  ) {
     return this.personas.create(p, body);
   }
 
@@ -37,7 +51,11 @@ export class PersonasController {
   @Patch(':id')
   @RequirePermissions('ai_scenarios.update')
   @ZResponse(ai.personaSchema)
-  update(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(ai.updatePersonaRequestSchema) body: ai.UpdatePersonaRequest) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(ai.updatePersonaRequestSchema) body: ai.UpdatePersonaRequest,
+  ) {
     return this.personas.update(p, id, body);
   }
 
@@ -57,7 +75,10 @@ export class RubricsController {
   @Get()
   @RequirePermissions('ai_scenarios.view')
   @ZResponse(ai.rubricPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(ai.listRubricsQuerySchema) q: z.infer<typeof ai.listRubricsQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(ai.listRubricsQuerySchema) q: z.infer<typeof ai.listRubricsQuerySchema>,
+  ) {
     return this.rubrics.list(p, q);
   }
 
@@ -71,7 +92,11 @@ export class RubricsController {
   @Get(':id/versions/:versionId')
   @RequirePermissions('ai_scenarios.view')
   @ZResponse(ai.rubricVersionSchema)
-  version(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('versionId') versionId: string) {
+  version(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('versionId') versionId: string,
+  ) {
     return this.rubrics.getVersion(p, id, versionId);
   }
 
@@ -79,14 +104,21 @@ export class RubricsController {
   @Post()
   @RequirePermissions('ai_scenarios.create')
   @ZResponse(ai.rubricDetailSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(ai.createRubricRequestSchema) body: ai.CreateRubricRequest) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(ai.createRubricRequestSchema) body: ai.CreateRubricRequest,
+  ) {
     return this.rubrics.create(p, body);
   }
 
   @Patch(':id')
   @RequirePermissions('ai_scenarios.update')
   @ZResponse(ai.rubricDetailSchema)
-  update(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(ai.updateRubricRequestSchema) body: z.infer<typeof ai.updateRubricRequestSchema>) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(ai.updateRubricRequestSchema) body: z.infer<typeof ai.updateRubricRequestSchema>,
+  ) {
     return this.rubrics.update(p, id, body);
   }
 
@@ -94,7 +126,11 @@ export class RubricsController {
   @Post(':id/versions')
   @RequirePermissions('ai_scenarios.update')
   @ZResponse(ai.rubricDetailSchema)
-  createVersion(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(ai.createRubricVersionRequestSchema) body: ai.CreateRubricVersionRequest) {
+  createVersion(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(ai.createRubricVersionRequestSchema) body: ai.CreateRubricVersionRequest,
+  ) {
     return this.rubrics.createVersion(p, id, body);
   }
 
@@ -117,7 +153,10 @@ export class ScenariosController {
   @Get()
   @RequirePermissions('ai_scenarios.view')
   @ZResponse(ai.scenarioPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(ai.listScenariosQuerySchema) q: z.infer<typeof ai.listScenariosQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(ai.listScenariosQuerySchema) q: z.infer<typeof ai.listScenariosQuerySchema>,
+  ) {
     return this.scenarios.list(p, q);
   }
 
@@ -131,14 +170,21 @@ export class ScenariosController {
   @Post()
   @RequirePermissions('ai_scenarios.create')
   @ZResponse(ai.scenarioDetailSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(ai.createScenarioRequestSchema) body: ai.CreateScenarioRequest) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(ai.createScenarioRequestSchema) body: ai.CreateScenarioRequest,
+  ) {
     return this.scenarios.create(p, body);
   }
 
   @Patch(':id')
   @RequirePermissions('ai_scenarios.update')
   @ZResponse(ai.scenarioDetailSchema)
-  update(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(ai.updateScenarioRequestSchema) body: ai.UpdateScenarioRequest) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(ai.updateScenarioRequestSchema) body: ai.UpdateScenarioRequest,
+  ) {
     return this.scenarios.update(p, id, body);
   }
 
@@ -161,7 +207,12 @@ export class ScenariosController {
   @Post(':id/duplicate')
   @RequirePermissions('ai_scenarios.create')
   @ZResponse(ai.scenarioDetailSchema)
-  duplicate(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(ai.duplicateScenarioRequestSchema) body: z.infer<typeof ai.duplicateScenarioRequestSchema>) {
+  duplicate(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(ai.duplicateScenarioRequestSchema)
+    body: z.infer<typeof ai.duplicateScenarioRequestSchema>,
+  ) {
     return this.scenarios.duplicate(p, id, body);
   }
 
@@ -175,14 +226,22 @@ export class ScenariosController {
   @Get(':id/prompt-versions/diff')
   @RequirePermissions('ai_scenarios.view')
   @ZResponse(ai.promptVersionDiffSchema)
-  diff(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZQuery(ai.promptVersionDiffQuerySchema) q: z.infer<typeof ai.promptVersionDiffQuerySchema>) {
+  diff(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZQuery(ai.promptVersionDiffQuerySchema) q: z.infer<typeof ai.promptVersionDiffQuerySchema>,
+  ) {
     return this.versions.diff(p, id, q.from, q.to);
   }
 
   @Get(':id/prompt-versions/:versionId')
   @RequirePermissions('ai_scenarios.view')
   @ZResponse(ai.promptVersionDetailSchema)
-  version(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('versionId') versionId: string) {
+  version(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('versionId') versionId: string,
+  ) {
     return this.versions.get(p, id, versionId);
   }
 }

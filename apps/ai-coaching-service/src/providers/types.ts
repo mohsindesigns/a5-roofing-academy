@@ -19,7 +19,12 @@ export interface TokenUsage {
   cacheWriteTokens: number;
 }
 
-export const ZERO_USAGE: TokenUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+export const ZERO_USAGE: TokenUsage = {
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadTokens: 0,
+  cacheWriteTokens: 0,
+};
 
 /** Persona as captured in a prompt version. */
 export interface PersonaSnapshot {
@@ -137,7 +142,14 @@ export type ProviderErrorKind =
   | 'unavailable'
   | 'aborted';
 
-const RETRYABLE: ReadonlySet<ProviderErrorKind> = new Set(['timeout', 'rate_limited', 'overloaded', 'connection', 'server', 'invalid_output']);
+const RETRYABLE: ReadonlySet<ProviderErrorKind> = new Set([
+  'timeout',
+  'rate_limited',
+  'overloaded',
+  'connection',
+  'server',
+  'invalid_output',
+]);
 
 /** Normalized provider failure. `retryable` drives backoff in the engine and the evaluation job. */
 export class ProviderError extends Error {

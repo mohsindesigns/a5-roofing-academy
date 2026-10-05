@@ -79,9 +79,19 @@ export class UsageService {
     }
   }
 
-  async report(p: Principal, q: { from?: string; to?: string; provider?: ProviderName; model?: string; includeTests?: boolean }): Promise<ai.UsageReport> {
+  async report(
+    p: Principal,
+    q: {
+      from?: string;
+      to?: string;
+      provider?: ProviderName;
+      model?: string;
+      includeTests?: boolean;
+    },
+  ): Promise<ai.UsageReport> {
     const to = q.to ?? new Date().toISOString().slice(0, 10);
-    const from = q.from ?? new Date(Date.parse(`${to}T00:00:00Z`) - 29 * DAY_MS).toISOString().slice(0, 10);
+    const from =
+      q.from ?? new Date(Date.parse(`${to}T00:00:00Z`) - 29 * DAY_MS).toISOString().slice(0, 10);
     let base = this.db
       .selectFrom('ai_usage as u')
       .where('u.organization_id', '=', p.organizationId)
@@ -112,13 +122,21 @@ export class UsageService {
 
     const [overall, unpriced, byDay, byModel, byProvider, byPurpose] = await Promise.all([
       totals.executeTakeFirstOrThrow(),
-      base.select(sql<number>`count(*)::int`.as('n')).where('u.priced', '=', false).executeTakeFirstOrThrow(),
+      base
+        .select(sql<number>`count(*)::int`.as('n'))
+        .where('u.priced', '=', false)
+        .executeTakeFirstOrThrow(),
       totals
         .select(sql<string>`to_char(u.created_at at time zone 'UTC', 'YYYY-MM-DD')`.as('date'))
         .groupBy(sql`to_char(u.created_at at time zone 'UTC', 'YYYY-MM-DD')`)
         .orderBy('date')
         .execute(),
-      totals.select(['u.provider', 'u.model']).groupBy(['u.provider', 'u.model']).orderBy('u.provider').orderBy('u.model').execute(),
+      totals
+        .select(['u.provider', 'u.model'])
+        .groupBy(['u.provider', 'u.model'])
+        .orderBy('u.provider')
+        .orderBy('u.model')
+        .execute(),
       totals.select('u.provider').groupBy('u.provider').orderBy('u.provider').execute(),
       totals.select('u.purpose').groupBy('u.purpose').orderBy('u.purpose').execute(),
     ]);

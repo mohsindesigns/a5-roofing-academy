@@ -44,18 +44,31 @@ export class RubricsService {
         'r.archived_at',
         'r.updated_at',
         'v.id as version_id',
-        sql<number>`(select count(*)::int from ai_scenarios s where s.rubric_id = r.id and s.status <> 'archived')`.as('scenario_count'),
+        sql<number>`(select count(*)::int from ai_scenarios s where s.rubric_id = r.id and s.status <> 'archived')`.as(
+          'scenario_count',
+        ),
       ])
       .where('r.organization_id', '=', organizationId);
   }
 
-  async list(p: Principal, q: { q?: string; includeArchived?: boolean; page: number; pageSize: number }) {
+  async list(
+    p: Principal,
+    q: { q?: string; includeArchived?: boolean; page: number; pageSize: number },
+  ) {
     let query = this.base(p.organizationId);
     if (!q.includeArchived) query = query.where('r.archived_at', 'is', null);
     if (q.q) query = query.where('r.title', 'ilike', likePattern(q.q));
     const page = await paginate(query.orderBy('r.title'), q);
     const versions = page.items.length
-      ? await this.db.selectFrom('ai_rubric_versions').selectAll().where('id', 'in', page.items.map((i) => i.version_id)).execute()
+      ? await this.db
+          .selectFrom('ai_rubric_versions')
+          .selectAll()
+          .where(
+            'id',
+            'in',
+            page.items.map((i) => i.version_id),
+          )
+          .execute()
       : [];
     const summaries = await this.versionSummaries(versions);
     return {
@@ -75,7 +88,12 @@ export class RubricsService {
   async get(p: Principal, id: string): Promise<ai.RubricDetail> {
     const r = await this.base(p.organizationId).where('r.id', '=', id).executeTakeFirst();
     if (!r) throw new NotFoundError('Rubric');
-    const rows = await this.db.selectFrom('ai_rubric_versions').selectAll().where('rubric_id', '=', id).orderBy('version', 'desc').execute();
+    const rows = await this.db
+      .selectFrom('ai_rubric_versions')
+      .selectAll()
+      .where('rubric_id', '=', id)
+      .orderBy('version', 'desc')
+      .execute();
     const summaries = await this.versionSummaries(rows);
     const current = rows.find((v) => v.id === r.version_id)!;
     const currentSummary = summaries.find((s) => s.id === r.version_id)!;
@@ -93,7 +111,12 @@ export class RubricsService {
 
   async getVersion(p: Principal, rubricId: string, versionId: string): Promise<ai.RubricVersion> {
     await this.get(p, rubricId);
-    const row = await this.db.selectFrom('ai_rubric_versions').selectAll().where('id', '=', versionId).where('rubric_id', '=', rubricId).executeTakeFirst();
+    const row = await this.db
+      .selectFrom('ai_rubric_versions')
+      .selectAll()
+      .where('id', '=', versionId)
+      .where('rubric_id', '=', rubricId)
+      .executeTakeFirst();
     if (!row) throw new NotFoundError('Rubric version');
     const [summary] = await this.versionSummaries([row]);
     return { ...summary!, rubricId, categories: row.categories };
@@ -102,7 +125,18 @@ export class RubricsService {
   /** Insert a rubric and its first version (used by the API and the seed). */
   static async insert(
     trx: Trx,
-    input: { id?: string; organizationId: string; title: string; description: string | null; categories: RubricCategoryRecord[]; passingScore: number; actorId: string | null; versionId?: string },
+    input: {
+      id?: string;
+      organizationId: string;
+      title: string;
+      description: string | null;
+      categories: RubricCategoryRecord[];
+      passingScore: number;
+      actorId: string | null;
+      versionId?: string;
+      /** Back-dates seeded rubrics. */
+      createdAt?: Date;
+    },
   ): Promise<{ id: string; versionId: string }> {
     const id = input.id ?? uuidv7();
     const versionId = input.versionId ?? uuidv7();
@@ -117,6 +151,7 @@ export class RubricsService {
         archived_at: null,
         created_by: input.actorId,
         updated_by: input.actorId,
+        ...(input.createdAt && { created_at: input.createdAt, updated_at: input.createdAt }),
       })
       .execute();
     await trx
@@ -129,6 +164,7 @@ export class RubricsService {
         passing_score: input.passingScore,
         change_note: 'Initial version',
         created_by: input.actorId,
+        ...(input.createdAt && { created_at: input.createdAt }),
       })
       .execute();
     return { id, versionId };
@@ -148,19 +184,33 @@ export class RubricsService {
         });
         await this.events.audit(
           trx,
-          { action: 'ai.rubric.created', resourceType: 'ai_rubric', resourceId: created.id, actorDisplay: p.displayName, after: input },
+          {
+            action: 'ai.rubric.created',
+            resourceType: 'ai_rubric',
+            resourceId: created.id,
+            actorDisplay: p.displayName,
+            after: input,
+          },
           { organizationId: p.organizationId },
         );
         return created.id;
       });
     } catch (err) {
-      if (isUniqueViolation(err)) throw new ConflictError('RUBRIC_TITLE_TAKEN', `A rubric titled "${input.title}" already exists. Choose another title.`);
+      if (isUniqueViolation(err))
+        throw new ConflictError(
+          'RUBRIC_TITLE_TAKEN',
+          `A rubric titled "${input.title}" already exists. Choose another title.`,
+        );
       throw err;
     }
     return this.get(p, id);
   }
 
-  async update(p: Principal, id: string, input: { title?: string; description?: string | null }): Promise<ai.RubricDetail> {
+  async update(
+    p: Principal,
+    id: string,
+    input: { title?: string; description?: string | null },
+  ): Promise<ai.RubricDetail> {
     const before = await this.get(p, id);
     try {
       await this.db.transaction().execute(async (trx) => {
@@ -175,23 +225,47 @@ export class RubricsService {
           .execute();
         await this.events.audit(
           trx,
-          { action: 'ai.rubric.updated', resourceType: 'ai_rubric', resourceId: id, actorDisplay: p.displayName, before: { title: before.title, description: before.description }, after: input },
+          {
+            action: 'ai.rubric.updated',
+            resourceType: 'ai_rubric',
+            resourceId: id,
+            actorDisplay: p.displayName,
+            before: { title: before.title, description: before.description },
+            after: input,
+          },
           { organizationId: p.organizationId },
         );
       });
     } catch (err) {
-      if (isUniqueViolation(err)) throw new ConflictError('RUBRIC_TITLE_TAKEN', `A rubric titled "${input.title}" already exists. Choose another title.`);
+      if (isUniqueViolation(err))
+        throw new ConflictError(
+          'RUBRIC_TITLE_TAKEN',
+          `A rubric titled "${input.title}" already exists. Choose another title.`,
+        );
       throw err;
     }
     return this.get(p, id);
   }
 
   /** Publish a new immutable rubric version; every live scenario using it gets a new prompt version. */
-  async createVersion(p: Principal, id: string, input: ai.CreateRubricVersionRequest): Promise<ai.RubricDetail> {
+  async createVersion(
+    p: Principal,
+    id: string,
+    input: ai.CreateRubricVersionRequest,
+  ): Promise<ai.RubricDetail> {
     const rubric = await this.get(p, id);
-    if (rubric.archived) throw new ConflictError('RUBRIC_ARCHIVED', 'This rubric is archived. Create a new rubric instead.');
+    if (rubric.archived)
+      throw new ConflictError(
+        'RUBRIC_ARCHIVED',
+        'This rubric is archived. Create a new rubric instead.',
+      );
     await this.db.transaction().execute(async (trx) => {
-      await trx.selectFrom('ai_rubrics').select('id').where('id', '=', id).forUpdate().executeTakeFirstOrThrow();
+      await trx
+        .selectFrom('ai_rubrics')
+        .select('id')
+        .where('id', '=', id)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
       const { v } = await trx
         .selectFrom('ai_rubric_versions')
         .select(sql<number>`coalesce(max(version), 0)::int`.as('v'))
@@ -211,11 +285,30 @@ export class RubricsService {
           created_by: p.userId,
         })
         .execute();
-      await trx.updateTable('ai_rubrics').set({ current_version_id: versionId, updated_by: p.userId }).where('id', '=', id).execute();
-      await this.versions.syncForRubric(trx, id, p.userId, input.changeNote ?? `Rubric "${rubric.title}" version ${version}`);
+      await trx
+        .updateTable('ai_rubrics')
+        .set({ current_version_id: versionId, updated_by: p.userId })
+        .where('id', '=', id)
+        .execute();
+      await this.versions.syncForRubric(
+        trx,
+        id,
+        p.userId,
+        input.changeNote ?? `Rubric "${rubric.title}" version ${version}`,
+      );
       await this.events.audit(
         trx,
-        { action: 'ai.rubric.version_created', resourceType: 'ai_rubric', resourceId: id, actorDisplay: p.displayName, after: { version, passingScore: input.passingScore, categories: input.categories.map((c) => c.key) } },
+        {
+          action: 'ai.rubric.version_created',
+          resourceType: 'ai_rubric',
+          resourceId: id,
+          actorDisplay: p.displayName,
+          after: {
+            version,
+            passingScore: input.passingScore,
+            categories: input.categories.map((c) => c.key),
+          },
+        },
         { organizationId: p.organizationId },
       );
     });
@@ -225,11 +318,27 @@ export class RubricsService {
   async archive(p: Principal, id: string): Promise<ai.RubricDetail> {
     const rubric = await this.get(p, id);
     if (rubric.scenarioCount > 0) {
-      throw new ConflictError('RUBRIC_IN_USE', `${rubric.scenarioCount} scenario(s) still use this rubric. Move or archive them first.`);
+      throw new ConflictError(
+        'RUBRIC_IN_USE',
+        `${rubric.scenarioCount} scenario(s) still use this rubric. Move or archive them first.`,
+      );
     }
     await this.db.transaction().execute(async (trx) => {
-      await trx.updateTable('ai_rubrics').set({ archived_at: new Date(), updated_by: p.userId }).where('id', '=', id).execute();
-      await this.events.audit(trx, { action: 'ai.rubric.archived', resourceType: 'ai_rubric', resourceId: id, actorDisplay: p.displayName }, { organizationId: p.organizationId });
+      await trx
+        .updateTable('ai_rubrics')
+        .set({ archived_at: new Date(), updated_by: p.userId })
+        .where('id', '=', id)
+        .execute();
+      await this.events.audit(
+        trx,
+        {
+          action: 'ai.rubric.archived',
+          resourceType: 'ai_rubric',
+          resourceId: id,
+          actorDisplay: p.displayName,
+        },
+        { organizationId: p.organizationId },
+      );
     });
     return this.get(p, id);
   }

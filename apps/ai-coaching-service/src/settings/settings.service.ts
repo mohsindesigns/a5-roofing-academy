@@ -40,7 +40,11 @@ export class SettingsService {
   /** Organization AI settings, with defaults when none were saved (cached for a minute). */
   async get(organizationId: string): Promise<EffectiveSettings> {
     return this.cache.getOrSet(this.key(organizationId), 60, async () => {
-      const row = await this.db.selectFrom('ai_settings').selectAll().where('organization_id', '=', organizationId).executeTakeFirst();
+      const row = await this.db
+        .selectFrom('ai_settings')
+        .selectAll()
+        .where('organization_id', '=', organizationId)
+        .executeTakeFirst();
       if (!row) {
         return {
           defaultProvider: this.config.ai.providers.defaultProvider,
@@ -68,8 +72,16 @@ export class SettingsService {
 
   async view(p: Principal): Promise<ai.AiSettings> {
     const s = await this.get(p.organizationId);
-    const conversation = this.registry.resolve('conversation', { provider: null, model: null, settings: s });
-    const evaluation = this.registry.resolve('evaluation', { provider: null, model: null, settings: s });
+    const conversation = this.registry.resolve('conversation', {
+      provider: null,
+      model: null,
+      settings: s,
+    });
+    const evaluation = this.registry.resolve('evaluation', {
+      provider: null,
+      model: null,
+      settings: s,
+    });
     return {
       defaultProvider: s.defaultProvider,
       conversationModel: s.conversationModel,
@@ -91,11 +103,18 @@ export class SettingsService {
     const before = await this.get(p.organizationId);
     const next = {
       default_provider: input.defaultProvider ?? before.defaultProvider,
-      conversation_model: input.conversationModel !== undefined ? input.conversationModel : before.conversationModel,
-      evaluation_model: input.evaluationModel !== undefined ? input.evaluationModel : before.evaluationModel,
+      conversation_model:
+        input.conversationModel !== undefined ? input.conversationModel : before.conversationModel,
+      evaluation_model:
+        input.evaluationModel !== undefined ? input.evaluationModel : before.evaluationModel,
       max_sessions_per_learner_per_day:
-        input.maxSessionsPerLearnerPerDay !== undefined ? input.maxSessionsPerLearnerPerDay : before.maxSessionsPerLearnerPerDay,
-      transcript_retention_days: input.transcriptRetentionDays !== undefined ? input.transcriptRetentionDays : before.transcriptRetentionDays,
+        input.maxSessionsPerLearnerPerDay !== undefined
+          ? input.maxSessionsPerLearnerPerDay
+          : before.maxSessionsPerLearnerPerDay,
+      transcript_retention_days:
+        input.transcriptRetentionDays !== undefined
+          ? input.transcriptRetentionDays
+          : before.transcriptRetentionDays,
       timezone: input.timezone ?? before.timezone,
       updated_by: p.userId,
     };
@@ -107,7 +126,14 @@ export class SettingsService {
         .execute();
       await this.events.audit(
         trx,
-        { action: 'ai.settings.updated', resourceType: 'ai_settings', resourceId: p.organizationId, actorDisplay: p.displayName, before, after: next },
+        {
+          action: 'ai.settings.updated',
+          resourceType: 'ai_settings',
+          resourceId: p.organizationId,
+          actorDisplay: p.displayName,
+          before,
+          after: next,
+        },
         { organizationId: p.organizationId },
       );
     });

@@ -9,7 +9,8 @@ import { DevSimulatorProvider } from './simulator/simulator.provider.js';
     {
       provide: DevSimulatorProvider,
       inject: [AI_CONFIG],
-      useFactory: (config: AiConfig) => new DevSimulatorProvider(config.ai.providers.simulatorStreamDelayMs),
+      useFactory: (config: AiConfig) =>
+        new DevSimulatorProvider(config.ai.providers.simulatorStreamDelayMs),
     },
     ProviderRegistry,
   ],

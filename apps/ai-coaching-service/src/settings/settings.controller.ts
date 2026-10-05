@@ -2,7 +2,14 @@ import { Get, Put } from '@nestjs/common';
 import type { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { ai } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { UsageService } from '../usage/usage.service.js';
 import { SettingsService } from './settings.service.js';
 
@@ -20,7 +27,10 @@ export class SettingsController {
   @Put()
   @RequirePermissions('ai_settings.manage')
   @ZResponse(ai.aiSettingsSchema)
-  update(@CurrentPrincipal() p: Principal, @ZBody(ai.updateAiSettingsRequestSchema) body: ai.UpdateAiSettingsRequest) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(ai.updateAiSettingsRequestSchema) body: ai.UpdateAiSettingsRequest,
+  ) {
     return this.settings.update(p, body);
   }
 }
@@ -33,7 +43,10 @@ export class UsageController {
   @Get()
   @RequirePermissions('ai_usage.view')
   @ZResponse(ai.usageReportSchema)
-  report(@CurrentPrincipal() p: Principal, @ZQuery(ai.usageQuerySchema) q: z.infer<typeof ai.usageQuerySchema>) {
+  report(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(ai.usageQuerySchema) q: z.infer<typeof ai.usageQuerySchema>,
+  ) {
     return this.usage.report(p, q);
   }
 }
