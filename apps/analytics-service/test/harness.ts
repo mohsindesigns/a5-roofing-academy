@@ -45,6 +45,8 @@ export interface HarnessOptions {
   /** Pin "now" (default: the seed reference time). */
   now?: Date | null;
   env?: Record<string, string>;
+  /** Leave the database in place (set KEEP_TEST_DB=1 while profiling; its name is on the harness). */
+  keepDatabase?: boolean;
 }
 
 export interface AnalyticsHarness {
@@ -57,6 +59,7 @@ export interface AnalyticsHarness {
   clock: AnalyticsClock;
   writer: FactWriter;
   storageRoot: string;
+  databaseName: string;
   /** Principal headers for a seeded person acting with a system role's permissions and scope. */
   as(person: PersonKey, role?: SystemRoleKey): Promise<Record<string, string>>;
   /** Principal headers for an arbitrary permission map. */
@@ -161,6 +164,7 @@ export async function createAnalyticsHarness(name: string, options: HarnessOptio
     clock,
     writer,
     storageRoot,
+    databaseName: tdb.name,
     as(person, role) {
       const key = role ?? ROLE_OF[person] ?? 'sales_rep';
       return principalHeaders({
@@ -190,7 +194,7 @@ export async function createAnalyticsHarness(name: string, options: HarnessOptio
       if (keys.length) await redis.del(...keys);
       redis.disconnect();
       await database.destroy();
-      await tdb.drop();
+      if (!(options.keepDatabase ?? process.env.KEEP_TEST_DB === '1')) await tdb.drop();
       await rm(storageRoot, { recursive: true, force: true });
     },
   };

@@ -456,19 +456,25 @@ export class DashboardQueries {
         where c.organization_id = ${q.org} and c.status = 'issued'
           and (c.expires_at is null or c.expires_at > ${now}) and ${q.certification('c.definition_id')}
       ),
+      enr_u as (
+        select user_id, count(*) as enrollments, count(*) filter (where status = 'completed') as completed,
+          count(*) filter (where status = 'active') as active, count(*) filter (where is_overdue) as overdue,
+          sum(progress_percent) as progress_sum
+        from enr group by user_id
+      ),
+      att_u as (select user_id, sum(score_percent) as att_sum, count(*) as att_n from att group by user_id),
+      ai_u as (select user_id, sum(overall_score) as ai_sum, count(*) as ai_n from ai group by user_id),
       per_user as (
         select p.user_id,
-          (select count(*) from enr where enr.user_id = p.user_id) as enrollments,
-          (select count(*) from enr where enr.user_id = p.user_id and enr.status = 'completed') as completed,
-          (select count(*) from enr where enr.user_id = p.user_id and enr.status = 'active') as active,
-          (select count(*) from enr where enr.user_id = p.user_id and enr.is_overdue) as overdue,
-          (select sum(progress_percent) from enr where enr.user_id = p.user_id) as progress_sum,
-          (select sum(score_percent) from att where att.user_id = p.user_id) as att_sum,
-          (select count(*) from att where att.user_id = p.user_id) as att_n,
-          (select sum(overall_score) from ai where ai.user_id = p.user_id) as ai_sum,
-          (select count(*) from ai where ai.user_id = p.user_id) as ai_n,
-          exists (select 1 from cert where cert.user_id = p.user_id) as certified
+          coalesce(e.enrollments, 0) as enrollments, coalesce(e.completed, 0) as completed,
+          coalesce(e.active, 0) as active, coalesce(e.overdue, 0) as overdue, e.progress_sum,
+          a.att_sum, coalesce(a.att_n, 0) as att_n, i.ai_sum, coalesce(i.ai_n, 0) as ai_n,
+          (c.user_id is not null) as certified
         from pop p
+        left join enr_u e on e.user_id = p.user_id
+        left join att_u a on a.user_id = p.user_id
+        left join ai_u i on i.user_id = p.user_id
+        left join cert c on c.user_id = p.user_id
       ),
       groups as (${groups}),
       membership as (${membership})

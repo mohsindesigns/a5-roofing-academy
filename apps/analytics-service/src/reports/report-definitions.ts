@@ -160,14 +160,23 @@ export const REPORTS: ReportDefinition[] = [
         select c.user_id, c.category_key, (array_agg(c.category_label order by c.evaluated_at desc))[1] as label, avg(c.score) as average
         from fact_ai_category_scores c where c.session_id in (select session_id from s)
         group by c.user_id, c.category_key
+      ),
+      ranked as (
+        select cat.user_id, cat.label,
+          row_number() over (partition by cat.user_id order by cat.average asc, cat.label) as lowest,
+          row_number() over (partition by cat.user_id order by cat.average desc, cat.label) as highest
+        from cat
       )
       select g.user_id::text as "rowId", g.user_id as "userId", ${employeeColumns},
         g.sessions as "sessions", round(g.average::numeric, 1) as "averageScore", round(g.best::numeric, 1) as "bestScore",
         round(g.latest::numeric, 1) as "latestScore", round(g.pass_rate::numeric, 1) as "passRate", g.scenarios as "scenariosPracticed",
-        (select cat.label from cat where cat.user_id = g.user_id order by cat.average asc, cat.label limit 1) as "weakestCategory",
-        (select cat.label from cat where cat.user_id = g.user_id order by cat.average desc, cat.label limit 1) as "strongestCategory",
+        weak.label as "weakestCategory",
+        strong.label as "strongestCategory",
         g.last_at as "lastSessionAt"
-      from g left join dir_users u on u.id = g.user_id
+      from g
+      left join ranked weak on weak.user_id = g.user_id and weak.lowest = 1
+      left join ranked strong on strong.user_id = g.user_id and strong.highest = 1
+      left join dir_users u on u.id = g.user_id
     `,
   },
   {
