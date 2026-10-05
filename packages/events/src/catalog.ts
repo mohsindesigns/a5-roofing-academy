@@ -278,20 +278,22 @@ export const learningEvents = {
     type: 'approval.requested',
     version: 1,
     producer: 'learning-service',
-    description: 'A manager-approval lesson is waiting for a decision.',
+    description: 'A manager-approval lesson (or an assignment review) is waiting for a decision.',
     payload: z.object({
       ...enrollmentRef,
       approvalId: id,
       lessonId: id,
       lessonTitle: z.string(),
       programTitle: z.string(),
+      /** Added in v1 (optional): who should decide — managers sign off, trainers review assignments. */
+      kind: z.enum(['manager_approval', 'assignment_review']).optional(),
     }),
   }),
   approvalDecided: define({
     type: 'approval.decided',
     version: 1,
     producer: 'learning-service',
-    description: 'A manager-approval lesson was approved or rejected.',
+    description: 'A manager-approval lesson (or an assignment review) was approved or rejected.',
     payload: z.object({
       ...enrollmentRef,
       approvalId: id,
@@ -300,6 +302,8 @@ export const learningEvents = {
       decision: z.enum(['approved', 'rejected']),
       decidedBy: id,
       comment: z.string().nullable(),
+      /** Added in v1 (optional). */
+      kind: z.enum(['manager_approval', 'assignment_review']).optional(),
     }),
   }),
 };
