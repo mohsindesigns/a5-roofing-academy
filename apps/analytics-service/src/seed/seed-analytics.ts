@@ -29,6 +29,7 @@ import {
   directoryUsers,
   seedId,
   type LearnerJourney,
+  type PersonKey,
   type SeedScenario,
 } from '@a5/seed-data';
 import type { z } from 'zod';
@@ -52,6 +53,26 @@ export const RUBRIC_CATEGORIES = [
   { key: 'next_step', label: 'Securing the next step', bias: -2 },
   { key: 'compliance', label: 'Compliance & honesty', bias: 6 },
 ] as const;
+
+/**
+ * Days before the seed reference time when each in-progress learner last completed a lesson.
+ * A deliberate mix: most are moving, a few have gone quiet. Learners whose last lesson is an AI
+ * practice take the time of that scored session instead; certified learners finish just before
+ * their certificate.
+ */
+const LAST_LESSON_DAYS_AGO: Partial<Record<PersonKey, number>> = {
+  brianna: 5,
+  naomi: 2,
+  marcus: 4,
+  tyler: 11,
+  kayla: 2,
+  jordan: 9,
+  isaiah: 3,
+  colton: 1,
+  devon: 3,
+  ethan: 1,
+  darius: 2,
+};
 
 const LESSONS = allLessons();
 const LESSON_BY_KEY = new Map(LESSONS.map((l) => [l.key, l]));
@@ -131,6 +152,16 @@ function timeline(j: LearnerJourney): Timeline {
   if (firstCert && xMax > knots[knots.length - 1]!.x) {
     knots.push({ x: xMax, t: bound });
     anchored.add(lastKey);
+  } else if (!firstCert && !anchored.has(lastKey)) {
+    const daysAgoLast = LAST_LESSON_DAYS_AGO[j.person];
+    if (daysAgoLast !== undefined) {
+      const t = SEED_NOW.getTime() - daysAgoLast * DAY - unit(`last:${j.person}`) * 5 * HOUR;
+      const last = knots[knots.length - 1]!;
+      if (xMax > last.x && t > last.t + HOUR) {
+        knots.push({ x: xMax, t });
+        anchored.add(lastKey);
+      }
+    }
   }
 
   const lastKnot = knots[knots.length - 1]!;
@@ -150,7 +181,9 @@ function timeline(j: LearnerJourney): Timeline {
       const i = knots.findIndex((k, n) => k.x <= x && (knots[n + 1]?.x ?? Infinity) >= x);
       const a = knots[i]!;
       const b = knots[i + 1]!;
-      t = a.t + ((x - a.x) / (b.x - a.x)) * (b.t - a.t);
+      // New hires do their first lessons straight away; later ones slow down.
+      const fraction = (x - a.x) / (b.x - a.x);
+      t = a.t + (i === 0 ? fraction ** 0.8 : fraction) * (b.t - a.t);
     }
     if (!anchored.has(key)) t += (unit(`jitter:${j.person}:${key}`) - 0.5) * 80 * MIN;
     t = Math.min(Math.max(t, previous + 12 * MIN), firstCert ? bound : SEED_NOW.getTime() - HOUR);
@@ -439,6 +472,24 @@ export function buildSeedEvents(): EventEnvelope[] {
         { type: 'ai_session', id: sessionId },
       );
     });
+
+    // Awaiting sign-off: every automatic requirement is met, the manager's approval is outstanding.
+    if (j.stage === 'awaiting_approval') {
+      const at = new Date(tl.lessonAt.get('w4-final')!.getTime() + 10 * MIN);
+      const base = { definitionId: CERTIFICATION.id, definitionName: CERTIFICATION.name, userId };
+      log.add(
+        certificationEvents.eligible,
+        { candidateId: seedId(`certification-candidate:${j.person}:${CERTIFICATION.code}`), ...base, requiresApproval: true },
+        at,
+        [j.person, 'eligible'],
+      );
+      log.add(
+        certificationEvents.approvalRequested,
+        { approvalId: seedId(`certificate-approval:${j.person}:${CERTIFICATION.code}`), ...base },
+        new Date(at.getTime() + MIN),
+        [j.person, 'approval-requested'],
+      );
+    }
 
     // Certification: eligible after sign-off, then issued (and reissued / expired / revoked).
     const certs = j.certificates ?? [];

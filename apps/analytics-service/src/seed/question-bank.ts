@@ -132,7 +132,7 @@ export function questionResults(assessmentKey: string, scorePercent: number, att
   const full = Math.floor(total + 1e-9);
   const partial = Math.round((total - full) * 100) / 100;
   const ranked = [...questions].sort(
-    (a, b) => b.difficulty + unit(`${attemptSalt}:${b.number}`) * 0.5 - (a.difficulty + unit(`${attemptSalt}:${a.number}`) * 0.5),
+    (a, b) => b.difficulty * 0.6 + unit(`${attemptSalt}:${b.number}`) * 0.8 - (a.difficulty * 0.6 + unit(`${attemptSalt}:${a.number}`) * 0.8),
   );
   const missed = n - full - (partial > 0 ? 1 : 0);
   const awarded = new Map<string, number>();
