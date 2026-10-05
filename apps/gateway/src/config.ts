@@ -10,7 +10,7 @@ const gatewayEnv = z.object({
   MAX_BODY_BYTES: env.int(2 * 1024 * 1024),
   MAX_UPLOAD_BODY_BYTES: env.int(12 * 1024 * 1024),
   RATE_LIMIT_DEFAULT_PER_MINUTE: env.int(600),
-  RATE_LIMIT_LOGIN_PER_MINUTE: env.int(10),
+  RATE_LIMIT_LOGIN_PER_MINUTE: env.int(30),
   RATE_LIMIT_SENSITIVE_PER_MINUTE: env.int(20),
   RATE_LIMIT_PUBLIC_PER_MINUTE: env.int(120),
 });
