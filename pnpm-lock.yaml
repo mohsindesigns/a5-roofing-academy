@@ -45,6 +45,82 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@22.20.5)(jsdom@30.1.2(@noble/hashes@1.8.0))(vite@8.3.2(@types/node@22.20.5)(jiti@2.7.0)(yaml@2.9.1))
 
+  apps/audit-service:
+    dependencies:
+      '@a5/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@a5/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@a5/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@a5/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@a5/events':
+        specifier: workspace:*
+        version: link:../../packages/events
+      '@a5/messaging':
+        specifier: workspace:*
+        version: link:../../packages/messaging
+      '@a5/nest-kit':
+        specifier: workspace:*
+        version: link:../../packages/nest-kit
+      '@a5/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@a5/permissions':
+        specifier: workspace:*
+        version: link:../../packages/permissions
+      '@a5/seed-data':
+        specifier: workspace:*
+        version: link:../../packages/seed-data
+      '@nestjs/common':
+        specifier: ^12.1.2
+        version: 12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^12.1.2
+        version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@12.1.2)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/platform-express':
+        specifier: ^12.1.2
+        version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.2)
+      '@nestjs/swagger':
+        specifier: ^12.0.2
+        version: 12.0.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.2)(reflect-metadata@0.2.2)(typescript@6.0.3)
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@a5/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
+      '@nestjs/testing':
+        specifier: ^12.1.2
+        version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.2)(@nestjs/platform-express@12.1.2)
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
+      '@types/node':
+        specifier: ^22.19.0
+        version: 22.20.5
+      '@types/supertest':
+        specifier: ^6.0.3
+        version: 6.0.3
+      supertest:
+        specifier: ^7.3.1
+        version: 7.3.1
+
   apps/gateway:
     dependencies:
       '@a5/auth':
@@ -284,6 +360,88 @@ importers:
       '@types/pdfkit':
         specifier: ^0.17.6
         version: 0.17.6
+      '@types/supertest':
+        specifier: ^6.0.3
+        version: 6.0.3
+      supertest:
+        specifier: ^7.3.1
+        version: 7.3.1
+
+  apps/notification-service:
+    dependencies:
+      '@a5/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@a5/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@a5/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@a5/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@a5/directory':
+        specifier: workspace:*
+        version: link:../../packages/directory
+      '@a5/events':
+        specifier: workspace:*
+        version: link:../../packages/events
+      '@a5/messaging':
+        specifier: workspace:*
+        version: link:../../packages/messaging
+      '@a5/nest-kit':
+        specifier: workspace:*
+        version: link:../../packages/nest-kit
+      '@a5/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@a5/permissions':
+        specifier: workspace:*
+        version: link:../../packages/permissions
+      '@a5/seed-data':
+        specifier: workspace:*
+        version: link:../../packages/seed-data
+      '@nestjs/common':
+        specifier: ^12.1.2
+        version: 12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^12.1.2
+        version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@12.1.2)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/platform-express':
+        specifier: ^12.1.2
+        version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.2)
+      '@nestjs/swagger':
+        specifier: ^12.0.2
+        version: 12.0.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.2)(reflect-metadata@0.2.2)(typescript@6.0.3)
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+      nodemailer:
+        specifier: ^10.0.15
+        version: 10.0.15
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@a5/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
+      '@nestjs/testing':
+        specifier: ^12.1.2
+        version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.2)(@nestjs/platform-express@12.1.2)
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
+      '@types/node':
+        specifier: ^22.19.0
+        version: 22.20.5
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
@@ -3926,6 +4084,10 @@ packages:
   node-releases@2.0.57:
     resolution: {integrity: sha512-kQK9LGGFiHtrWiNhZtA7Qbw17AQz+dmsEKODRIVTXA9+e5MS/2gZEBhYJt13GrAz5/IOZKddH/0Z3TP/Zgo+yw==}
     engines: {node: '>=18'}
+
+  nodemailer@10.0.15:
+    resolution: {integrity: sha512-EUqp5PhtcsYXs9Fq/lS7s/8zlTrnBqmzZWzFFROrNikMiz+om/YRKMwqN907t+0A1KKyT8jd39CBUbFZmaZmcA==}
+    engines: {node: '>=20.0.0'}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -8215,6 +8377,8 @@ snapshots:
     optional: true
 
   node-releases@2.0.57: {}
+
+  nodemailer@10.0.15: {}
 
   object-assign@4.1.1: {}
 
