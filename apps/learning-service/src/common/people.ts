@@ -4,12 +4,19 @@ import type { DbOrTrx } from '../database/index.js';
 export type LearnerRef = learning.EnrollmentSummary['learner'];
 
 /** Learner references (name, email, title, teams) from the directory projection. */
-export async function learnerRefs(db: DbOrTrx, userIds: readonly string[]): Promise<Map<string, LearnerRef>> {
+export async function learnerRefs(
+  db: DbOrTrx,
+  userIds: readonly string[],
+): Promise<Map<string, LearnerRef>> {
   const ids = [...new Set(userIds)];
   const map = new Map<string, LearnerRef>();
   if (ids.length === 0) return map;
   const [users, teams] = await Promise.all([
-    db.selectFrom('dir_users').select(['id', 'display_name', 'email', 'job_title']).where('id', 'in', ids).execute(),
+    db
+      .selectFrom('dir_users')
+      .select(['id', 'display_name', 'email', 'job_title'])
+      .where('id', 'in', ids)
+      .execute(),
     db
       .selectFrom('dir_user_teams as ut')
       .innerJoin('dir_teams as t', 't.id', 'ut.team_id')
@@ -33,14 +40,25 @@ export async function learnerRefs(db: DbOrTrx, userIds: readonly string[]): Prom
 }
 
 /** Display names for people (approvers, assigners); unknown ids are omitted. */
-export async function displayNames(db: DbOrTrx, userIds: ReadonlyArray<string | null | undefined>): Promise<Map<string, string>> {
+export async function displayNames(
+  db: DbOrTrx,
+  userIds: ReadonlyArray<string | null | undefined>,
+): Promise<Map<string, string>> {
   const ids = [...new Set(userIds.filter((id): id is string => Boolean(id)))];
   if (ids.length === 0) return new Map();
-  const rows = await db.selectFrom('dir_users').select(['id', 'display_name']).where('id', 'in', ids).execute();
+  const rows = await db
+    .selectFrom('dir_users')
+    .select(['id', 'display_name'])
+    .where('id', 'in', ids)
+    .execute();
   return new Map(rows.map((r) => [r.id, r.display_name]));
 }
 
-export function personRef(id: string | null, names: Map<string, string>, fallback?: string | null): learning.ApprovalSummary['decidedBy'] {
+export function personRef(
+  id: string | null,
+  names: Map<string, string>,
+  fallback?: string | null,
+): learning.ApprovalSummary['decidedBy'] {
   if (!id) return null;
   return { id, displayName: names.get(id) ?? fallback ?? 'Former employee' };
 }

@@ -7,6 +7,19 @@ web app.
 - Architecture and decisions: [`docs/A5_SALES_ACADEMY_ARCHITECTURE.md`](docs/A5_SALES_ACADEMY_ARCHITECTURE.md)
 - How to build a service: [`docs/SERVICE_DEVELOPMENT_GUIDE.md`](docs/SERVICE_DEVELOPMENT_GUIDE.md)
 
+## What each role sees
+
+| Role                     | Screens                                                                                                        |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| Sales representative     | Home (continue learning), Training (programs, video lessons, quizzes), AI Coach, Certifications, Notifications |
+| Manager                  | Team progress and assignments, Reports, certification team view and approvals, Home team summary               |
+| Trainer / Training admin | Program builder, media library, question bank and assessments, AI scenarios, rubrics and prompt versions       |
+| Certification admin      | Certification center: definitions, template designer, signatories and stamps, issuing, revocation, renewals    |
+| Administrator / Auditor  | People, roles and permission matrix, organization, settings, audit log, notification templates and rules       |
+
+Navigation is permission-aware, but every page and API call enforces authorization on its own.
+Public certificate verification lives at `/verify/<token>` and needs no sign-in.
+
 ## Repository
 
 ```
@@ -80,7 +93,7 @@ pnpm lint          # ESLint (typescript-eslint, react-hooks)
 pnpm typecheck     # tsc across every project
 pnpm test          # unit + integration tests (needs PostgreSQL and Redis; see TEST_DATABASE_URL / TEST_REDIS_URL)
 pnpm build         # production builds
-pnpm test:e2e      # Playwright against a running stack
+pnpm test:e2e      # Playwright against a running, seeded stack (desktop + mobile projects)
 ```
 
 Integration tests create a throw-away database per test file on the server in
@@ -96,3 +109,13 @@ development simulator until `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`) is configu
 
 API documentation: each service serves Swagger at `/docs` (non-production); the gateway merges
 them at `http://localhost:4000/api/v1/openapi.json`.
+
+## Known limitations
+
+- AI providers (Anthropic, OpenAI) have only been exercised through the development simulator and
+  mocked clients; voice sessions are interface-only.
+- Media: S3/MinIO storage, real ClamAV scanning and CDN URL signing are implemented but not
+  exercised against real infrastructure. Uploads are not resumable.
+- Certificate PDFs use the standard PDF fonts (no embedded brand font yet).
+- The seeded sample videos are generated test patterns, produced by `pnpm db:seed` in
+  media-service (needs ffmpeg).

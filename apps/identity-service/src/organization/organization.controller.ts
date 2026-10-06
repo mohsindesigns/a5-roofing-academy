@@ -44,7 +44,11 @@ export class LocationsController {
   @Post()
   @RequirePermissions('locations.manage')
   @ZResponse(identity.locationSchema)
-  async create(@CurrentPrincipal() p: Principal, @ZBody(identity.upsertLocationRequestSchema) body: z.infer<typeof identity.upsertLocationRequestSchema>) {
+  async create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(identity.upsertLocationRequestSchema)
+    body: z.infer<typeof identity.upsertLocationRequestSchema>,
+  ) {
     const id = await this.org.upsertUnit(p, 'location', null, body);
     return (await this.org.locations(p.organizationId, true)).find((l) => l.id === id)!;
   }
@@ -55,7 +59,8 @@ export class LocationsController {
   async update(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(identity.upsertLocationRequestSchema) body: z.infer<typeof identity.upsertLocationRequestSchema>,
+    @ZBody(identity.upsertLocationRequestSchema)
+    body: z.infer<typeof identity.upsertLocationRequestSchema>,
   ) {
     await this.org.upsertUnit(p, 'location', id, body);
     return (await this.org.locations(p.organizationId, true)).find((l) => l.id === id)!;
@@ -65,7 +70,11 @@ export class LocationsController {
   @HttpCode(200)
   @RequirePermissions('locations.manage')
   @ZResponse(okSchema)
-  async archive(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(archiveBody) body: { archived: boolean }) {
+  async archive(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(archiveBody) body: { archived: boolean },
+  ) {
     await this.org.setUnitArchived(p, 'location', id, body.archived);
     return { ok: true as const };
   }
@@ -85,7 +94,11 @@ export class DepartmentsController {
   @Post()
   @RequirePermissions('departments.manage')
   @ZResponse(identity.departmentSchema)
-  async create(@CurrentPrincipal() p: Principal, @ZBody(identity.upsertDepartmentRequestSchema) body: z.infer<typeof identity.upsertDepartmentRequestSchema>) {
+  async create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(identity.upsertDepartmentRequestSchema)
+    body: z.infer<typeof identity.upsertDepartmentRequestSchema>,
+  ) {
     const id = await this.org.upsertUnit(p, 'department', null, body);
     return (await this.org.departments(p.organizationId, true)).find((d) => d.id === id)!;
   }
@@ -96,7 +109,8 @@ export class DepartmentsController {
   async update(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(identity.upsertDepartmentRequestSchema) body: z.infer<typeof identity.upsertDepartmentRequestSchema>,
+    @ZBody(identity.upsertDepartmentRequestSchema)
+    body: z.infer<typeof identity.upsertDepartmentRequestSchema>,
   ) {
     await this.org.upsertUnit(p, 'department', id, body);
     return (await this.org.departments(p.organizationId, true)).find((d) => d.id === id)!;
@@ -106,7 +120,11 @@ export class DepartmentsController {
   @HttpCode(200)
   @RequirePermissions('departments.manage')
   @ZResponse(okSchema)
-  async archive(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(archiveBody) body: { archived: boolean }) {
+  async archive(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(archiveBody) body: { archived: boolean },
+  ) {
     await this.org.setUnitArchived(p, 'department', id, body.archived);
     return { ok: true as const };
   }
@@ -119,7 +137,10 @@ export class TeamsController {
   @Get()
   @RequirePermissions('teams.view')
   @ZResponse(z.object({ items: z.array(identity.teamSummarySchema) }))
-  async list(@CurrentPrincipal() p: Principal, @ZQuery(identity.listTeamsQuerySchema) q: z.infer<typeof identity.listTeamsQuerySchema>) {
+  async list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(identity.listTeamsQuerySchema) q: z.infer<typeof identity.listTeamsQuerySchema>,
+  ) {
     return { items: await this.org.teams(p, q) };
   }
 
@@ -133,7 +154,10 @@ export class TeamsController {
   @Post()
   @RequirePermissions('teams.manage')
   @ZResponse(identity.teamDetailSchema)
-  async create(@CurrentPrincipal() p: Principal, @ZBody(identity.upsertTeamRequestSchema) body: z.infer<typeof identity.upsertTeamRequestSchema>) {
+  async create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(identity.upsertTeamRequestSchema) body: z.infer<typeof identity.upsertTeamRequestSchema>,
+  ) {
     return this.org.team(p, await this.org.upsertTeam(p, null, body));
   }
 
@@ -164,7 +188,11 @@ export class TeamsController {
   @HttpCode(200)
   @RequirePermissions('teams.manage')
   @ZResponse(okSchema)
-  async archive(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(archiveBody) body: { archived: boolean }) {
+  async archive(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(archiveBody) body: { archived: boolean },
+  ) {
     await this.org.setTeamArchived(p, id, body.archived);
     return { ok: true as const };
   }
@@ -184,7 +212,10 @@ export class SettingsController {
   @Put('organization')
   @RequirePermissions('organization.update')
   @ZResponse(identity.organizationSettingsSchema)
-  update(@CurrentPrincipal() p: Principal, @ZBody(identity.organizationSettingsSchema) body: identity.OrganizationSettings) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(identity.organizationSettingsSchema) body: identity.OrganizationSettings,
+  ) {
     return this.org.updateSettings(p, body);
   }
 
@@ -198,7 +229,10 @@ export class SettingsController {
   @Put('security')
   @RequirePermissions('security_settings.manage')
   @ZResponse(identity.securitySettingsSchema)
-  updateSecurity(@CurrentPrincipal() p: Principal, @ZBody(identity.securitySettingsSchema) body: identity.SecuritySettings) {
+  updateSecurity(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(identity.securitySettingsSchema) body: identity.SecuritySettings,
+  ) {
     return this.org.updateSecurity(p, body);
   }
 }

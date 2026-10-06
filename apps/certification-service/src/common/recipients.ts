@@ -61,7 +61,10 @@ export class RecipientResolver {
         };
       }
     } catch (err) {
-      this.logger.warn({ err, userId }, 'identity lookup failed; using directory projection for recipient name');
+      this.logger.warn(
+        { err, userId },
+        'identity lookup failed; using directory projection for recipient name',
+      );
     }
     const person = await this.directory.getUser(userId);
     if (!person || person.organizationId !== organizationId) throw new NotFoundError('Person');

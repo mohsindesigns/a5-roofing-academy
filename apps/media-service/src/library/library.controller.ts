@@ -24,7 +24,10 @@ export class LibraryController {
   @Get()
   @RequirePermissions('media.view')
   @ZResponse(media.mediaPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(media.listMediaQuerySchema) q: media.ListMediaQuery) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(media.listMediaQuerySchema) q: media.ListMediaQuery,
+  ) {
     return this.read.list(p.organizationId, {
       q: q.q,
       kind: q.kind,
@@ -46,7 +49,11 @@ export class LibraryController {
   @Patch(':id')
   @RequirePermissions('media.upload')
   @ZResponse(media.mediaAssetDetailSchema)
-  update(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(media.updateMediaRequestSchema) body: media.UpdateMediaRequest) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(media.updateMediaRequestSchema) body: media.UpdateMediaRequest,
+  ) {
     return this.library.update(p, id, body);
   }
 
@@ -73,7 +80,11 @@ export class LibraryController {
   @Post(':id/chapters')
   @RequirePermissions('media.upload')
   @ZResponse(media.chapterListSchema)
-  createChapter(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(media.createChapterRequestSchema) body: media.CreateChapterRequest) {
+  createChapter(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(media.createChapterRequestSchema) body: media.CreateChapterRequest,
+  ) {
     return this.library.createChapter(p, id, body);
   }
 
@@ -92,7 +103,11 @@ export class LibraryController {
   @Delete(':id/chapters/:chapterId')
   @RequirePermissions('media.upload')
   @ZResponse(media.chapterListSchema)
-  deleteChapter(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('chapterId') chapterId: string) {
+  deleteChapter(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('chapterId') chapterId: string,
+  ) {
     return this.library.deleteChapter(p, id, chapterId);
   }
 
@@ -125,7 +140,11 @@ export class LibraryController {
   @Delete(':id/captions/:captionId')
   @RequirePermissions('media.upload')
   @ZResponse(media.mediaAssetDetailSchema)
-  deleteCaption(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('captionId') captionId: string) {
+  deleteCaption(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('captionId') captionId: string,
+  ) {
     return this.library.deleteCaption(p, id, captionId);
   }
 
@@ -134,7 +153,11 @@ export class LibraryController {
   @Put(':id/transcript')
   @RequirePermissions('media.upload')
   @ZResponse(media.mediaAssetDetailSchema)
-  setTranscript(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(media.setTranscriptRequestSchema) body: media.SetTranscriptRequest) {
+  setTranscript(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(media.setTranscriptRequestSchema) body: media.SetTranscriptRequest,
+  ) {
     return this.library.setTranscript(p, id, body);
   }
 }

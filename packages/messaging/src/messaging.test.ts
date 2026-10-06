@@ -12,7 +12,13 @@ import {
 } from '@a5/database';
 import { buildEvent, identityEvents, streamFor, type EventEnvelope } from '@a5/events';
 import { uuidv7 } from '@a5/observability';
-import { TEST_REDIS_URL, createTestDatabase, testRedisNamespace, waitFor, type TestDatabase } from '@a5/testing';
+import {
+  TEST_REDIS_URL,
+  createTestDatabase,
+  testRedisNamespace,
+  waitFor,
+  type TestDatabase,
+} from '@a5/testing';
 import {
   Cache,
   DistributedLock,
@@ -31,12 +37,16 @@ const logger = pino({ level: 'silent' });
 const ORG = '0190a3b2-0000-7000-8000-0000000000a1';
 
 function userActivated(userId = uuidv7()): EventEnvelope {
-  return buildEvent(identityEvents.userActivated, { userId }, {
-    id: uuidv7(),
-    producer: 'identity-service',
-    organizationId: ORG,
-    actor: { type: 'system', id: null },
-  });
+  return buildEvent(
+    identityEvents.userActivated,
+    { userId },
+    {
+      id: uuidv7(),
+      producer: 'identity-service',
+      organizationId: ORG,
+      actor: { type: 'system', id: null },
+    },
+  );
 }
 
 let tdb: TestDatabase;
@@ -70,9 +80,22 @@ afterAll(async () => {
 describe('outbox → stream → consumer', () => {
   it('delivers committed events exactly once per handler', async () => {
     const publisher = new StreamPublisher(redis, ns);
-    const relay = new OutboxRelay({ db: database.db, databaseUrl: tdb.url, publisher, logger, pollIntervalMs: 100 });
+    const relay = new OutboxRelay({
+      db: database.db,
+      databaseUrl: tdb.url,
+      publisher,
+      logger,
+      pollIntervalMs: 100,
+    });
     const stream = streamFor('identity-service');
-    const consumer = new StreamConsumer({ redis, ns, group: 'test-consumer', streams: [stream], logger, blockMs: 100 });
+    const consumer = new StreamConsumer({
+      redis,
+      ns,
+      group: 'test-consumer',
+      streams: [stream],
+      logger,
+      blockMs: 100,
+    });
     const seen: string[] = [];
     consumer.on('user.activated', async (event) => {
       await processOnce(database.db, 'count-activations', event, async () => {
@@ -83,9 +106,21 @@ describe('outbox → stream → consumer', () => {
     await relay.start();
 
     const event = userActivated();
-    await database.db.transaction().execute((trx) =>
-      writeOutbox(trx, [{ id: event.id, type: event.type, version: event.version, stream, envelope: event, published_at: null, last_error: null }]),
-    );
+    await database.db
+      .transaction()
+      .execute((trx) =>
+        writeOutbox(trx, [
+          {
+            id: event.id,
+            type: event.type,
+            version: event.version,
+            stream,
+            envelope: event,
+            published_at: null,
+            last_error: null,
+          },
+        ]),
+      );
     await waitFor(() => seen.length === 1, { message: 'event delivery' });
 
     // Simulate a duplicate publish (relay crashed after XADD, before marking published).
@@ -93,7 +128,11 @@ describe('outbox → stream → consumer', () => {
     await new Promise((r) => setTimeout(r, 300));
     expect(seen).toHaveLength(1);
 
-    const row = await database.db.selectFrom('outbox_events').select('published_at').where('id', '=', event.id).executeTakeFirstOrThrow();
+    const row = await database.db
+      .selectFrom('outbox_events')
+      .select('published_at')
+      .where('id', '=', event.id)
+      .executeTakeFirstOrThrow();
     expect(row.published_at).toBeInstanceOf(Date);
 
     await relay.stop();
@@ -121,7 +160,10 @@ describe('outbox → stream → consumer', () => {
     await consumer.ensureGroups();
     await publisher.publish([{ stream, envelope: userActivated() }]);
     await consumer.start();
-    await waitFor(async () => (await redis.xlen(consumer.dlqKey)) === 1, { message: 'dead letter', timeoutMs: 8_000 });
+    await waitFor(async () => (await redis.xlen(consumer.dlqKey)) === 1, {
+      message: 'dead letter',
+      timeoutMs: 8_000,
+    });
     await consumer.stop();
     expect(calls).toBe(3);
     const pending = (await redis.xpending(ns.stream(stream), 'retry-group')) as [number];
@@ -134,11 +176,29 @@ describe('outbox → stream → consumer', () => {
 
   it('dead-letters malformed envelopes immediately', async () => {
     const stream = 'events:malformed';
-    const consumer = new StreamConsumer({ redis, ns, group: 'malformed', streams: [stream], logger, blockMs: 50 });
+    const consumer = new StreamConsumer({
+      redis,
+      ns,
+      group: 'malformed',
+      streams: [stream],
+      logger,
+      blockMs: 50,
+    });
     await consumer.ensureGroups();
-    await redis.xadd(ns.stream(stream), '*', 'id', 'x', 'type', 'user.activated', 'envelope', JSON.stringify({ type: 'user.activated' }));
+    await redis.xadd(
+      ns.stream(stream),
+      '*',
+      'id',
+      'x',
+      'type',
+      'user.activated',
+      'envelope',
+      JSON.stringify({ type: 'user.activated' }),
+    );
     await consumer.start();
-    await waitFor(async () => (await redis.xlen(consumer.dlqKey)) === 1, { message: 'malformed dead letter' });
+    await waitFor(async () => (await redis.xlen(consumer.dlqKey)) === 1, {
+      message: 'malformed dead letter',
+    });
     await consumer.stop();
   });
 });
@@ -163,12 +223,17 @@ describe('DistributedLock', () => {
     let maxActive = 0;
     await Promise.all(
       Array.from({ length: 5 }, () =>
-        locks.withLock('serial', 2_000, async () => {
-          active += 1;
-          maxActive = Math.max(maxActive, active);
-          await new Promise((r) => setTimeout(r, 20));
-          active -= 1;
-        }, { waitMs: 5_000 }),
+        locks.withLock(
+          'serial',
+          2_000,
+          async () => {
+            active += 1;
+            maxActive = Math.max(maxActive, active);
+            await new Promise((r) => setTimeout(r, 20));
+            active -= 1;
+          },
+          { waitMs: 5_000 },
+        ),
       ),
     );
     expect(maxActive).toBe(1);
@@ -215,8 +280,13 @@ describe('QueueFactory', () => {
       attempts += 1;
       throw new Error('PDF renderer unavailable');
     });
-    await factory.queue('flaky').add('render', { n: 1 }, { attempts: 2, backoff: { type: 'fixed', delay: 10 } });
-    await waitFor(async () => (await factory.queue('flaky.dlq').count()) === 1, { message: 'job dead letter', timeoutMs: 10_000 });
+    await factory
+      .queue('flaky')
+      .add('render', { n: 1 }, { attempts: 2, backoff: { type: 'fixed', delay: 10 } });
+    await waitFor(async () => (await factory.queue('flaky.dlq').count()) === 1, {
+      message: 'job dead letter',
+      timeoutMs: 10_000,
+    });
     expect(attempts).toBe(2);
     const [dead] = await factory.queue<Record<string, unknown>>('flaky.dlq').getJobs(['waiting']);
     expect(dead?.data).toMatchObject({ queue: 'flaky', error: 'PDF renderer unavailable' });

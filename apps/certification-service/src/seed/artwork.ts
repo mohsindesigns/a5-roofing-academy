@@ -26,7 +26,8 @@ async function ensureWasm(): Promise<void> {
 
 const FONT_FILES = {
   'Great Vibes': '@expo-google-fonts/great-vibes/400Regular/GreatVibes_400Regular.ttf',
-  'Mrs Saint Delafield': '@expo-google-fonts/mrs-saint-delafield/400Regular/MrsSaintDelafield_400Regular.ttf',
+  'Mrs Saint Delafield':
+    '@expo-google-fonts/mrs-saint-delafield/400Regular/MrsSaintDelafield_400Regular.ttf',
   Cinzel: '@expo-google-fonts/cinzel/700Bold/Cinzel_700Bold.ttf',
 } as const;
 type FontName = keyof typeof FONT_FILES;
@@ -56,13 +57,20 @@ async function rasterize(svg: string, fonts: FontName[]): Promise<Buffer> {
 }
 
 function escapeXml(value: string): string {
-  return value.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]!);
+  return value.replace(
+    /[<>&"']/g,
+    (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]!,
+  );
 }
 
 export type SignatureStyle = 'flowing' | 'brisk';
 
 /** Handwritten-style signature on a transparent background (960 × 300). */
-export async function renderSignature(name: string, style: SignatureStyle, ink = '#1B2A55'): Promise<Buffer> {
+export async function renderSignature(
+  name: string,
+  style: SignatureStyle,
+  ink = '#1B2A55',
+): Promise<Buffer> {
   const family: FontName = style === 'flowing' ? 'Great Vibes' : 'Mrs Saint Delafield';
   const size = style === 'flowing' ? 124 : 150;
   const flourish =
@@ -99,7 +107,13 @@ function serratedEdge(cx: number, cy: number, outer: number, inner: number, teet
 }
 
 /** Circular company seal with arched text, a roofline mark and the monogram (640 × 640). */
-export async function renderSeal(options: { topText: string; bottomText: string; monogram: string; caption: string; color?: string }): Promise<Buffer> {
+export async function renderSeal(options: {
+  topText: string;
+  bottomText: string;
+  monogram: string;
+  caption: string;
+  color?: string;
+}): Promise<Buffer> {
   const color = options.color ?? '#7F1D1D';
   const c = 320;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">

@@ -102,7 +102,8 @@ export class LearnerController {
   submit(
     @CurrentPrincipal() p: Principal,
     @ZParam('lessonId') lessonId: string,
-    @ZBody(learning.submitAssignmentRequestSchema) body: Out<typeof learning.submitAssignmentRequestSchema>,
+    @ZBody(learning.submitAssignmentRequestSchema)
+    body: Out<typeof learning.submitAssignmentRequestSchema>,
   ) {
     return this.learner.submitAssignment(p, lessonId, body.body);
   }
@@ -114,7 +115,8 @@ export class LearnerController {
   requestApproval(
     @CurrentPrincipal() p: Principal,
     @ZParam('lessonId') lessonId: string,
-    @ZBody(learning.requestApprovalRequestSchema) body: Out<typeof learning.requestApprovalRequestSchema>,
+    @ZBody(learning.requestApprovalRequestSchema)
+    body: Out<typeof learning.requestApprovalRequestSchema>,
   ) {
     return this.learner.requestApproval(p, lessonId, body.note);
   }
@@ -159,7 +161,10 @@ export class LearnerController {
   @Get('search')
   @RequireAnyPermission('programs.view', 'training.participate')
   @ZResponse(learning.searchResultSchema)
-  search(@CurrentPrincipal() p: Principal, @ZQuery(learning.searchQuerySchema) q: Out<typeof learning.searchQuerySchema>) {
+  search(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(learning.searchQuerySchema) q: Out<typeof learning.searchQuerySchema>,
+  ) {
     return this.searcher.search(p, q.q, q.limit);
   }
 }

@@ -22,7 +22,8 @@ await bootstrapService({
     app.use(
       compression({
         filter: (req: Request, res: Response) =>
-          !String(res.getHeader('content-type') ?? '').startsWith('text/event-stream') && compression.filter(req, res),
+          !String(res.getHeader('content-type') ?? '').startsWith('text/event-stream') &&
+          compression.filter(req, res),
       }),
     );
   },

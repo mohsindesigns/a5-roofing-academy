@@ -5,7 +5,8 @@ import { AppError, LOGGER } from '@a5/nest-kit';
 import { getContext, type Logger } from '@a5/observability';
 import { GATEWAY_CONFIG, type GatewayConfig } from '../config.js';
 
-export type Section<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string } };
+export type Section<T> =
+  { ok: true; data: T } | { ok: false; error: { code: string; message: string } };
 
 /**
  * Calls services on behalf of the current user (forwarding the internal principal) for BFF
@@ -18,7 +19,12 @@ export class Downstream {
     @Inject(LOGGER) private readonly logger: Logger,
   ) {}
 
-  async get<T>(service: Producer, path: string, principalToken: string, timeoutMs = 4_000): Promise<T> {
+  async get<T>(
+    service: Producer,
+    path: string,
+    principalToken: string,
+    timeoutMs = 4_000,
+  ): Promise<T> {
     const base = this.config.serviceUrls[service];
     if (!base) throw new AppError(503, 'SERVICE_UNAVAILABLE', `${service} is not configured.`);
     const ctx = getContext();
@@ -29,8 +35,15 @@ export class Downstream {
       },
       signal: AbortSignal.timeout(timeoutMs),
     });
-    const body = (await res.json().catch(() => null)) as { error?: { code: string; message: string } } | null;
-    if (!res.ok) throw new AppError(res.status, body?.error?.code ?? 'UPSTREAM_ERROR', body?.error?.message ?? `${service} responded ${res.status}`);
+    const body = (await res.json().catch(() => null)) as {
+      error?: { code: string; message: string };
+    } | null;
+    if (!res.ok)
+      throw new AppError(
+        res.status,
+        body?.error?.code ?? 'UPSTREAM_ERROR',
+        body?.error?.message ?? `${service} responded ${res.status}`,
+      );
     return body as T;
   }
 

@@ -2,7 +2,15 @@ import { Get, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { certification } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { PreviewService } from './preview.service.js';
 import { TemplatesService } from './templates.service.js';
 
@@ -18,7 +26,10 @@ export class TemplatesController {
   @Get()
   @RequirePermissions('certificate_templates.view')
   @ZResponse(c.templateSummaryPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(c.listTemplatesQuerySchema) q: z.infer<typeof c.listTemplatesQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(c.listTemplatesQuerySchema) q: z.infer<typeof c.listTemplatesQuerySchema>,
+  ) {
     return this.templates.list(p, { q: q.q, status: q.status, page: q.page, pageSize: q.pageSize });
   }
 
@@ -46,28 +57,43 @@ export class TemplatesController {
   @Get(':id/versions/:versionId')
   @RequirePermissions('certificate_templates.view')
   @ZResponse(c.templateVersionDetailSchema)
-  version(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('versionId') versionId: string) {
+  version(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('versionId') versionId: string,
+  ) {
     return this.templates.version(p, id, versionId);
   }
 
   @Post()
   @RequirePermissions('certificate_templates.create')
   @ZResponse(c.templateDetailSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(c.createTemplateRequestSchema) body: z.infer<typeof c.createTemplateRequestSchema>) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(c.createTemplateRequestSchema) body: z.infer<typeof c.createTemplateRequestSchema>,
+  ) {
     return this.templates.create(p, body);
   }
 
   @Post(':id/clone')
   @RequirePermissions('certificate_templates.create')
   @ZResponse(c.templateDetailSchema)
-  clone(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(c.cloneTemplateRequestSchema) body: { name: string }) {
+  clone(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(c.cloneTemplateRequestSchema) body: { name: string },
+  ) {
     return this.templates.clone(p, id, body.name);
   }
 
   @Patch(':id')
   @RequirePermissions('certificate_templates.update')
   @ZResponse(c.templateDetailSchema)
-  update(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(c.updateTemplateRequestSchema) body: z.infer<typeof c.updateTemplateRequestSchema>) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(c.updateTemplateRequestSchema) body: z.infer<typeof c.updateTemplateRequestSchema>,
+  ) {
     return this.templates.update(p, id, body);
   }
 
@@ -77,7 +103,8 @@ export class TemplatesController {
   updateDesign(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(c.updateTemplateDesignRequestSchema) body: z.infer<typeof c.updateTemplateDesignRequestSchema>,
+    @ZBody(c.updateTemplateDesignRequestSchema)
+    body: z.infer<typeof c.updateTemplateDesignRequestSchema>,
   ) {
     return this.templates.updateDesign(p, id, body.design, body.changeNote ?? null);
   }
@@ -102,7 +129,11 @@ export class TemplatesController {
   @HttpCode(200)
   @RequirePermissions('certificate_templates.update')
   @ZResponse(c.templateDetailSchema)
-  assign(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(c.assignTemplateRequestSchema) body: { certificationIds: string[] }) {
+  assign(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(c.assignTemplateRequestSchema) body: { certificationIds: string[] },
+  ) {
     return this.templates.assign(p, id, body.certificationIds);
   }
 
@@ -110,7 +141,11 @@ export class TemplatesController {
   @HttpCode(200)
   @RequirePermissions('certificate_templates.view')
   @ZResponse(c.templatePreviewSchema)
-  preview(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(c.previewTemplateRequestSchema) body: z.infer<typeof c.previewTemplateRequestSchema>) {
+  preview(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(c.previewTemplateRequestSchema) body: z.infer<typeof c.previewTemplateRequestSchema>,
+  ) {
     return this.previews.preview(p, id, body);
   }
 }

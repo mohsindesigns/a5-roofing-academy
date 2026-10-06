@@ -44,7 +44,10 @@ export class InternalHttpClient {
           method,
           headers: {
             'content-type': 'application/json',
-            [SERVICE_TOKEN_HEADER]: await signServiceToken(this.config.serviceName, this.config.internalAuthSecret),
+            [SERVICE_TOKEN_HEADER]: await signServiceToken(
+              this.config.serviceName,
+              this.config.internalAuthSecret,
+            ),
             ...(ctx && { 'x-request-id': ctx.requestId, 'x-correlation-id': ctx.correlationId }),
           },
           body: req.body === undefined ? undefined : JSON.stringify(req.body),
@@ -59,9 +62,15 @@ export class InternalHttpClient {
         const json = text ? (JSON.parse(text) as unknown) : null;
         if (!res.ok) {
           const err = (json as { error?: { code?: string; message?: string } } | null)?.error;
-          throw new AppError(res.status, err?.code ?? 'UPSTREAM_ERROR', err?.message ?? `${service} responded ${res.status}`);
+          throw new AppError(
+            res.status,
+            err?.code ?? 'UPSTREAM_ERROR',
+            err?.message ?? `${service} responded ${res.status}`,
+          );
         }
-        return (req.schema ? req.schema.parse(json) : json) as S extends z.ZodType ? z.infer<S> : unknown;
+        return (req.schema ? req.schema.parse(json) : json) as S extends z.ZodType
+          ? z.infer<S>
+          : unknown;
       } catch (err) {
         if (err instanceof AppError) throw err;
         lastError = err;

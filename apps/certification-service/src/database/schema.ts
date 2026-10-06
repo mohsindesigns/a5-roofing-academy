@@ -261,7 +261,8 @@ export interface LearnerAiResultsTable {
 
 // ---------------------------------------------------------------- eligibility & approvals
 
-export type CandidateStatus = 'in_progress' | 'eligible' | 'pending_approval' | 'approved' | 'rejected' | 'issued';
+export type CandidateStatus =
+  'in_progress' | 'eligible' | 'pending_approval' | 'approved' | 'rejected' | 'issued';
 
 export interface CertificationCandidatesTable {
   id: string;

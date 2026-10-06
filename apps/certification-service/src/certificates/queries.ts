@@ -8,5 +8,9 @@ export function certificateSummaryQuery(db: Db) {
     .innerJoin('certification_definitions as d', 'd.id', 'c.definition_id')
     .innerJoin('certificate_snapshots as s', 's.certificate_id', 'c.id')
     .selectAll('c')
-    .select(['d.name as definition_name', 'd.code as definition_code', sql<string>`s.data->'recipient'->>'legalName'`.as('recipient_name')]);
+    .select([
+      'd.name as definition_name',
+      'd.code as definition_code',
+      sql<string>`s.data->'recipient'->>'legalName'`.as('recipient_name'),
+    ]);
 }

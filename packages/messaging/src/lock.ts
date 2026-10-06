@@ -47,7 +47,9 @@ export class DistributedLock {
         };
       }
       if (Date.now() >= deadline) return null;
-      await new Promise((r) => setTimeout(r, retryDelayMs + Math.floor(Math.random() * retryDelayMs)));
+      await new Promise((r) =>
+        setTimeout(r, retryDelayMs + Math.floor(Math.random() * retryDelayMs)),
+      );
     }
   }
 

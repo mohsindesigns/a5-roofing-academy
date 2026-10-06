@@ -34,12 +34,23 @@ const assetColumns = [
 ] as const;
 
 /** Latest signature image of each signatory. */
-export async function currentSignatures(db: DbOrTrx, signatoryIds: readonly string[]): Promise<Map<string, CurrentImage>> {
+export async function currentSignatures(
+  db: DbOrTrx,
+  signatoryIds: readonly string[],
+): Promise<Map<string, CurrentImage>> {
   if (signatoryIds.length === 0) return new Map();
   const rows = await db
     .selectFrom('signatory_signatures as s')
     .innerJoin('certification_assets as a', 'a.id', 's.asset_id')
-    .select(['s.id as version_id', 's.version', 's.signatory_id as owner_id', 's.created_at', 's.created_by', 's.created_by_name', ...assetColumns])
+    .select([
+      's.id as version_id',
+      's.version',
+      's.signatory_id as owner_id',
+      's.created_at',
+      's.created_by',
+      's.created_by_name',
+      ...assetColumns,
+    ])
     .where('s.signatory_id', 'in', [...signatoryIds])
     .where(({ eb, selectFrom }) =>
       eb(
@@ -55,12 +66,23 @@ export async function currentSignatures(db: DbOrTrx, signatoryIds: readonly stri
 }
 
 /** Latest image of each stamp. */
-export async function currentStampImages(db: DbOrTrx, stampIds: readonly string[]): Promise<Map<string, CurrentImage>> {
+export async function currentStampImages(
+  db: DbOrTrx,
+  stampIds: readonly string[],
+): Promise<Map<string, CurrentImage>> {
   if (stampIds.length === 0) return new Map();
   const rows = await db
     .selectFrom('stamp_images as s')
     .innerJoin('certification_assets as a', 'a.id', 's.asset_id')
-    .select(['s.id as version_id', 's.version', 's.stamp_id as owner_id', 's.created_at', 's.created_by', 's.created_by_name', ...assetColumns])
+    .select([
+      's.id as version_id',
+      's.version',
+      's.stamp_id as owner_id',
+      's.created_at',
+      's.created_by',
+      's.created_by_name',
+      ...assetColumns,
+    ])
     .where('s.stamp_id', 'in', [...stampIds])
     .where(({ eb, selectFrom }) =>
       eb(
@@ -75,7 +97,15 @@ export async function currentStampImages(db: DbOrTrx, stampIds: readonly string[
   return new Map(rows.map((r) => [r.owner_id, toCurrent(r)]));
 }
 
-function toCurrent(r: AssetRow & { version_id: string; version: number; created_at: Date; created_by: string | null; created_by_name: string | null }): CurrentImage {
+function toCurrent(
+  r: AssetRow & {
+    version_id: string;
+    version: number;
+    created_at: Date;
+    created_by: string | null;
+    created_by_name: string | null;
+  },
+): CurrentImage {
   return {
     versionId: r.version_id,
     version: r.version,
@@ -94,7 +124,11 @@ function toCurrent(r: AssetRow & { version_id: string; version: number; created_
   };
 }
 
-export async function assetsByIds(db: DbOrTrx, organizationId: string, ids: readonly string[]): Promise<Map<string, AssetRow & { purpose: CertificationAssetsTable['purpose'] }>> {
+export async function assetsByIds(
+  db: DbOrTrx,
+  organizationId: string,
+  ids: readonly string[],
+): Promise<Map<string, AssetRow & { purpose: CertificationAssetsTable['purpose'] }>> {
   if (ids.length === 0) return new Map();
   const rows = await db
     .selectFrom('certification_assets as a')
@@ -106,17 +140,35 @@ export async function assetsByIds(db: DbOrTrx, organizationId: string, ids: read
 }
 
 /** Template images must be uploaded background/logo/badge images of the same organization. */
-export async function assertDesignAssets(db: DbOrTrx, organizationId: string, design: certification.TemplateDesign, path = 'design'): Promise<void> {
+export async function assertDesignAssets(
+  db: DbOrTrx,
+  organizationId: string,
+  design: certification.TemplateDesign,
+  path = 'design',
+): Promise<void> {
   const problems: Array<{ path: string; message: string }> = [];
   const ids = [
-    ...(design.theme.backgroundImageAssetId ? [{ id: design.theme.backgroundImageAssetId, path: `${path}.theme.backgroundImageAssetId` }] : []),
-    ...design.elements.flatMap((el, i) => (el.assetId && (el.type === 'image' || el.type === 'logo') ? [{ id: el.assetId, path: `${path}.elements.${i}.assetId` }] : [])),
+    ...(design.theme.backgroundImageAssetId
+      ? [{ id: design.theme.backgroundImageAssetId, path: `${path}.theme.backgroundImageAssetId` }]
+      : []),
+    ...design.elements.flatMap((el, i) =>
+      el.assetId && (el.type === 'image' || el.type === 'logo')
+        ? [{ id: el.assetId, path: `${path}.elements.${i}.assetId` }]
+        : [],
+    ),
   ];
-  const assets = await assetsByIds(db, organizationId, ids.map((i) => i.id));
+  const assets = await assetsByIds(
+    db,
+    organizationId,
+    ids.map((i) => i.id),
+  );
   for (const ref of ids) {
     const asset = assets.get(ref.id);
     if (!asset || !['background', 'logo', 'badge'].includes(asset.purpose)) {
-      problems.push({ path: ref.path, message: 'Choose an uploaded background, logo or badge image.' });
+      problems.push({
+        path: ref.path,
+        message: 'Choose an uploaded background, logo or badge image.',
+      });
     }
   }
   if (problems.length) throw new ValidationError(problems);

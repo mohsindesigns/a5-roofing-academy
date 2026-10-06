@@ -19,7 +19,11 @@ type Trx = Transaction<DirectorySchema & InboxSchema>;
  * Applies a full user record. Older revisions are ignored, so out-of-order delivery is harmless.
  * Returns false when the stored revision is newer.
  */
-export async function applyDirectoryUser(trx: Trx, user: DirectoryUserRecord, revision: number): Promise<boolean> {
+export async function applyDirectoryUser(
+  trx: Trx,
+  user: DirectoryUserRecord,
+  revision: number,
+): Promise<boolean> {
   const result = await trx
     .insertInto('dir_users')
     .values({
@@ -64,18 +68,34 @@ export async function applyDirectoryUser(trx: Trx, user: DirectoryUserRecord, re
 
   await trx.deleteFrom('dir_user_teams').where('user_id', '=', user.id).execute();
   if (user.teamIds.length) {
-    await trx.insertInto('dir_user_teams').values(user.teamIds.map((team_id) => ({ user_id: user.id, team_id }))).execute();
+    await trx
+      .insertInto('dir_user_teams')
+      .values(user.teamIds.map((team_id) => ({ user_id: user.id, team_id })))
+      .execute();
   }
   await trx.deleteFrom('dir_user_supervisors').where('user_id', '=', user.id).execute();
   const supervisors = [
-    ...user.managerIds.map((id) => ({ user_id: user.id, supervisor_id: id, kind: 'manager' as const })),
-    ...user.trainerIds.map((id) => ({ user_id: user.id, supervisor_id: id, kind: 'trainer' as const })),
+    ...user.managerIds.map((id) => ({
+      user_id: user.id,
+      supervisor_id: id,
+      kind: 'manager' as const,
+    })),
+    ...user.trainerIds.map((id) => ({
+      user_id: user.id,
+      supervisor_id: id,
+      kind: 'trainer' as const,
+    })),
   ];
-  if (supervisors.length) await trx.insertInto('dir_user_supervisors').values(supervisors).execute();
+  if (supervisors.length)
+    await trx.insertInto('dir_user_supervisors').values(supervisors).execute();
   return true;
 }
 
-export async function applyDirectoryTeam(trx: Trx, team: DirectoryTeamRecord, revision: number): Promise<boolean> {
+export async function applyDirectoryTeam(
+  trx: Trx,
+  team: DirectoryTeamRecord,
+  revision: number,
+): Promise<boolean> {
   const result = await trx
     .insertInto('dir_teams')
     .values({
@@ -103,12 +123,19 @@ export async function applyDirectoryTeam(trx: Trx, team: DirectoryTeamRecord, re
   if ((result.numInsertedOrUpdatedRows ?? 0n) === 0n) return false;
   await trx.deleteFrom('dir_team_managers').where('team_id', '=', team.id).execute();
   if (team.managerIds.length) {
-    await trx.insertInto('dir_team_managers').values(team.managerIds.map((user_id) => ({ team_id: team.id, user_id }))).execute();
+    await trx
+      .insertInto('dir_team_managers')
+      .values(team.managerIds.map((user_id) => ({ team_id: team.id, user_id })))
+      .execute();
   }
   return true;
 }
 
-export async function applyDirectoryUnit(trx: Trx, unit: DirectoryUnitRecord, revision: number): Promise<boolean> {
+export async function applyDirectoryUnit(
+  trx: Trx,
+  unit: DirectoryUnitRecord,
+  revision: number,
+): Promise<boolean> {
   const result = await trx
     .insertInto('dir_units')
     .values({
@@ -141,18 +168,24 @@ export class DirectoryProjection {
   @OnEvent(identityEvents.directoryUserUpserted)
   async onUser(event: EventEnvelope) {
     const { user, revision } = event.payload as { user: DirectoryUserRecord; revision: number };
-    await processOnce(this.db, 'directory.user', event, (trx) => applyDirectoryUser(trx, user, revision).then(() => undefined));
+    await processOnce(this.db, 'directory.user', event, (trx) =>
+      applyDirectoryUser(trx, user, revision).then(() => undefined),
+    );
   }
 
   @OnEvent(identityEvents.directoryTeamUpserted)
   async onTeam(event: EventEnvelope) {
     const { team, revision } = event.payload as { team: DirectoryTeamRecord; revision: number };
-    await processOnce(this.db, 'directory.team', event, (trx) => applyDirectoryTeam(trx, team, revision).then(() => undefined));
+    await processOnce(this.db, 'directory.team', event, (trx) =>
+      applyDirectoryTeam(trx, team, revision).then(() => undefined),
+    );
   }
 
   @OnEvent(identityEvents.directoryUnitUpserted)
   async onUnit(event: EventEnvelope) {
     const { unit, revision } = event.payload as { unit: DirectoryUnitRecord; revision: number };
-    await processOnce(this.db, 'directory.unit', event, (trx) => applyDirectoryUnit(trx, unit, revision).then(() => undefined));
+    await processOnce(this.db, 'directory.unit', event, (trx) =>
+      applyDirectoryUnit(trx, unit, revision).then(() => undefined),
+    );
   }
 }

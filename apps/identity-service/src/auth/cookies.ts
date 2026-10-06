@@ -11,7 +11,12 @@ const REFRESH_PATH = '/api/v1/auth';
  * Refresh token: HttpOnly, SameSite=Strict, scoped to the auth path.
  * CSRF token: readable by the SPA, echoed in `X-CSRF-Token` (double submit) on cookie-auth calls.
  */
-export function setSessionCookies(res: Response, config: IdentityConfig, refreshToken: string, expiresAt: Date): void {
+export function setSessionCookies(
+  res: Response,
+  config: IdentityConfig,
+  refreshToken: string,
+  expiresAt: Date,
+): void {
   const base = {
     secure: config.auth.cookieSecure,
     sameSite: 'strict' as const,
@@ -23,7 +28,11 @@ export function setSessionCookies(res: Response, config: IdentityConfig, refresh
 }
 
 export function clearSessionCookies(res: Response, config: IdentityConfig): void {
-  const base = { secure: config.auth.cookieSecure, sameSite: 'strict' as const, domain: config.auth.cookieDomain };
+  const base = {
+    secure: config.auth.cookieSecure,
+    sameSite: 'strict' as const,
+    domain: config.auth.cookieDomain,
+  };
   res.clearCookie(REFRESH_COOKIE, { ...base, httpOnly: true, path: REFRESH_PATH });
   res.clearCookie(CSRF_COOKIE, { ...base, path: '/' });
 }

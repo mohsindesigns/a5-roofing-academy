@@ -66,9 +66,28 @@ export async function generateClip(options: ClipOptions): Promise<void> {
     '-i',
     `sine=frequency=${options.toneHz ?? 440}:sample_rate=48000:duration=${d}`,
   ];
-  const encode = ['-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-shortest', '-movflags', '+faststart', options.outPath];
+  const encode = [
+    '-c:v',
+    'libx264',
+    '-preset',
+    'veryfast',
+    '-pix_fmt',
+    'yuv420p',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '128k',
+    '-shortest',
+    '-movflags',
+    '+faststart',
+    options.outPath,
+  ];
   try {
-    await runProcess(ffmpeg, [...base, ...(filters.length ? ['-vf', filters.join(',')] : []), ...encode], { timeoutMs: 300_000 });
+    await runProcess(
+      ffmpeg,
+      [...base, ...(filters.length ? ['-vf', filters.join(',')] : []), ...encode],
+      { timeoutMs: 300_000 },
+    );
   } catch (err) {
     if (!filters.length) throw err;
     // drawtext needs libfreetype/fontconfig; fall back to the bare test pattern.
@@ -138,19 +157,29 @@ const JOURNEY_STAGES: Array<{ stage: string; items: string[] }> = [
 /** A one-page customer-journey checklist PDF (PDFKit, standard fonts only). */
 export function generateJourneyChecklistPdf(): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'LETTER', margin: 54, info: { Title: 'A5 Customer Journey Checklist', Author: 'A5 Roofing Sales Enablement' } });
+    const doc = new PDFDocument({
+      size: 'LETTER',
+      margin: 54,
+      info: { Title: 'A5 Customer Journey Checklist', Author: 'A5 Roofing Sales Enablement' },
+    });
     const chunks: Buffer[] = [];
     doc.on('data', (c: Buffer) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    doc.fillColor('#2b2b2b').font('Helvetica-Bold').fontSize(20).text('A5 Customer Journey Checklist');
+    doc
+      .fillColor('#2b2b2b')
+      .font('Helvetica-Bold')
+      .fontSize(20)
+      .text('A5 Customer Journey Checklist');
     doc.moveDown(0.3);
     doc
       .font('Helvetica')
       .fontSize(10.5)
       .fillColor('#555555')
-      .text('Use this checklist on every residential project, from the first knock to the final walkthrough. Each stage builds the trust that earns referrals.');
+      .text(
+        'Use this checklist on every residential project, from the first knock to the final walkthrough. Each stage builds the trust that earns referrals.',
+      );
     doc.moveDown(0.8);
 
     for (const { stage, items } of JOURNEY_STAGES) {
@@ -159,13 +188,21 @@ export function generateJourneyChecklistPdf(): Promise<Buffer> {
       for (const item of items) {
         const y = doc.y + 1;
         doc.lineWidth(0.8).strokeColor('#2b2b2b').rect(doc.page.margins.left, y, 9, 9).stroke();
-        doc.font('Helvetica').fontSize(10.5).fillColor('#2b2b2b').text(item, doc.page.margins.left + 16, y - 1, { width: 470 });
+        doc
+          .font('Helvetica')
+          .fontSize(10.5)
+          .fillColor('#2b2b2b')
+          .text(item, doc.page.margins.left + 16, y - 1, { width: 470 });
         doc.moveDown(0.25);
       }
       doc.x = doc.page.margins.left;
       doc.moveDown(0.5);
     }
-    doc.font('Helvetica-Oblique').fontSize(9).fillColor('#777777').text('A5 Sales Academy · Week 1 · A5 Fundamentals', doc.page.margins.left);
+    doc
+      .font('Helvetica-Oblique')
+      .fontSize(9)
+      .fillColor('#777777')
+      .text('A5 Sales Academy · Week 1 · A5 Fundamentals', doc.page.margins.left);
     doc.end();
   });
 }

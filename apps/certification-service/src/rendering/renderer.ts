@@ -78,7 +78,13 @@ export async function renderCertificatePdf(input: RenderInput): Promise<Buffer> 
     const box = elementBox(el, page);
     switch (el.type) {
       case 'text':
-        drawText(doc, el, box, pdfSafeText(elementText(el, input.values)), pdfFontName(elementFontFamily(el, design), el.fontWeight, el.fontStyle));
+        drawText(
+          doc,
+          el,
+          box,
+          pdfSafeText(elementText(el, input.values)),
+          pdfFontName(elementFontFamily(el, design), el.fontWeight, el.fontStyle),
+        );
         break;
       case 'line':
         drawLine(doc, el, box);
@@ -87,7 +93,12 @@ export async function renderCertificatePdf(input: RenderInput): Promise<Buffer> 
         drawQr(doc, el, box, input.qrValue);
         break;
       case 'signature':
-        drawImage(doc, el, box, signatureSlotOf(el) === 1 ? input.images.signature1 : input.images.signature2);
+        drawImage(
+          doc,
+          el,
+          box,
+          signatureSlotOf(el) === 1 ? input.images.signature1 : input.images.signature2,
+        );
         break;
       case 'stamp':
         drawImage(doc, el, box, input.images.stamp);
@@ -104,7 +115,12 @@ export async function renderCertificatePdf(input: RenderInput): Promise<Buffer> 
   return done;
 }
 
-function drawBackground(doc: Doc, design: TemplateDesign, page: { width: number; height: number }, images: RenderImages) {
+function drawBackground(
+  doc: Doc,
+  design: TemplateDesign,
+  page: { width: number; height: number },
+  images: RenderImages,
+) {
   doc.save();
   doc.rect(0, 0, page.width, page.height).fill(design.theme.backgroundColor);
   doc.restore();
@@ -123,14 +139,24 @@ function drawBorder(doc: Doc, design: TemplateDesign, page: { width: number; hei
   if (border.style === 'none') return;
   const inset = (border.inset / 100) * Math.min(page.width, page.height);
   const w = border.width;
-  const outer = { x: inset + w / 2, y: inset + w / 2, w: page.width - 2 * inset - w, h: page.height - 2 * inset - w };
+  const outer = {
+    x: inset + w / 2,
+    y: inset + w / 2,
+    w: page.width - 2 * inset - w,
+    h: page.height - 2 * inset - w,
+  };
   doc.save();
   doc.lineJoin('miter');
   doc.lineWidth(w).strokeColor(border.color).rect(outer.x, outer.y, outer.w, outer.h).stroke();
   if (border.style === 'double' || border.style === 'ornamental') {
     const gap = Math.max(3, w * 2.5);
     const innerWidth = Math.max(0.5, w / 2);
-    const inner = { x: outer.x + gap, y: outer.y + gap, w: outer.w - 2 * gap, h: outer.h - 2 * gap };
+    const inner = {
+      x: outer.x + gap,
+      y: outer.y + gap,
+      w: outer.w - 2 * gap,
+      h: outer.h - 2 * gap,
+    };
     doc.lineWidth(innerWidth).rect(inner.x, inner.y, inner.w, inner.h).stroke();
     if (border.style === 'ornamental') {
       const size = Math.max(5, w * 3);
@@ -203,19 +229,35 @@ function drawText(doc: Doc, el: DesignElement, box: Box, text: string, font: str
   const y = box.y + Math.max(0, (box.h - height) / 2);
   doc.save();
   doc.fillColor(el.color).fontSize(size);
-  doc.text(text, box.x, y, { ...textOptions(el, box, size), height: Math.max(box.h, height) + 1, ellipsis: true });
+  doc.text(text, box.x, y, {
+    ...textOptions(el, box, size),
+    height: Math.max(box.h, height) + 1,
+    ellipsis: true,
+  });
   doc.restore();
 }
 
 function drawLine(doc: Doc, el: DesignElement, box: Box) {
   const y = box.y + box.h / 2;
-  doc.save().moveTo(box.x, y).lineTo(box.x + box.w, y).lineWidth(el.strokeWidth).strokeColor(el.color).lineCap('butt').stroke().restore();
+  doc
+    .save()
+    .moveTo(box.x, y)
+    .lineTo(box.x + box.w, y)
+    .lineWidth(el.strokeWidth)
+    .strokeColor(el.color)
+    .lineCap('butt')
+    .stroke()
+    .restore();
 }
 
 function drawImage(doc: Doc, el: DesignElement, box: Box, image: Buffer | null) {
   if (!image) return;
   doc.save();
-  doc.image(image, box.x, box.y, { fit: [box.w, box.h], ...(el.align !== 'left' && { align: el.align }), valign: 'center' });
+  doc.image(image, box.x, box.y, {
+    fit: [box.w, box.h],
+    ...(el.align !== 'left' && { align: el.align }),
+    valign: 'center',
+  });
   doc.restore();
 }
 
@@ -226,7 +268,8 @@ function drawQr(doc: Doc, el: DesignElement, box: Box, value: string) {
   const quiet = 2;
   const side = Math.min(box.w, box.h);
   const cell = side / (n + quiet * 2);
-  const ox = box.x + (el.align === 'left' ? 0 : el.align === 'right' ? box.w - side : (box.w - side) / 2);
+  const ox =
+    box.x + (el.align === 'left' ? 0 : el.align === 'right' ? box.w - side : (box.w - side) / 2);
   const oy = box.y + (box.h - side) / 2;
   doc.save();
   doc.rect(ox, oy, side, side).fill('#FFFFFF');
@@ -239,7 +282,12 @@ function drawQr(doc: Doc, el: DesignElement, box: Box, value: string) {
       }
       const start = col;
       while (col < n && qr.modules.get(row, col)) col++;
-      doc.rect(ox + (start + quiet) * cell, oy + (row + quiet) * cell, (col - start) * cell + 0.02, cell + 0.02);
+      doc.rect(
+        ox + (start + quiet) * cell,
+        oy + (row + quiet) * cell,
+        (col - start) * cell + 0.02,
+        cell + 0.02,
+      );
     }
   }
   doc.fill(el.color);
@@ -249,14 +297,28 @@ function drawQr(doc: Doc, el: DesignElement, box: Box, value: string) {
 function drawFooter(doc: Doc, page: { width: number; height: number }, text: string) {
   doc.save();
   doc.font('Helvetica').fontSize(5.5).fillColor('#6B7280');
-  doc.text(text, 0, page.height - 9, { width: page.width, align: 'center', lineBreak: false, height: 8 });
+  doc.text(text, 0, page.height - 9, {
+    width: page.width,
+    align: 'center',
+    lineBreak: false,
+    height: 8,
+  });
   doc.restore();
 }
 
 function drawWatermark(doc: Doc, page: { width: number; height: number }, text: string) {
   doc.save();
   doc.rotate(-28, { origin: [page.width / 2, page.height / 2] });
-  doc.font('Helvetica-Bold').fontSize(Math.min(page.width, page.height) / 9).fillColor('#9CA3AF').fillOpacity(0.2);
-  doc.text(text, -page.width, page.height / 2 - 30, { width: page.width * 3, align: 'center', lineBreak: false, height: 80 });
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(Math.min(page.width, page.height) / 9)
+    .fillColor('#9CA3AF')
+    .fillOpacity(0.2);
+  doc.text(text, -page.width, page.height / 2 - 30, {
+    width: page.width * 3,
+    align: 'center',
+    lineBreak: false,
+    height: 80,
+  });
   doc.restore();
 }

@@ -1,7 +1,15 @@
 import { Get, HttpCode, Patch, Post } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import { notification } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { TemplatesService } from './templates.service.js';
 
 @ApiController('notification-templates')
@@ -11,7 +19,10 @@ export class TemplatesController {
 
   @Get()
   @ZResponse(notification.templateListSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(notification.listTemplatesQuerySchema) q: notification.ListTemplatesQuery) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(notification.listTemplatesQuerySchema) q: notification.ListTemplatesQuery,
+  ) {
     return this.templates.list(p, q);
   }
 

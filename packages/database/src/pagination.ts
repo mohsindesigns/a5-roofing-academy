@@ -26,7 +26,9 @@ export async function paginate<DB, TB extends keyof DB, O>(
     .limit(pageSize)
     .offset((page - 1) * pageSize)
     .execute();
-  const total = rows.length ? Number((rows[0] as { __total: number }).__total) : await countFallback(query);
+  const total = rows.length
+    ? Number((rows[0] as { __total: number }).__total)
+    : await countFallback(query);
   const items = rows.map((r) => {
     const { __total: _ignored, ...rest } = r as O & { __total: number };
     return rest as O;
@@ -34,7 +36,9 @@ export async function paginate<DB, TB extends keyof DB, O>(
   return { items, page, pageSize, total, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
 }
 
-async function countFallback<DB, TB extends keyof DB, O>(query: SelectQueryBuilder<DB, TB, O>): Promise<number> {
+async function countFallback<DB, TB extends keyof DB, O>(
+  query: SelectQueryBuilder<DB, TB, O>,
+): Promise<number> {
   // Requested page is past the end: count separately so the UI can still show totals.
   const result = await query
     .clearSelect()

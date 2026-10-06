@@ -10,7 +10,11 @@ import type { DirectorySchema } from './schema.js';
 @Module({
   providers: [
     DirectoryProjection,
-    { provide: DirectoryReader, inject: [DATABASE], useFactory: (db: Kysely<DirectorySchema>) => new DirectoryReader(db) },
+    {
+      provide: DirectoryReader,
+      inject: [DATABASE],
+      useFactory: (db: Kysely<DirectorySchema>) => new DirectoryReader(db),
+    },
   ],
   exports: [DirectoryReader],
 })

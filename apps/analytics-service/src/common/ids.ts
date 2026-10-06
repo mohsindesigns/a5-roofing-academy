@@ -5,7 +5,9 @@ import { createHash } from 'node:crypto';
  * same fact from a different event (redelivery, regrade) updates one row instead of adding another.
  */
 export function stableId(...parts: string[]): string {
-  const hash = createHash('sha1').update(`a5-analytics:${parts.join(':')}`).digest();
+  const hash = createHash('sha1')
+    .update(`a5-analytics:${parts.join(':')}`)
+    .digest();
   hash[6] = (hash[6]! & 0x0f) | 0x50;
   hash[8] = (hash[8]! & 0x3f) | 0x80;
   const hex = hash.subarray(0, 16).toString('hex');

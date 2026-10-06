@@ -14,34 +14,65 @@ beforeAll(async () => {
 });
 afterAll(() => h?.close());
 
-const complete = (who: Record<string, string>, lessonId: string) => h.http.post(`/api/v1/learning/me/lessons/${lessonId}/complete`).set(who);
-const types = async () => (await h.outbox()).filter((e) => e.type !== 'audit.recorded').map((e) => e.type);
+const complete = (who: Record<string, string>, lessonId: string) =>
+  h.http.post(`/api/v1/learning/me/lessons/${lessonId}/complete`).set(who);
+const types = async () =>
+  (await h.outbox()).filter((e) => e.type !== 'audit.recorded').map((e) => e.type);
 
 describe('sequential navigation', () => {
   it('unlocks lessons and phases one after another and keeps progress in step', async () => {
     const built = await buildProgram(h, admin, {
       title: 'Sequential Program',
       phases: [
-        { key: 'p1', title: 'Basics', lessons: [{ key: 'a1', type: 'article', title: 'First read' }, { key: 'a2', type: 'article', title: 'Second read' }, { key: 'a3', type: 'article', title: 'Optional read', isRequired: false }] },
-        { key: 'p2', title: 'Advanced', lessons: [{ key: 'b1', type: 'article', title: 'Advanced read' }] },
+        {
+          key: 'p1',
+          title: 'Basics',
+          lessons: [
+            { key: 'a1', type: 'article', title: 'First read' },
+            { key: 'a2', type: 'article', title: 'Second read' },
+            { key: 'a3', type: 'article', title: 'Optional read', isRequired: false },
+          ],
+        },
+        {
+          key: 'p2',
+          title: 'Advanced',
+          lessons: [{ key: 'b1', type: 'article', title: 'Advanced read' }],
+        },
       ],
     });
-    const [{ enrollmentId }] = (await enroll(h, admin, built.id, ['marcus'])).items as [{ enrollmentId: string }];
+    const [{ enrollmentId }] = (await enroll(h, admin, built.id, ['marcus'])).items as [
+      { enrollmentId: string },
+    ];
     const rep = await h.as('marcus');
     const { a1, a2, a3, b1 } = built.lessons as Record<string, string>;
 
     let o = await outline(h, rep, built.id);
-    expect(lessonStates(o)).toEqual({ [a1]: 'available', [a2]: 'locked', [a3]: 'locked', [b1]: 'locked' });
+    expect(lessonStates(o)).toEqual({
+      [a1]: 'available',
+      [a2]: 'locked',
+      [a3]: 'locked',
+      [b1]: 'locked',
+    });
     expect(o.phases[1]).toMatchObject({ state: 'locked' });
     expect(o.phases[1]!.requirements).toEqual([
-      { description: 'Complete Week 1: Basics', satisfied: false, progress: { current: 0, target: 2, unit: 'count' } },
+      {
+        description: 'Complete Week 1: Basics',
+        satisfied: false,
+        progress: { current: 0, target: 2, unit: 'count' },
+      },
     ]);
-    expect(o.phases[0]!.modules[0]!.lessons[1]!.requirements.map((r) => r.description)).toEqual(['Complete "First read"']);
+    expect(o.phases[0]!.modules[0]!.lessons[1]!.requirements.map((r) => r.description)).toEqual([
+      'Complete "First read"',
+    ]);
     expect(o.nextLessonId).toBe(a1);
 
     // A locked lesson reveals nothing and cannot be started or completed.
     const locked = await h.http.get(`/api/v1/learning/me/lessons/${a2}`).set(rep);
-    expect(locked.body).toMatchObject({ state: 'locked', grant: null, lesson: { body: null, config: null } });
+    expect(locked.body).toMatchObject({
+      state: 'locked',
+      grant: null,
+      lesson: { body: null, config: null },
+    });
     expect(locked.body.requirements[0].description).toBe('Complete "First read"');
     const start = await h.http.post(`/api/v1/learning/me/lessons/${a2}/start`).set(rep);
     expect(start.status).toBe(422);
@@ -51,10 +82,24 @@ describe('sequential navigation', () => {
     await h.clearOutbox();
     const first = await complete(rep, a1);
     expect(first.status).toBe(200);
-    expect(first.body.progress).toMatchObject({ status: 'completed', percent: 100, completionSource: 'learner' });
-    expect(first.body.enrollment).toMatchObject({ progressPercent: 33.3, requiredCompleted: 1, requiredTotal: 3, status: 'active' });
+    expect(first.body.progress).toMatchObject({
+      status: 'completed',
+      percent: 100,
+      completionSource: 'learner',
+    });
+    expect(first.body.enrollment).toMatchObject({
+      progressPercent: 33.3,
+      requiredCompleted: 1,
+      requiredTotal: 3,
+      status: 'active',
+    });
     o = await outline(h, rep, built.id);
-    expect(lessonStates(o)).toEqual({ [a1]: 'completed', [a2]: 'available', [a3]: 'locked', [b1]: 'locked' });
+    expect(lessonStates(o)).toEqual({
+      [a1]: 'completed',
+      [a2]: 'available',
+      [a3]: 'locked',
+      [b1]: 'locked',
+    });
     expect(o.percent).toBe(33.3);
 
     // Completing again changes nothing and emits nothing.
@@ -88,26 +133,48 @@ describe('sequential navigation', () => {
       'enrollment.progressed',
       'program.completed',
     ]);
-    const phaseEvents = (await h.outbox('phase.completed')).map((e) => (e.payload as { phaseId: string }).phaseId);
+    const phaseEvents = (await h.outbox('phase.completed')).map(
+      (e) => (e.payload as { phaseId: string }).phaseId,
+    );
     expect(phaseEvents).toEqual([built.phases.p1, built.phases.p2]);
-    const progressed = (await h.outbox('enrollment.progressed')).map((e) => (e.payload as { progressPercent: number }).progressPercent);
+    const progressed = (await h.outbox('enrollment.progressed')).map(
+      (e) => (e.payload as { progressPercent: number }).progressPercent,
+    );
     expect(progressed).toEqual([33.3, 66.7, 100]);
 
     // The admin view of the enrollment agrees with the denormalised columns.
     const detail = await h.http.get(`/api/v1/enrollments/${enrollmentId}`).set(admin);
-    expect(detail.body).toMatchObject({ status: 'completed', progressPercent: 100, requiredCompleted: 3, requiredTotal: 3 });
-    expect(detail.body.lessons.filter((l: { state: string }) => l.state === 'completed')).toHaveLength(3);
-    const row = await h.db.selectFrom('enrollments').selectAll().where('id', '=', enrollmentId).executeTakeFirstOrThrow();
+    expect(detail.body).toMatchObject({
+      status: 'completed',
+      progressPercent: 100,
+      requiredCompleted: 3,
+      requiredTotal: 3,
+    });
+    expect(
+      detail.body.lessons.filter((l: { state: string }) => l.state === 'completed'),
+    ).toHaveLength(3);
+    const row = await h.db
+      .selectFrom('enrollments')
+      .selectAll()
+      .where('id', '=', enrollmentId)
+      .executeTakeFirstOrThrow();
     expect(row.current_lesson_id).toBeNull();
     expect(Number(row.progress_percent)).toBe(100);
   });
 
   it('does not let one learner open another learner’s lessons', async () => {
-    const built = await buildProgram(h, admin, { title: 'Private Program', phases: [{ key: 'p1', lessons: [{ key: 'a', type: 'article' }] }] });
+    const built = await buildProgram(h, admin, {
+      title: 'Private Program',
+      phases: [{ key: 'p1', lessons: [{ key: 'a', type: 'article' }] }],
+    });
     await enroll(h, admin, built.id, ['jordan']);
     const stranger = await h.as('devon');
-    expect((await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.a}`).set(stranger)).status).toBe(404);
-    expect((await h.http.get(`/api/v1/learning/me/programs/${built.id}/outline`).set(stranger)).status).toBe(404);
+    expect(
+      (await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.a}`).set(stranger)).status,
+    ).toBe(404);
+    expect(
+      (await h.http.get(`/api/v1/learning/me/programs/${built.id}/outline`).set(stranger)).status,
+    ).toBe(404);
   });
 });
 
@@ -124,8 +191,16 @@ describe('manual completion', () => {
             { key: 'ai', type: 'ai_simulation', config: { scenarioId: randomId(), minScore: 75 } },
             { key: 'final', type: 'final_assessment', config: { assessmentId: randomId() } },
             { key: 'task', type: 'assignment', config: { instructions: 'Write a reflection.' } },
-            { key: 'signoff', type: 'manager_approval', config: { instructions: 'Confirm readiness.' } },
-            { key: 'ack', type: 'acknowledgment', config: { statement: 'I will follow the code.' } },
+            {
+              key: 'signoff',
+              type: 'manager_approval',
+              config: { instructions: 'Confirm readiness.' },
+            },
+            {
+              key: 'ack',
+              type: 'acknowledgment',
+              config: { statement: 'I will follow the code.' },
+            },
             { key: 'video', type: 'video', config: { mediaAssetId: randomId() } },
             { key: 'doc', type: 'pdf', config: { mediaAssetId: randomId() } },
             { key: 'read', type: 'article' },
@@ -173,7 +248,11 @@ describe('lesson grants', () => {
         {
           key: 'p1',
           lessons: [
-            { key: 'video', type: 'video', config: { mediaAssetId: mediaId, allowSkipping: false, maxCreditedPlaybackRate: 1.5 } },
+            {
+              key: 'video',
+              type: 'video',
+              config: { mediaAssetId: mediaId, allowSkipping: false, maxCreditedPlaybackRate: 1.5 },
+            },
             { key: 'doc', type: 'pdf', config: { mediaAssetId: docId } },
             { key: 'quiz', type: 'quiz', config: { assessmentId } },
             { key: 'ai', type: 'scenario', config: { scenarioId, minScore: 80 } },
@@ -181,9 +260,12 @@ describe('lesson grants', () => {
         },
       ],
     });
-    const [{ enrollmentId }] = (await enroll(h, admin, built.id, ['isaiah'])).items as [{ enrollmentId: string }];
+    const [{ enrollmentId }] = (await enroll(h, admin, built.id, ['isaiah'])).items as [
+      { enrollmentId: string },
+    ];
     const rep = await h.as('isaiah');
-    const open = async (key: string) => (await h.http.get(`/api/v1/learning/me/lessons/${built.lessons[key]}`).set(rep)).body;
+    const open = async (key: string) =>
+      (await h.http.get(`/api/v1/learning/me/lessons/${built.lessons[key]}`).set(rep)).body;
 
     const video = await open('video');
     expect(video.state).toBe('available');
@@ -210,22 +292,39 @@ describe('lesson grants', () => {
       expect(locked.grant, key).toBeNull();
     }
     // A forged or expired token never verifies.
-    await expect(verifyLessonGrant(`${video.grant.token}x`, TEST_INTERNAL_SECRET)).rejects.toThrow();
-    await expect(verifyLessonGrant(video.grant.token, 'another-secret-another-secret-123456')).rejects.toThrow();
+    await expect(
+      verifyLessonGrant(`${video.grant.token}x`, TEST_INTERNAL_SECRET),
+    ).rejects.toThrow();
+    await expect(
+      verifyLessonGrant(video.grant.token, 'another-secret-another-secret-123456'),
+    ).rejects.toThrow();
 
     // Completing the video unlocks the document, then the assessment and the AI scenario.
-    await h.consume(h.envelope(
-      (await import('@a5/events')).mediaEvents.videoCompleted,
-      { assetId: mediaId, userId: PEOPLE.isaiah.id, contextType: 'lesson', contextId: built.lessons.video!, watchedPercent: 100, watchedSeconds: 300, durationSeconds: 300 },
-    ));
+    await h.consume(
+      h.envelope((await import('@a5/events')).mediaEvents.videoCompleted, {
+        assetId: mediaId,
+        userId: PEOPLE.isaiah.id,
+        contextType: 'lesson',
+        contextId: built.lessons.video!,
+        watchedPercent: 100,
+        watchedSeconds: 300,
+        durationSeconds: 300,
+      }),
+    );
     const doc = await open('doc');
     expect(doc.state).toBe('available');
-    expect((await verifyLessonGrant(doc.grant.token, TEST_INTERNAL_SECRET)).resource).toEqual({ type: 'document', id: docId });
+    expect((await verifyLessonGrant(doc.grant.token, TEST_INTERNAL_SECRET)).resource).toEqual({
+      type: 'document',
+      id: docId,
+    });
     await h.http.post(`/api/v1/learning/me/lessons/${built.lessons.doc}/start`).set(rep);
     await complete(rep, built.lessons.doc!);
 
     const quiz = await open('quiz');
-    expect((await verifyLessonGrant(quiz.grant.token, TEST_INTERNAL_SECRET)).resource).toEqual({ type: 'assessment', id: assessmentId });
+    expect((await verifyLessonGrant(quiz.grant.token, TEST_INTERNAL_SECRET)).resource).toEqual({
+      type: 'assessment',
+      id: assessmentId,
+    });
     await h.consume(
       h.envelope(assessmentEvents.attemptGraded, {
         attemptId: randomId(),
@@ -256,14 +355,35 @@ describe('video grant policy', () => {
     const mediaId = randomId();
     const built = await buildProgram(h, admin, {
       title: 'Seekable Video Program',
-      phases: [{ key: 'p1', lessons: [{ key: 'video', type: 'video', config: { mediaAssetId: mediaId, allowSkipping: true, minWatchPercent: 80 } }] }],
+      phases: [
+        {
+          key: 'p1',
+          lessons: [
+            {
+              key: 'video',
+              type: 'video',
+              config: { mediaAssetId: mediaId, allowSkipping: true, minWatchPercent: 80 },
+            },
+          ],
+        },
+      ],
     });
     await enroll(h, admin, built.id, ['ethan']);
-    const detail = await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.video}`).set(await h.as('ethan'));
+    const detail = await h.http
+      .get(`/api/v1/learning/me/lessons/${built.lessons.video}`)
+      .set(await h.as('ethan'));
     expect(detail.body.grant.resource).toEqual({ type: 'media', id: mediaId });
-    expect(detail.body.grant.policy).toEqual({ minWatchPercent: 80, allowSeekAhead: true, maxCreditedPlaybackRate: 2 });
+    expect(detail.body.grant.policy).toEqual({
+      minWatchPercent: 80,
+      allowSeekAhead: true,
+      maxCreditedPlaybackRate: 2,
+    });
     const verified = await verifyLessonGrant(detail.body.grant.token, TEST_INTERNAL_SECRET);
-    expect(verified.policy).toEqual({ minWatchPercent: 80, allowSeekAhead: true, maxCreditedPlaybackRate: 2 });
+    expect(verified.policy).toEqual({
+      minWatchPercent: 80,
+      allowSeekAhead: true,
+      maxCreditedPlaybackRate: 2,
+    });
   });
 });
 
@@ -282,8 +402,18 @@ describe('rule-based unlocking', () => {
           lessons: [
             { key: 'read', type: 'article', title: 'Foundations reading' },
             // Passing the quiz lesson (70) is easier than the thresholds Week 2 asks for.
-            { key: 'quiz', type: 'quiz', title: 'Foundations quiz', config: { assessmentId: quizId } },
-            { key: 'ai', type: 'ai_simulation', title: 'Busy homeowner', config: { scenarioId, minScore: 70 } },
+            {
+              key: 'quiz',
+              type: 'quiz',
+              title: 'Foundations quiz',
+              config: { assessmentId: quizId },
+            },
+            {
+              key: 'ai',
+              type: 'ai_simulation',
+              title: 'Busy homeowner',
+              config: { scenarioId, minScore: 70 },
+            },
           ],
         },
         {
@@ -301,7 +431,9 @@ describe('rule-based unlocking', () => {
         },
       ],
     });
-    const [{ enrollmentId }] = (await enroll(h, admin, built.id, ['jasmine'])).items as [{ enrollmentId: string }];
+    const [{ enrollmentId }] = (await enroll(h, admin, built.id, ['jasmine'])).items as [
+      { enrollmentId: string },
+    ];
     const rep = await h.as('jasmine');
     const week2 = async () => (await outline(h, rep, built.id)).phases[1]!;
     const grade = (score: number, passed: boolean, attempt: number, at = new Date()) =>
@@ -370,19 +502,32 @@ describe('rule-based unlocking', () => {
     await grade(86, true, 2);
     w = await week2();
     expect(w.state).toBe('locked');
-    expect(w.requirements.filter((r) => !r.satisfied).map((r) => r.description)).toEqual(['Score 75 or higher on "Busy homeowner"']);
+    expect(w.requirements.filter((r) => !r.satisfied).map((r) => r.description)).toEqual([
+      'Score 75 or higher on "Busy homeowner"',
+    ]);
 
     await rolePlay(77);
     w = await week2();
     expect(w.state).toBe('available');
     expect(w.requirements).toEqual([]);
-    expect((await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.w2read}`).set(rep)).body.state).toBe('available');
+    expect(
+      (await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.w2read}`).set(rep)).body.state,
+    ).toBe('available');
 
     // Thresholds are rule parameters: raising one re-locks Week 2 after the next publish.
-    await h.http.patch(`/api/v1/programs/${built.id}/phases/${built.phases.w2}`).set(admin).send({
-      unlockRule: { type: 'all', rules: [{ type: 'assessment_score', assessmentId: quizId, minPercent: 90 }] },
-    });
-    await h.http.post(`/api/v1/programs/${built.id}/publish`).set(admin).send({ changeNote: 'Raise the quiz bar to 90' });
+    await h.http
+      .patch(`/api/v1/programs/${built.id}/phases/${built.phases.w2}`)
+      .set(admin)
+      .send({
+        unlockRule: {
+          type: 'all',
+          rules: [{ type: 'assessment_score', assessmentId: quizId, minPercent: 90 }],
+        },
+      });
+    await h.http
+      .post(`/api/v1/programs/${built.id}/publish`)
+      .set(admin)
+      .send({ changeNote: 'Raise the quiz bar to 90' });
     w = await week2();
     expect(w.state).toBe('locked');
     expect(w.requirements[0]!.description).toBe('Score 90% or higher on "Foundations quiz"');
@@ -393,7 +538,18 @@ describe('rule-based unlocking', () => {
 describe('acknowledgments', () => {
   it('require the learner’s full name and are recorded immutably', async () => {
     const statement = 'I have read and will follow the A5 Sales Code of Conduct.';
-    const built = await buildProgram(h, admin, { title: 'Ack Program', phases: [{ key: 'p1', lessons: [{ key: 'ack', type: 'acknowledgment', config: { statement } }, { key: 'next', type: 'article' }] }] });
+    const built = await buildProgram(h, admin, {
+      title: 'Ack Program',
+      phases: [
+        {
+          key: 'p1',
+          lessons: [
+            { key: 'ack', type: 'acknowledgment', config: { statement } },
+            { key: 'next', type: 'article' },
+          ],
+        },
+      ],
+    });
     await enroll(h, admin, built.id, ['colton']);
     const rep = await h.as('colton');
     const url = `/api/v1/learning/me/lessons/${built.lessons.ack}/acknowledge`;
@@ -406,7 +562,9 @@ describe('acknowledgments', () => {
     }
     expect((await h.http.post(url).set(rep).send({ typedName: '   ' })).status).toBe(400);
     expect(await h.db.selectFrom('acknowledgments').selectAll().execute()).toHaveLength(0);
-    expect((await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.next}`).set(rep)).body.state).toBe('locked');
+    expect(
+      (await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.next}`).set(rep)).body.state,
+    ).toBe('locked');
 
     const ok = await h.http.post(url).set(rep).send({ typedName: '  colton   HAYES ' });
     expect(ok.status).toBe(200);
@@ -416,36 +574,71 @@ describe('acknowledgments', () => {
     const stored = await h.db.selectFrom('acknowledgments').selectAll().executeTakeFirstOrThrow();
     expect(stored.statement_text).toBe(statement);
     expect(stored.user_id).toBe(PEOPLE.colton.id);
-    await expect(h.db.updateTable('acknowledgments').set({ typed_name: 'Forged Name' }).execute()).rejects.toThrow(/immutable/);
+    await expect(
+      h.db.updateTable('acknowledgments').set({ typed_name: 'Forged Name' }).execute(),
+    ).rejects.toThrow(/immutable/);
     await expect(h.db.deleteFrom('acknowledgments').execute()).rejects.toThrow(/immutable/);
 
     // The lesson is complete, the next one is open, and repeating the request is harmless.
-    expect((await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.next}`).set(rep)).body.state).toBe('available');
+    expect(
+      (await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.next}`).set(rep)).body.state,
+    ).toBe('available');
     const detail = await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.ack}`).set(rep);
-    expect(detail.body).toMatchObject({ state: 'completed', acknowledgment: { typedName: 'colton HAYES' }, progress: { completionSource: 'acknowledgment' } });
+    expect(detail.body).toMatchObject({
+      state: 'completed',
+      acknowledgment: { typedName: 'colton HAYES' },
+      progress: { completionSource: 'acknowledgment' },
+    });
     const again = await h.http.post(url).set(rep).send({ typedName: 'Colton Hayes' });
     expect(again.body.id).toBe(ok.body.id);
     expect(await h.db.selectFrom('acknowledgments').selectAll().execute()).toHaveLength(1);
-    expect((await h.outbox('lesson.completed')).filter((e) => (e.payload as { lessonId: string }).lessonId === built.lessons.ack)).toHaveLength(1);
+    expect(
+      (await h.outbox('lesson.completed')).filter(
+        (e) => (e.payload as { lessonId: string }).lessonId === built.lessons.ack,
+      ),
+    ).toHaveLength(1);
   });
 });
 
 describe('notes', () => {
   it('lets a learner keep private notes with optional video timestamps', async () => {
-    const built = await buildProgram(h, admin, { title: 'Notes Program', phases: [{ key: 'p1', lessons: [{ key: 'a', type: 'article' }] }] });
+    const built = await buildProgram(h, admin, {
+      title: 'Notes Program',
+      phases: [{ key: 'p1', lessons: [{ key: 'a', type: 'article' }] }],
+    });
     await enroll(h, admin, built.id, ['ethan']);
     const rep = await h.as('ethan');
     const base = `/api/v1/learning/me/lessons/${built.lessons.a}/notes`;
-    const note = await h.http.post(base).set(rep).send({ body: 'Ask about ridge vent spacing', videoTimestampSeconds: 95 });
+    const note = await h.http
+      .post(base)
+      .set(rep)
+      .send({ body: 'Ask about ridge vent spacing', videoTimestampSeconds: 95 });
     expect(note.status).toBe(201);
-    expect(note.body).toMatchObject({ body: 'Ask about ridge vent spacing', videoTimestampSeconds: 95 });
+    expect(note.body).toMatchObject({
+      body: 'Ask about ridge vent spacing',
+      videoTimestampSeconds: 95,
+    });
     expect((await h.http.post(base).set(rep).send({ body: '   ' })).status).toBe(400);
-    const edited = await h.http.patch(`/api/v1/learning/me/notes/${note.body.id}`).set(rep).send({ body: 'Ridge vent spacing: ask Hector' });
+    const edited = await h.http
+      .patch(`/api/v1/learning/me/notes/${note.body.id}`)
+      .set(rep)
+      .send({ body: 'Ridge vent spacing: ask Hector' });
     expect(edited.body.body).toBe('Ridge vent spacing: ask Hector');
-    expect((await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.a}`).set(rep)).body.notes).toHaveLength(1);
+    expect(
+      (await h.http.get(`/api/v1/learning/me/lessons/${built.lessons.a}`).set(rep)).body.notes,
+    ).toHaveLength(1);
     // Nobody else can read or change it.
-    expect((await h.http.patch(`/api/v1/learning/me/notes/${note.body.id}`).set(await h.as('darius')).send({ body: 'hijack' })).status).toBe(404);
-    expect((await h.http.delete(`/api/v1/learning/me/notes/${note.body.id}`).set(rep)).body).toEqual({ ok: true });
+    expect(
+      (
+        await h.http
+          .patch(`/api/v1/learning/me/notes/${note.body.id}`)
+          .set(await h.as('darius'))
+          .send({ body: 'hijack' })
+      ).status,
+    ).toBe(404);
+    expect(
+      (await h.http.delete(`/api/v1/learning/me/notes/${note.body.id}`).set(rep)).body,
+    ).toEqual({ ok: true });
     expect((await h.http.get(base).set(rep)).body.items).toHaveLength(0);
   });
 });
@@ -454,7 +647,16 @@ describe('dashboard', () => {
   it('summarises enrollments, the next lesson and remaining time', async () => {
     const built = await buildProgram(h, admin, {
       title: 'Dashboard Program',
-      phases: [{ key: 'p1', title: 'Intro', lessons: [{ key: 'a', type: 'article', title: 'Warm-up', estimatedMinutes: 10 }, { key: 'b', type: 'article', title: 'Deep dive', estimatedMinutes: 20 }] }],
+      phases: [
+        {
+          key: 'p1',
+          title: 'Intro',
+          lessons: [
+            { key: 'a', type: 'article', title: 'Warm-up', estimatedMinutes: 10 },
+            { key: 'b', type: 'article', title: 'Deep dive', estimatedMinutes: 20 },
+          ],
+        },
+      ],
     });
     await enroll(h, admin, built.id, ['darius']);
     const rep = await h.as('darius');
@@ -468,12 +670,20 @@ describe('dashboard', () => {
       currentPhase: { title: 'Intro', label: 'Week 1' },
     });
     const next = await h.http.get('/api/v1/learning/me/continue').set(rep);
-    expect(next.body.item).toMatchObject({ program: { title: 'Dashboard Program' }, lesson: { id: built.lessons.a, state: 'available' } });
+    expect(next.body.item).toMatchObject({
+      program: { title: 'Dashboard Program' },
+      lesson: { id: built.lessons.a, state: 'available' },
+    });
     await complete(rep, built.lessons.a!);
     const after = await h.http.get('/api/v1/learning/me/enrollments').set(rep);
-    expect(after.body.items[0]).toMatchObject({ estimatedRemainingMinutes: 20, nextLesson: { id: built.lessons.b } });
+    expect(after.body.items[0]).toMatchObject({
+      estimatedRemainingMinutes: 20,
+      nextLesson: { id: built.lessons.b },
+    });
     await complete(rep, built.lessons.b!);
     expect((await h.http.get('/api/v1/learning/me/continue').set(rep)).body.item).toBeNull();
-    expect((await h.http.get('/api/v1/learning/me/enrollments').set(rep)).body.items[0]).toMatchObject({ status: 'completed', progressPercent: 100, nextLesson: null });
+    expect(
+      (await h.http.get('/api/v1/learning/me/enrollments').set(rep)).body.items[0],
+    ).toMatchObject({ status: 'completed', progressPercent: 100, nextLesson: null });
   });
 });

@@ -30,7 +30,10 @@ test.describe('authentication', () => {
 });
 
 test.describe('people administration', () => {
-  test('an administrator invites a representative who activates their account', async ({ page, browser }) => {
+  test('an administrator invites a representative who activates their account', async ({
+    page,
+    browser,
+  }) => {
     const first = 'Wesley';
     const last = unique('Tran');
     const email = `${first}.${last}@a5roofing.example`.toLowerCase();
@@ -80,7 +83,11 @@ test.describe('authorization', () => {
     await page.goto('/people');
     await expect(page.getByRole('link', { name: /Marcus Delgado/ })).toBeVisible();
     await expect(page.getByRole('link', { name: /Naomi Fischer/ })).toHaveCount(0);
-    await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Roles & permissions' })).toHaveCount(0);
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Main' })
+        .getByRole('link', { name: 'Roles & permissions' }),
+    ).toHaveCount(0);
     await page.goto('/admin/roles');
     await expect(page.getByText("You don't have access to this page")).toBeVisible();
   });
@@ -93,9 +100,15 @@ test.describe('authorization', () => {
     }
   });
 
-  test('removing a permission takes effect on the next request', async ({ page, browser, request }) => {
+  test('removing a permission takes effect on the next request', async ({
+    page,
+    browser,
+    request,
+  }) => {
     const api = await apiAs(request, accounts.superAdmin);
-    const roles = await api.get<{ items: Array<{ id: string; key: string; modifiedFromDefault: boolean }> }>('/roles');
+    const roles = await api.get<{
+      items: Array<{ id: string; key: string; modifiedFromDefault: boolean }>;
+    }>('/roles');
     const auditorRole = roles.items.find((r) => r.key === 'auditor')!;
     if (auditorRole.modifiedFromDefault) await api.post(`/roles/${auditorRole.id}/reset`);
     await signIn(page, accounts.superAdmin);

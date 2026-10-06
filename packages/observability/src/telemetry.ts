@@ -18,24 +18,34 @@ export interface TelemetryHandle {
 export async function startTelemetry(options: TelemetryOptions): Promise<TelemetryHandle> {
   if (!options.otlpEndpoint) return { shutdown: async () => undefined };
 
-  const [{ NodeSDK }, { OTLPTraceExporter }, { HttpInstrumentation }, { PgInstrumentation }, { IORedisInstrumentation }, { resourceFromAttributes }] =
-    await Promise.all([
-      import('@opentelemetry/sdk-node'),
-      import('@opentelemetry/exporter-trace-otlp-http'),
-      import('@opentelemetry/instrumentation-http'),
-      import('@opentelemetry/instrumentation-pg'),
-      import('@opentelemetry/instrumentation-ioredis'),
-      import('@opentelemetry/resources'),
-    ]);
+  const [
+    { NodeSDK },
+    { OTLPTraceExporter },
+    { HttpInstrumentation },
+    { PgInstrumentation },
+    { IORedisInstrumentation },
+    { resourceFromAttributes },
+  ] = await Promise.all([
+    import('@opentelemetry/sdk-node'),
+    import('@opentelemetry/exporter-trace-otlp-http'),
+    import('@opentelemetry/instrumentation-http'),
+    import('@opentelemetry/instrumentation-pg'),
+    import('@opentelemetry/instrumentation-ioredis'),
+    import('@opentelemetry/resources'),
+  ]);
 
   const sdk = new NodeSDK({
     resource: resourceFromAttributes({
       'service.name': options.serviceName,
       'service.version': options.serviceVersion ?? '0.0.0',
     }),
-    traceExporter: new OTLPTraceExporter({ url: `${options.otlpEndpoint.replace(/\/$/, '')}/v1/traces` }),
+    traceExporter: new OTLPTraceExporter({
+      url: `${options.otlpEndpoint.replace(/\/$/, '')}/v1/traces`,
+    }),
     instrumentations: [
-      new HttpInstrumentation({ ignoreIncomingRequestHook: (req) => req.url?.startsWith('/health') ?? false }),
+      new HttpInstrumentation({
+        ignoreIncomingRequestHook: (req) => req.url?.startsWith('/health') ?? false,
+      }),
       new PgInstrumentation(),
       new IORedisInstrumentation(),
     ],

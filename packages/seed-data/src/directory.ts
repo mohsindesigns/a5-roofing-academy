@@ -1,5 +1,14 @@
 import type { DirectoryTeamRecord, DirectoryUnitRecord, DirectoryUserRecord } from '@a5/events';
-import { DEPARTMENTS, LOCATIONS, ORGANIZATION, PEOPLE, TEAMS, TRAINER_ASSIGNMENTS, emailOf, type PersonKey } from './organization.js';
+import {
+  DEPARTMENTS,
+  LOCATIONS,
+  ORGANIZATION,
+  PEOPLE,
+  TEAMS,
+  TRAINER_ASSIGNMENTS,
+  emailOf,
+  type PersonKey,
+} from './organization.js';
 
 /** Directory record for a seeded person, identical to what identity-service publishes. */
 export function directoryUser(key: PersonKey): DirectoryUserRecord {
@@ -19,7 +28,9 @@ export function directoryUser(key: PersonKey): DirectoryUserRecord {
     departmentId: p.departmentId,
     teamIds: teams.map((t) => t.id),
     managerIds: teams.flatMap((t) => t.managers.map((m) => PEOPLE[m].id)),
-    trainerIds: TRAINER_ASSIGNMENTS.filter((a) => a.trainees.includes(key)).map((a) => PEOPLE[a.trainer].id),
+    trainerIds: TRAINER_ASSIGNMENTS.filter((a) => a.trainees.includes(key)).map(
+      (a) => PEOPLE[a.trainer].id,
+    ),
     roleKeys: [...p.roles],
     hiredAt: new Date(`${p.hiredAt}T00:00:00Z`).toISOString(),
   };
@@ -44,7 +55,19 @@ export function directoryTeams(): DirectoryTeamRecord[] {
 
 export function directoryUnits(): DirectoryUnitRecord[] {
   return [
-    ...LOCATIONS.map((l) => ({ id: l.id, organizationId: ORGANIZATION.id, kind: 'location' as const, name: l.name, archived: false })),
-    ...DEPARTMENTS.map((d) => ({ id: d.id, organizationId: ORGANIZATION.id, kind: 'department' as const, name: d.name, archived: false })),
+    ...LOCATIONS.map((l) => ({
+      id: l.id,
+      organizationId: ORGANIZATION.id,
+      kind: 'location' as const,
+      name: l.name,
+      archived: false,
+    })),
+    ...DEPARTMENTS.map((d) => ({
+      id: d.id,
+      organizationId: ORGANIZATION.id,
+      kind: 'department' as const,
+      name: d.name,
+      archived: false,
+    })),
   ];
 }

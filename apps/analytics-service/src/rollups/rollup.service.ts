@@ -4,7 +4,13 @@ import { InjectDb, LOGGER, runsWorkers } from '@a5/nest-kit';
 import type { Logger } from '@a5/observability';
 import { ANALYTICS_CONFIG, type AnalyticsConfig } from '../config.js';
 import type { Db } from '../database/index.js';
-import { addDays, analyticsOrganizations, localDate, processDirtyDays, refreshRollups } from './rollup-builder.js';
+import {
+  addDays,
+  analyticsOrganizations,
+  localDate,
+  processDirtyDays,
+  refreshRollups,
+} from './rollup-builder.js';
 
 export const ROLLUP_QUEUE = 'analytics.rollup';
 
@@ -56,10 +62,18 @@ export class RollupService implements OnModuleInit {
   }
 
   refresh(organizationId: string, from: string, to: string): Promise<number> {
-    return refreshRollups(this.db, { organizationId, from, to, timezone: this.config.analytics.timezone });
+    return refreshRollups(this.db, {
+      organizationId,
+      from,
+      to,
+      timezone: this.config.analytics.timezone,
+    });
   }
 
-  async refreshTrailing(days: number, now = new Date()): Promise<{ organizations: number; rows: number }> {
+  async refreshTrailing(
+    days: number,
+    now = new Date(),
+  ): Promise<{ organizations: number; rows: number }> {
     const to = localDate(now, this.config.analytics.timezone);
     const from = addDays(to, -(days - 1));
     let rows = 0;
@@ -73,7 +87,12 @@ export class RollupService implements OnModuleInit {
   async enqueueRefresh(organizationId: string, from: string, to: string): Promise<string> {
     const minute = Math.floor(Date.now() / 60_000);
     const jobId = `refresh.${organizationId}.${from}.${to}.${minute}`;
-    await this.queues.add<RollupJob>(ROLLUP_QUEUE, 'refresh', { kind: 'refresh', organizationId, from, to }, { jobId, attempts: 3 });
+    await this.queues.add<RollupJob>(
+      ROLLUP_QUEUE,
+      'refresh',
+      { kind: 'refresh', organizationId, from, to },
+      { jobId, attempts: 3 },
+    );
     return jobId;
   }
 

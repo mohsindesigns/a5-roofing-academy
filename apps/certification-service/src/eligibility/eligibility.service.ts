@@ -5,9 +5,20 @@ import type { Selectable } from '@a5/database';
 import { certificationEvents } from '@a5/events';
 import { AppError, EventBus, InjectDb, LOGGER } from '@a5/nest-kit';
 import { uuidv7, type Logger } from '@a5/observability';
-import type { CandidateStatus, CertificationCandidatesTable, CertificationDefinitionsTable, Db, DbOrTrx, IssueMode } from '../database/index.js';
+import type {
+  CandidateStatus,
+  CertificationCandidatesTable,
+  CertificationDefinitionsTable,
+  Db,
+  DbOrTrx,
+  IssueMode,
+} from '../database/index.js';
 import { IssuanceService } from '../issuance/issuance.service.js';
-import { computeEligibility, computeRenewalEligibility, type EligibilityOutcome } from './calculator.js';
+import {
+  computeEligibility,
+  computeRenewalEligibility,
+  type EligibilityOutcome,
+} from './calculator.js';
 import { loadFacts } from './facts.js';
 import { assessmentProgramIds, loadRuleNames } from './names.js';
 
@@ -53,14 +64,23 @@ export class EligibilityService {
   ) {}
 
   /** Evaluate (definition, user) pairs whose facts changed. Returns how many were processed. */
-  async processDirty(filter: { userId?: string; definitionId?: string; limit?: number } = {}): Promise<number> {
-    let q = this.db.selectFrom('eligibility_dirty').selectAll().orderBy('marked_at').limit(filter.limit ?? 200);
+  async processDirty(
+    filter: { userId?: string; definitionId?: string; limit?: number } = {},
+  ): Promise<number> {
+    let q = this.db
+      .selectFrom('eligibility_dirty')
+      .selectAll()
+      .orderBy('marked_at')
+      .limit(filter.limit ?? 200);
     if (filter.userId) q = q.where('user_id', '=', filter.userId);
     if (filter.definitionId) q = q.where('definition_id', '=', filter.definitionId);
     const rows = await q.execute();
     for (const row of rows) {
       try {
-        await this.evaluate(row.definition_id, row.user_id, { learnerActivity: row.learner_activity, factsChangedAt: row.marked_at });
+        await this.evaluate(row.definition_id, row.user_id, {
+          learnerActivity: row.learner_activity,
+          factsChangedAt: row.marked_at,
+        });
         await this.db
           .deleteFrom('eligibility_dirty')
           .where('definition_id', '=', row.definition_id)
@@ -68,25 +88,48 @@ export class EligibilityService {
           .where('marked_at', '=', row.marked_at)
           .execute();
       } catch (err) {
-        this.logger.error({ err, definitionId: row.definition_id, userId: row.user_id }, 'eligibility evaluation failed; will retry');
+        this.logger.error(
+          { err, definitionId: row.definition_id, userId: row.user_id },
+          'eligibility evaluation failed; will retry',
+        );
       }
     }
     return rows.length;
   }
 
   private async definition(db: DbOrTrx, id: string): Promise<Definition | undefined> {
-    return db.selectFrom('certification_definitions').selectAll().where('id', '=', id).executeTakeFirst();
+    return db
+      .selectFrom('certification_definitions')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirst();
   }
 
   /** Compute the breakdown for a candidate state without writing anything. */
-  async compute(db: DbOrTrx, def: Definition, userId: string, candidate: CandidateRow | null, now: Date): Promise<EligibilityOutcome> {
+  async compute(
+    db: DbOrTrx,
+    def: Definition,
+    userId: string,
+    candidate: CandidateRow | null,
+    now: Date,
+  ): Promise<EligibilityOutcome> {
     const purpose = candidate?.purpose ?? 'initial';
     const rule = purpose === 'renewal' ? def.renewal_policy.requirements : def.eligibility_rule;
     const renewal =
       purpose === 'renewal' && candidate?.renewal_id
-        ? await db.selectFrom('certificate_renewals').select('window_opened_at').where('id', '=', candidate.renewal_id).executeTakeFirst()
+        ? await db
+            .selectFrom('certificate_renewals')
+            .select('window_opened_at')
+            .where('id', '=', candidate.renewal_id)
+            .executeTakeFirst()
         : null;
-    const programIds = (await db.selectFrom('certification_programs').select('program_id').where('definition_id', '=', def.id).execute()).map((r) => r.program_id);
+    const programIds = (
+      await db
+        .selectFrom('certification_programs')
+        .select('program_id')
+        .where('definition_id', '=', def.id)
+        .execute()
+    ).map((r) => r.program_id);
     const facts = await loadFacts(db, {
       userId,
       candidateId: candidate?.id ?? null,
@@ -97,7 +140,9 @@ export class EligibilityService {
       referencedProgramIds: assessmentProgramIds(rule),
     });
     const names = await loadRuleNames(db, [rule]);
-    return purpose === 'renewal' ? computeRenewalEligibility(rule, facts, names) : computeEligibility(rule, facts, names);
+    return purpose === 'renewal'
+      ? computeRenewalEligibility(rule, facts, names)
+      : computeEligibility(rule, facts, names);
   }
 
   /** Read-only progress for the progress API (live, not the stored breakdown). */
@@ -130,11 +175,17 @@ export class EligibilityService {
    * Re-evaluate one (certification, person) pair and apply the state machine:
    * in_progress → eligible → pending_approval → approved → issued. Idempotent.
    */
-  async evaluate(definitionId: string, userId: string, opts: EvaluateOptions = {}): Promise<Progress | null> {
+  async evaluate(
+    definitionId: string,
+    userId: string,
+    opts: EvaluateOptions = {},
+  ): Promise<Progress | null> {
     const now = opts.now ?? new Date();
     const def = await this.definition(this.db, definitionId);
     if (!def || def.status !== 'active') return null;
-    const pending: { issue: { mode: IssueMode; renewalId: string | null } | null } = { issue: null };
+    const pending: { issue: { mode: IssueMode; renewalId: string | null } | null } = {
+      issue: null,
+    };
 
     const candidate = await this.db.transaction().execute(async (trx) => {
       await trx
@@ -174,10 +225,21 @@ export class EligibilityService {
       // An issued candidate stays issued until expiry, revocation or a renewal window starts a new cycle.
       if (cand.status === 'issued') return cand;
 
-      if (cand.status === 'rejected' && opts.learnerActivity && cand.rejected_at && opts.factsChangedAt && opts.factsChangedAt > cand.rejected_at) {
+      if (
+        cand.status === 'rejected' &&
+        opts.learnerActivity &&
+        cand.rejected_at &&
+        opts.factsChangedAt &&
+        opts.factsChangedAt > cand.rejected_at
+      ) {
         cand = await trx
           .updateTable('certification_candidates')
-          .set((eb) => ({ status: 'in_progress', cycle: eb('cycle', '+', 1), rejected_at: null, eligible_at: null }))
+          .set((eb) => ({
+            status: 'in_progress',
+            cycle: eb('cycle', '+', 1),
+            rejected_at: null,
+            eligible_at: null,
+          }))
           .where('id', '=', cand.id)
           .returningAll()
           .executeTakeFirstOrThrow();
@@ -211,8 +273,17 @@ export class EligibilityService {
           await this.events.emit(
             trx,
             certificationEvents.eligible,
-            { candidateId: cand.id, definitionId: def.id, definitionName: def.name, userId, requiresApproval },
-            { organizationId: def.organization_id, subject: { type: 'certification_candidate', id: cand.id } },
+            {
+              candidateId: cand.id,
+              definitionId: def.id,
+              definitionName: def.name,
+              userId,
+              requiresApproval,
+            },
+            {
+              organizationId: def.organization_id,
+              subject: { type: 'certification_candidate', id: cand.id },
+            },
           );
         }
         if (requiresApproval && !outcome.satisfied) {
@@ -222,7 +293,15 @@ export class EligibilityService {
           status = requiresApproval ? 'approved' : 'eligible';
           // Renewals without any requirement are never automatic: renewing proves nothing, so a person decides.
           if (def.automatic_issuance && !(cand.purpose === 'renewal' && outcome.totalCount === 0)) {
-            pending.issue = { mode: cand.purpose === 'renewal' ? 'renewal' : requiresApproval ? 'approval' : 'automatic', renewalId: cand.renewal_id };
+            pending.issue = {
+              mode:
+                cand.purpose === 'renewal'
+                  ? 'renewal'
+                  : requiresApproval
+                    ? 'approval'
+                    : 'automatic',
+              renewalId: cand.renewal_id,
+            };
           }
         }
       }
@@ -249,7 +328,12 @@ export class EligibilityService {
   }
 
   /** Approval request for the candidate's current cycle, created (or reopened) once. */
-  private async ensureApproval(trx: DbOrTrx, def: Definition, cand: CandidateRow, now: Date): Promise<void> {
+  private async ensureApproval(
+    trx: DbOrTrx,
+    def: Definition,
+    cand: CandidateRow,
+    now: Date,
+  ): Promise<void> {
     const kind = def.approval_policy as 'manager' | 'trainer' | 'manual_review';
     const existing = await trx
       .selectFrom('certificate_approvals')
@@ -282,7 +366,15 @@ export class EligibilityService {
       approvalId = existing.id;
       await trx
         .updateTable('certificate_approvals')
-        .set({ status: 'pending', requested_at: now, decided_at: null, decided_by: null, decided_by_name: null, comment: null, kind })
+        .set({
+          status: 'pending',
+          requested_at: now,
+          decided_at: null,
+          decided_by: null,
+          decided_by_name: null,
+          comment: null,
+          kind,
+        })
         .where('id', '=', existing.id)
         .execute();
     }
@@ -291,12 +383,19 @@ export class EligibilityService {
         trx,
         certificationEvents.approvalRequested,
         { approvalId, definitionId: def.id, definitionName: def.name, userId: cand.user_id },
-        { organizationId: def.organization_id, subject: { type: 'certificate_approval', id: approvalId } },
+        {
+          organizationId: def.organization_id,
+          subject: { type: 'certificate_approval', id: approvalId },
+        },
       );
     }
   }
 
-  private async issueAutomatically(def: Definition, userId: string, issue: { mode: IssueMode; renewalId: string | null }): Promise<Progress | null> {
+  private async issueAutomatically(
+    def: Definition,
+    userId: string,
+    issue: { mode: IssueMode; renewalId: string | null },
+  ): Promise<Progress | null> {
     try {
       await this.issuance.issue({
         definitionId: def.id,
@@ -307,7 +406,10 @@ export class EligibilityService {
       });
     } catch (err) {
       if (!(err instanceof AppError && err.code === 'ALREADY_CERTIFIED')) {
-        const message = err instanceof AppError ? err.message : 'Automatic issuance failed. Retry from the eligibility queue.';
+        const message =
+          err instanceof AppError
+            ? err.message
+            : 'Automatic issuance failed. Retry from the eligibility queue.';
         this.logger.warn({ err, definitionId: def.id, userId }, 'automatic issuance failed');
         await this.db
           .updateTable('certification_candidates')

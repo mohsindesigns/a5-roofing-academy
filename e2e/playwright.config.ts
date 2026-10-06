@@ -15,10 +15,16 @@ export default defineConfig({
     baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:5173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    launchOptions: process.env.CHROMIUM_PATH || process.env.CI ? {} : { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' },
+    launchOptions:
+      process.env.CHROMIUM_PATH || process.env.CI
+        ? {}
+        : { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' },
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    {
+      name: 'desktop',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /mobile\..*\.spec\.ts/ },
   ],
 });

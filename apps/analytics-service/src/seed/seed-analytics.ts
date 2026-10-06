@@ -105,7 +105,9 @@ function sessionTime(person: string, index: number, ago: number): Date {
 
 /** First passing session for a scenario, otherwise the latest attempt at it. */
 function pickSession(j: LearnerJourney, scenario: SeedScenario): number {
-  const indexes = j.aiSessions.map((s, i) => ({ s, i })).filter(({ s }) => s.scenario === scenario.key);
+  const indexes = j.aiSessions
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => s.scenario === scenario.key);
   const passing = indexes.find(({ s }) => s.score >= scenario.passingScore);
   return passing?.i ?? indexes[indexes.length - 1]?.i ?? -1;
 }
@@ -127,7 +129,10 @@ function timeline(j: LearnerJourney): Timeline {
   const enrolledAt = new Date(j.enrolledAt);
   const keys = completedLessonKeys(j.stage);
   const sessionAt = j.aiSessions.map((s, i) => sessionTime(j.person, i, s.daysAgo));
-  const firstCert = j.stage === 'certified' && j.certificates?.length ? new Date(j.certificates[0]!.issuedAt) : null;
+  const firstCert =
+    j.stage === 'certified' && j.certificates?.length
+      ? new Date(j.certificates[0]!.issuedAt)
+      : null;
   const bound = firstCert ? firstCert.getTime() - 3 * HOUR : SEED_NOW.getTime() - 2 * HOUR;
 
   const knots: Array<{ x: number; t: number }> = [{ x: 0, t: enrolledAt.getTime() + 2 * HOUR }];
@@ -197,7 +202,9 @@ function timeline(j: LearnerJourney): Timeline {
 function categoryScores(person: string, index: number, overall: number) {
   const noise = RUBRIC_CATEGORIES.map((c) => (unit(`cat:${person}:${index}:${c.key}`) - 0.5) * 8);
   const mean = noise.reduce((s, n) => s + n, 0) / noise.length;
-  const scores = RUBRIC_CATEGORIES.map((c, i) => Math.max(0, Math.min(100, Math.round(overall + c.bias + noise[i]! - mean))));
+  const scores = RUBRIC_CATEGORIES.map((c, i) =>
+    Math.max(0, Math.min(100, Math.round(overall + c.bias + noise[i]! - mean))),
+  );
   let diff = overall * RUBRIC_CATEGORIES.length - scores.reduce((s, n) => s + n, 0);
   for (let i = 0; diff !== 0 && i < 100; i++) {
     const k = i % scores.length;
@@ -281,10 +288,14 @@ export function buildSeedEvents(): EventEnvelope[] {
   );
 
   // Certificate numbers follow issuance order across the organization.
-  const allCerts = JOURNEYS.flatMap((j) => (j.certificates ?? []).map((c, i) => ({ person: j.person, i, issuedAt: c.issuedAt })))
-    .sort((a, b) => Date.parse(a.issuedAt) - Date.parse(b.issuedAt));
+  const allCerts = JOURNEYS.flatMap((j) =>
+    (j.certificates ?? []).map((c, i) => ({ person: j.person, i, issuedAt: c.issuedAt })),
+  ).sort((a, b) => Date.parse(a.issuedAt) - Date.parse(b.issuedAt));
   const certNumber = new Map(
-    allCerts.map((c, n) => [`${c.person}:${c.i}`, `A5-${CERTIFICATION.code}-${c.issuedAt.slice(0, 4)}-${String(n + 1).padStart(6, '0')}`]),
+    allCerts.map((c, n) => [
+      `${c.person}:${c.i}`,
+      `A5-${CERTIFICATION.code}-${c.issuedAt.slice(0, 4)}-${String(n + 1).padStart(6, '0')}`,
+    ]),
   );
 
   for (const j of JOURNEYS) {
@@ -298,7 +309,13 @@ export function buildSeedEvents(): EventEnvelope[] {
 
     log.add(
       learningEvents.enrolled,
-      { ...ref, programTitle: PROGRAM.title, assignedBy: managerOf(j.person), dueAt: dueAt.toISOString(), source: 'manual' },
+      {
+        ...ref,
+        programTitle: PROGRAM.title,
+        assignedBy: managerOf(j.person),
+        dueAt: dueAt.toISOString(),
+        source: 'manual',
+      },
       tl.enrolledAt,
       [enrollmentId],
       subject,
@@ -310,12 +327,19 @@ export function buildSeedEvents(): EventEnvelope[] {
       const scores = j.attempts[assessment.key as keyof typeof j.attempts];
       if (!scores?.length) continue;
       const lessonIndex = tl.keys.indexOf(assessment.lessonKey);
-      const tq = (tl.lessonAt.get(assessment.lessonKey) ?? tl.lessonAt.get(tl.keys[tl.keys.length - 1]!)!).getTime() - 5 * MIN;
+      const tq =
+        (
+          tl.lessonAt.get(assessment.lessonKey) ?? tl.lessonAt.get(tl.keys[tl.keys.length - 1]!)!
+        ).getTime() -
+        5 * MIN;
       const prevKey = lessonIndex > 0 ? tl.keys[lessonIndex - 1] : undefined;
       const prev = prevKey ? tl.lessonAt.get(prevKey)!.getTime() : tl.enrolledAt.getTime();
       attemptTimes.set(
         assessment.key,
-        scores.map((_, i) => new Date(i === scores.length - 1 ? tq : prev + ((tq - prev) * (i + 1)) / scores.length)),
+        scores.map(
+          (_, i) =>
+            new Date(i === scores.length - 1 ? tq : prev + ((tq - prev) * (i + 1)) / scores.length),
+        ),
       );
     }
 
@@ -323,12 +347,19 @@ export function buildSeedEvents(): EventEnvelope[] {
     tl.keys.forEach((key, index) => {
       const lesson = LESSON_BY_KEY.get(key)!;
       const at = tl.lessonAt.get(key)!;
-      const previous = index > 0 ? tl.lessonAt.get(tl.keys[index - 1]!)!.getTime() : tl.enrolledAt.getTime();
+      const previous =
+        index > 0 ? tl.lessonAt.get(tl.keys[index - 1]!)!.getTime() : tl.enrolledAt.getTime();
       const assessment = assessmentByLesson.get(key);
       const firstAttempt = assessment ? attemptTimes.get(assessment.key)?.[0] : undefined;
       let started = Math.max(previous + 2 * MIN, at.getTime() - lesson.minutes * 1.3 * MIN);
-      if (firstAttempt) started = Math.max(previous + MIN, Math.min(started, firstAttempt.getTime() - 15 * MIN));
-      log.add(learningEvents.lessonStarted, { ...ref, lessonId: lesson.id, lessonType: lesson.type }, new Date(started), [enrollmentId, lesson.id]);
+      if (firstAttempt)
+        started = Math.max(previous + MIN, Math.min(started, firstAttempt.getTime() - 15 * MIN));
+      log.add(
+        learningEvents.lessonStarted,
+        { ...ref, lessonId: lesson.id, lessonType: lesson.type },
+        new Date(started),
+        [enrollmentId, lesson.id],
+      );
 
       if (assessment) {
         const scores = j.attempts[assessment.key as keyof typeof j.attempts] ?? [];
@@ -422,7 +453,12 @@ export function buildSeedEvents(): EventEnvelope[] {
       const next = LESSONS[LESSONS.findIndex((l) => l.key === lastKey) + 1];
       const startedAt = new Date(lastAt.getTime() + 30 * MIN);
       if (next && startedAt < SEED_NOW) {
-        log.add(learningEvents.lessonStarted, { ...ref, lessonId: next.id, lessonType: next.type }, startedAt, [enrollmentId, next.id]);
+        log.add(
+          learningEvents.lessonStarted,
+          { ...ref, lessonId: next.id, lessonType: next.type },
+          startedAt,
+          [enrollmentId, next.id],
+        );
       }
       const overdueAt = new Date(dueAt.getTime() + HOUR);
       if (overdueAt < SEED_NOW) {
@@ -447,7 +483,10 @@ export function buildSeedEvents(): EventEnvelope[] {
       const evaluatedAt = tl.sessionAt[i]!;
       const lesson = LESSONS.find((l) => l.type === 'ai_simulation' && l.ref === s.scenario);
       const lessonDone = lesson ? tl.lessonAt.get(lesson.key) : undefined;
-      const context = lesson && lessonDone && evaluatedAt <= lessonDone ? { programId: PROGRAM.id, enrollmentId, lessonId: lesson.id } : {};
+      const context =
+        lesson && lessonDone && evaluatedAt <= lessonDone
+          ? { programId: PROGRAM.id, enrollmentId, lessonId: lesson.id }
+          : {};
       const sessionId = seedId(`ai-session:${j.person}:${i + 1}`);
       log.add(
         aiEvents.scoreGenerated,
@@ -479,7 +518,11 @@ export function buildSeedEvents(): EventEnvelope[] {
       const base = { definitionId: CERTIFICATION.id, definitionName: CERTIFICATION.name, userId };
       log.add(
         certificationEvents.eligible,
-        { candidateId: seedId(`certification-candidate:${j.person}:${CERTIFICATION.code}`), ...base, requiresApproval: true },
+        {
+          candidateId: seedId(`certification-candidate:${j.person}:${CERTIFICATION.code}`),
+          ...base,
+          requiresApproval: true,
+        },
         at,
         [j.person, 'eligible'],
       );
@@ -513,7 +556,12 @@ export function buildSeedEvents(): EventEnvelope[] {
       const issuedAt = new Date(c.issuedAt);
       const expiresAt = addMonths(issuedAt, CERTIFICATION.validityMonths);
       const previous = certs[i - 1];
-      const certRef = { certificateId, definitionId: CERTIFICATION.id, definitionName: CERTIFICATION.name, userId };
+      const certRef = {
+        certificateId,
+        definitionId: CERTIFICATION.id,
+        definitionName: CERTIFICATION.name,
+        userId,
+      };
       const certificateNumber = certNumber.get(`${j.person}:${i}`)!;
       log.add(
         certificationEvents.issued,
@@ -543,13 +591,24 @@ export function buildSeedEvents(): EventEnvelope[] {
       }
       if (c.status === 'expired') {
         const expiredAt = expiresAt <= SEED_NOW ? expiresAt : new Date(SEED_NOW.getTime() - DAY);
-        log.add(certificationEvents.expired, { ...certRef, expiredAt: expiredAt.toISOString() }, expiredAt, [certificateId, 'expired']);
+        log.add(
+          certificationEvents.expired,
+          { ...certRef, expiredAt: expiredAt.toISOString() },
+          expiredAt,
+          [certificateId, 'expired'],
+        );
       }
       if (c.status === 'revoked') {
-        const revokedAt = new Date(Math.min(issuedAt.getTime() + 30 * DAY, SEED_NOW.getTime() - DAY));
+        const revokedAt = new Date(
+          Math.min(issuedAt.getTime() + 30 * DAY, SEED_NOW.getTime() - DAY),
+        );
         log.add(
           certificationEvents.revoked,
-          { ...certRef, certificateNumber, reason: c.revokeReason ?? 'Revoked by an administrator' },
+          {
+            ...certRef,
+            certificateNumber,
+            reason: c.revokeReason ?? 'Revoked by an administrator',
+          },
           revokedAt,
           [certificateId, 'revoked'],
         );
@@ -557,7 +616,9 @@ export function buildSeedEvents(): EventEnvelope[] {
     });
   }
 
-  return log.events.sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt) || a.id.localeCompare(b.id));
+  return log.events.sort(
+    (a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt) || a.id.localeCompare(b.id),
+  );
 }
 
 export interface SeedOptions {
@@ -598,7 +659,12 @@ export async function seedAnalytics(db: Db, options: SeedOptions = {}): Promise<
     for (const team of directoryTeams()) await applyDirectoryTeam(dir, team, 1);
     for (const user of directoryUsers()) await applyDirectoryUser(dir, user, 1);
     for (const event of events) {
-      const claimed = await claimInbox(trx as unknown as Transaction<InboxSchema>, event.id, `analytics.${event.type}`, event.type);
+      const claimed = await claimInbox(
+        trx as unknown as Transaction<InboxSchema>,
+        event.id,
+        `analytics.${event.type}`,
+        event.type,
+      );
       if (claimed) await applyFactEvent(writer, trx as Trx, event);
     }
   });
@@ -606,7 +672,12 @@ export async function seedAnalytics(db: Db, options: SeedOptions = {}): Promise<
 
   const from = localDate(new Date(events[0]!.occurredAt), timezone);
   const to = localDate(SEED_NOW, timezone);
-  const rollupRows = await refreshRollups(db, { organizationId: ORGANIZATION.id, from, to, timezone });
+  const rollupRows = await refreshRollups(db, {
+    organizationId: ORGANIZATION.id,
+    from,
+    to,
+    timezone,
+  });
   await db.deleteFrom('rollup_dirty_days').where('organization_id', '=', ORGANIZATION.id).execute();
   log(`analytics: rolled up ${rollupRows} daily metric rows (${from} → ${to})`);
   return { created: true, events: events.length, rollupRows };

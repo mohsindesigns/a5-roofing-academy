@@ -43,8 +43,17 @@ export class MediaReadService {
     @Inject(MEDIA_CONFIG) private readonly config: MediaConfig,
   ) {}
 
-  async find(organizationId: string, id: string, executor: DbOrTrx = this.db): Promise<AssetRow | undefined> {
-    return executor.selectFrom('media_assets').selectAll().where('id', '=', id).where('organization_id', '=', organizationId).executeTakeFirst();
+  async find(
+    organizationId: string,
+    id: string,
+    executor: DbOrTrx = this.db,
+  ): Promise<AssetRow | undefined> {
+    return executor
+      .selectFrom('media_assets')
+      .selectAll()
+      .where('id', '=', id)
+      .where('organization_id', '=', organizationId)
+      .executeTakeFirst();
   }
 
   async get(organizationId: string, id: string, executor: DbOrTrx = this.db): Promise<AssetRow> {
@@ -53,8 +62,14 @@ export class MediaReadService {
     return row;
   }
 
-  sign(key: string, options: { downloadName?: string; contentType?: string; expiresInSeconds?: number } = {}): Promise<string> {
-    return this.signer.sign(key, { expiresInSeconds: options.expiresInSeconds ?? this.config.media.signedUrlTtlSeconds, ...options });
+  sign(
+    key: string,
+    options: { downloadName?: string; contentType?: string; expiresInSeconds?: number } = {},
+  ): Promise<string> {
+    return this.signer.sign(key, {
+      expiresInSeconds: options.expiresInSeconds ?? this.config.media.signedUrlTtlSeconds,
+      ...options,
+    });
   }
 
   async summary(row: AssetRow): Promise<media.MediaAssetSummary> {
@@ -83,39 +98,70 @@ export class MediaReadService {
   }
 
   async list(organizationId: string, f: MediaListFilters): Promise<Page<media.MediaAssetSummary>> {
-    let query = this.db.selectFrom('media_assets as a').selectAll('a').where('a.organization_id', '=', organizationId);
+    let query = this.db
+      .selectFrom('media_assets as a')
+      .selectAll('a')
+      .where('a.organization_id', '=', organizationId);
     // Caption files are managed from their video; they only appear when asked for explicitly.
-    query = f.kind?.length ? query.where('a.kind', 'in', f.kind) : query.where('a.kind', '!=', 'caption');
+    query = f.kind?.length
+      ? query.where('a.kind', 'in', f.kind)
+      : query.where('a.kind', '!=', 'caption');
     if (f.status?.length) query = query.where('a.status', 'in', f.status);
     else if (!f.includeArchived) query = query.where('a.status', '!=', 'archived');
     if (f.q) {
       const pattern = likePattern(f.q);
       query = query.where((eb) =>
-        eb.or([eb('a.title', 'ilike', pattern), eb('a.original_filename', 'ilike', pattern), eb('a.description', 'ilike', pattern)]),
+        eb.or([
+          eb('a.title', 'ilike', pattern),
+          eb('a.original_filename', 'ilike', pattern),
+          eb('a.description', 'ilike', pattern),
+        ]),
       );
     }
     const desc = f.sort ? f.sort.startsWith('-') : true;
-    const column = SORTS[(f.sort?.replace(/^-/, '') ?? 'createdAt') as keyof typeof SORTS] ?? SORTS.createdAt;
+    const column =
+      SORTS[(f.sort?.replace(/^-/, '') ?? 'createdAt') as keyof typeof SORTS] ?? SORTS.createdAt;
     query = query.orderBy(column, desc ? 'desc' : 'asc').orderBy('a.id', desc ? 'desc' : 'asc');
     const page = await paginate(query, { page: f.page, pageSize: f.pageSize });
-    return { ...page, items: await Promise.all(page.items.map((r) => this.summary(r as AssetRow))) };
+    return {
+      ...page,
+      items: await Promise.all(page.items.map((r) => this.summary(r as AssetRow))),
+    };
   }
 
   async detail(organizationId: string, id: string): Promise<media.MediaAssetDetail> {
     const row = await this.get(organizationId, id);
     const [renditions, captions, chapters, transcripts] = await Promise.all([
-      this.db.selectFrom('media_renditions').selectAll().where('asset_id', '=', id).orderBy('height').execute(),
+      this.db
+        .selectFrom('media_renditions')
+        .selectAll()
+        .where('asset_id', '=', id)
+        .orderBy('height')
+        .execute(),
       this.captions(id),
       this.chapters(id),
-      this.db.selectFrom('media_transcripts').selectAll().where('asset_id', '=', id).orderBy('language').execute(),
+      this.db
+        .selectFrom('media_transcripts')
+        .selectAll()
+        .where('asset_id', '=', id)
+        .orderBy('language')
+        .execute(),
     ]);
     const playable = isPlayable(row);
     return {
       ...(await this.summary(row)),
       checksum: row.checksum,
       parentAssetId: row.parent_asset_id,
-      downloadUrl: playable ? await this.sign(row.storage_key, { downloadName: row.original_filename }) : null,
-      renditions: renditions.map((r) => ({ name: r.name, width: r.width, height: r.height, bandwidth: r.bandwidth, codecs: r.codecs })),
+      downloadUrl: playable
+        ? await this.sign(row.storage_key, { downloadName: row.original_filename })
+        : null,
+      renditions: renditions.map((r) => ({
+        name: r.name,
+        width: r.width,
+        height: r.height,
+        bandwidth: r.bandwidth,
+        codecs: r.codecs,
+      })),
       captions: await Promise.all(
         captions.map(async (c) => ({
           id: c.id,
@@ -124,11 +170,18 @@ export class MediaReadService {
           label: c.label,
           isDefault: c.is_default,
           status: c.status,
-          url: c.status === 'ready' ? await this.sign(c.storage_key, { contentType: 'text/vtt' }) : null,
+          url:
+            c.status === 'ready'
+              ? await this.sign(c.storage_key, { contentType: 'text/vtt' })
+              : null,
         })),
       ),
       chapters,
-      transcripts: transcripts.map((t) => ({ language: t.language, segments: t.segments, updatedAt: t.updated_at.toISOString() })),
+      transcripts: transcripts.map((t) => ({
+        language: t.language,
+        segments: t.segments,
+        updatedAt: t.updated_at.toISOString(),
+      })),
     };
   }
 
@@ -137,7 +190,15 @@ export class MediaReadService {
     return this.db
       .selectFrom('media_captions as c')
       .innerJoin('media_assets as f', 'f.id', 'c.caption_asset_id')
-      .select(['c.id', 'c.caption_asset_id', 'c.language', 'c.label', 'c.is_default', 'c.storage_key', 'f.status'])
+      .select([
+        'c.id',
+        'c.caption_asset_id',
+        'c.language',
+        'c.label',
+        'c.is_default',
+        'c.storage_key',
+        'f.status',
+      ])
       .where('c.asset_id', '=', assetId)
       .where('f.status', '!=', 'archived')
       .orderBy('c.is_default', 'desc')
@@ -153,6 +214,11 @@ export class MediaReadService {
       .where('asset_id', '=', assetId)
       .orderBy('position')
       .execute();
-    return rows.map((c) => ({ id: c.id, startSeconds: c.start_seconds, title: c.title, position: c.position }));
+    return rows.map((c) => ({
+      id: c.id,
+      startSeconds: c.start_seconds,
+      title: c.title,
+      position: c.position,
+    }));
   }
 }

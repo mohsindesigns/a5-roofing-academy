@@ -26,7 +26,10 @@ export const FACT_EVENT_TYPES = [
 
 type FactEventType = (typeof FACT_EVENT_TYPES)[number];
 
-const HANDLERS: Record<FactEventType, (writer: FactWriter, trx: Trx, event: never) => Promise<void>> = {
+const HANDLERS: Record<
+  FactEventType,
+  (writer: FactWriter, trx: Trx, event: never) => Promise<void>
+> = {
   'program.published': (w, t, e) => w.programPublished(t, e),
   'program.archived': (w, t, e) => w.programArchived(t, e),
   'program.enrolled': (w, t, e) => w.enrolled(t, e),
@@ -48,8 +51,13 @@ const HANDLERS: Record<FactEventType, (writer: FactWriter, trx: Trx, event: neve
 };
 
 /** Apply a consumed event with the writer (used by the seed; consumers call the writer per event type). */
-export async function applyFactEvent(writer: FactWriter, trx: Trx, event: EventEnvelope): Promise<boolean> {
-  const handler = HANDLERS[event.type as FactEventType] as ((w: FactWriter, t: Trx, e: EventEnvelope) => Promise<void>) | undefined;
+export async function applyFactEvent(
+  writer: FactWriter,
+  trx: Trx,
+  event: EventEnvelope,
+): Promise<boolean> {
+  const handler = HANDLERS[event.type as FactEventType] as
+    ((w: FactWriter, t: Trx, e: EventEnvelope) => Promise<void>) | undefined;
   if (!handler) return false;
   await handler(writer, trx, event);
   return true;

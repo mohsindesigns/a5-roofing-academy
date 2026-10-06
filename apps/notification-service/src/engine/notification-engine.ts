@@ -8,7 +8,12 @@ import { InjectDb, LOGGER } from '@a5/nest-kit';
 import { uuidv7, type Logger } from '@a5/observability';
 import { matchesConditions, readPath } from '../catalog/conditions.js';
 import { DefaultsService } from '../catalog/defaults.js';
-import { EVENT_DESCRIPTORS, getTypeDef, type BuildContext, type NotificationTypeDef } from '../catalog/notification-types.js';
+import {
+  EVENT_DESCRIPTORS,
+  getTypeDef,
+  type BuildContext,
+  type NotificationTypeDef,
+} from '../catalog/notification-types.js';
 import { NOTIFICATION_CONFIG, type NotificationConfig } from '../config.js';
 import {
   json,
@@ -24,7 +29,12 @@ import { toNotificationDto } from '../inbox/notifications.repository.js';
 import { optOuts } from '../inbox/preferences.service.js';
 import { DelayedPushScheduler } from '../realtime/push.scheduler.js';
 import { RealtimePublisher } from '../realtime/realtime.publisher.js';
-import { renderEmail, renderInApp, renderInline, type TemplateVars } from '../templates/renderer.js';
+import {
+  renderEmail,
+  renderInApp,
+  renderInline,
+  type TemplateVars,
+} from '../templates/renderer.js';
 import { RecipientResolver, type ResolvedRecipient, type SubjectFallback } from './recipients.js';
 
 export const DISPATCH_HANDLER = 'notification.dispatch';
@@ -83,7 +93,12 @@ export class NotificationEngine {
     @Inject(LOGGER) private readonly logger: Logger,
   ) {
     const timeZone = config.timezone;
-    this.dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone });
+    this.dateFormat = new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone,
+    });
     this.dateTimeFormat = new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
@@ -119,12 +134,20 @@ export class NotificationEngine {
     const matching = rules.flatMap((rule) => {
       const def = getTypeDef(rule.notification_type);
       if (!def || def.eventType !== event.type) return [];
-      if (!matchesConditions(payload, def.fixedConditions) || !matchesConditions(payload, rule.conditions as RuleConditions)) return [];
+      if (
+        !matchesConditions(payload, def.fixedConditions) ||
+        !matchesConditions(payload, rule.conditions as RuleConditions)
+      )
+        return [];
       return [{ rule, def }];
     });
 
-    const subjectId = descriptor.subjectPath ? asString(readPath(payload, descriptor.subjectPath)) : null;
-    const programId = descriptor.programPath ? asString(readPath(payload, descriptor.programPath)) : null;
+    const subjectId = descriptor.subjectPath
+      ? asString(readPath(payload, descriptor.subjectPath))
+      : null;
+    const programId = descriptor.programPath
+      ? asString(readPath(payload, descriptor.programPath))
+      : null;
     const fallback: SubjectFallback = {
       email: asString(readPath(payload, 'email')),
       displayName: asString(readPath(payload, 'displayName')),
@@ -137,7 +160,9 @@ export class NotificationEngine {
         matching.some(
           ({ rule }) =>
             rule.recipients.some((k) => DIRECTORY_KINDS.has(k)) ||
-            (rule.recipients.includes('subject') && rule.channels.includes('email') && !fallback.email),
+            (rule.recipients.includes('subject') &&
+              rule.channels.includes('email') &&
+              !fallback.email),
         );
       if (needsDirectory) throw new DirectoryNotReadyError(subjectId);
     }
@@ -154,8 +179,10 @@ export class NotificationEngine {
       appUrl: this.config.publicAppUrl,
       formatDate: (iso) => this.dateFormat.format(new Date(iso)),
       // Newer ICU data separates time and AM/PM with U+202F; plain spaces read better in every mail client.
-      formatDateTime: (iso) => this.dateTimeFormat.format(new Date(iso)).replace(/[\u202f\u00a0]/g, ' '),
-      nameOf: (id, fallbackName) => (id ? (people.get(id)?.displayName ?? fallbackName) : fallbackName),
+      formatDateTime: (iso) =>
+        this.dateTimeFormat.format(new Date(iso)).replace(/[\u202f\u00a0]/g, ' '),
+      nameOf: (id, fallbackName) =>
+        id ? (people.get(id)?.displayName ?? fallbackName) : fallbackName,
     };
     const learnerName = subjectUser?.displayName ?? fallback.displayName ?? 'A5 team member';
     const actorUserId = event.actor.type === 'user' ? event.actor.id : null;
@@ -173,7 +200,9 @@ export class NotificationEngine {
       });
       if (recipients.length === 0) continue;
       const built = def.build(payload, ctx);
-      const subjectVars: TemplateVars = subjectId ? { learnerName, learnerFirstName: firstName(learnerName) } : {};
+      const subjectVars: TemplateVars = subjectId
+        ? { learnerName, learnerFirstName: firstName(learnerName) }
+        : {};
       const plan = await this.plan(rule, def, recipients);
       for (const { recipient, channel, template } of plan) {
         const key = `${recipient.userId}:${def.key}:${channel}`;
@@ -201,20 +230,29 @@ export class NotificationEngine {
             data: json(built.data),
             priority: rule.priority,
             source_event_id: event.id,
-            ...(rule.delay_minutes > 0 ? { available_at: new Date(Date.now() + rule.delay_minutes * 60_000) } : {}),
+            ...(rule.delay_minutes > 0
+              ? { available_at: new Date(Date.now() + rule.delay_minutes * 60_000) }
+              : {}),
           });
           continue;
         }
         if (!recipient.email) {
-          this.logger.warn({ eventId: event.id, type: def.key, userId: recipient.userId }, 'no email address on file; email skipped');
+          this.logger.warn(
+            { eventId: event.id, type: def.key, userId: recipient.userId },
+            'no email address on file; email skipped',
+          );
           continue;
         }
-        const rendered = renderEmail(template, { ...vars, link }, {
-          actionLabel: def.actionLabel,
-          actionUrl: link,
-          appUrl: this.config.publicAppUrl,
-          mandatory: def.mandatory,
-        });
+        const rendered = renderEmail(
+          template,
+          { ...vars, link },
+          {
+            actionLabel: def.actionLabel,
+            actionUrl: link,
+            appUrl: this.config.publicAppUrl,
+            mandatory: def.mandatory,
+          },
+        );
         emails.push({
           id: uuidv7(),
           organization_id: organizationId,
@@ -227,9 +265,13 @@ export class NotificationEngine {
           subject: def.sensitive ? renderInline(template.subject, vars) : rendered.subject,
           body_text: def.sensitive ? null : rendered.text,
           body_html: def.sensitive ? null : rendered.html,
-          sealed_content: def.sensitive ? this.sealer.seal({ text: rendered.text, html: rendered.html }) : null,
+          sealed_content: def.sensitive
+            ? this.sealer.seal({ text: rendered.text, html: rendered.html })
+            : null,
           sensitive: def.sensitive,
-          ...(rule.delay_minutes > 0 ? { scheduled_at: new Date(Date.now() + rule.delay_minutes * 60_000) } : {}),
+          ...(rule.delay_minutes > 0
+            ? { scheduled_at: new Date(Date.now() + rule.delay_minutes * 60_000) }
+            : {}),
         });
       }
     }
@@ -249,7 +291,9 @@ export class NotificationEngine {
         queued = await trx
           .insertInto('email_deliveries')
           .values(emails)
-          .onConflict((oc) => oc.columns(['source_event_id', 'user_id', 'notification_type']).doNothing())
+          .onConflict((oc) =>
+            oc.columns(['source_event_id', 'user_id', 'notification_type']).doNothing(),
+          )
           .returning(['id', 'scheduled_at'])
           .execute();
       }
@@ -258,7 +302,15 @@ export class NotificationEngine {
 
     await this.afterCommit(created, queued);
     if (created.length || queued.length) {
-      this.logger.debug({ eventId: event.id, type: event.type, notifications: created.length, emails: queued.length }, 'notifications dispatched');
+      this.logger.debug(
+        {
+          eventId: event.id,
+          type: event.type,
+          notifications: created.length,
+          emails: queued.length,
+        },
+        'notifications dispatched',
+      );
     }
     return { processed: true, notifications: created.length, emails: queued.length };
   }
@@ -267,7 +319,13 @@ export class NotificationEngine {
     rule: RuleRow,
     def: NotificationTypeDef,
     recipients: ResolvedRecipient[],
-  ): Promise<Array<{ recipient: ResolvedRecipient; channel: Channel; template: { subject: string; body: string } }>> {
+  ): Promise<
+    Array<{
+      recipient: ResolvedRecipient;
+      channel: Channel;
+      template: { subject: string; body: string };
+    }>
+  > {
     const channels = rule.channels.filter((c) => def.channels.includes(c));
     const templates = await this.db
       .selectFrom('notification_templates')
@@ -277,8 +335,18 @@ export class NotificationEngine {
       .where('enabled', '=', true)
       .execute();
     const byChannel = new Map(templates.map((t) => [t.channel, t]));
-    const blocked = def.mandatory ? new Set<string>() : await optOuts(this.db, def.key, recipients.map((r) => r.userId));
-    const out: Array<{ recipient: ResolvedRecipient; channel: Channel; template: { subject: string; body: string } }> = [];
+    const blocked = def.mandatory
+      ? new Set<string>()
+      : await optOuts(
+          this.db,
+          def.key,
+          recipients.map((r) => r.userId),
+        );
+    const out: Array<{
+      recipient: ResolvedRecipient;
+      channel: Channel;
+      template: { subject: string; body: string };
+    }> = [];
     for (const recipient of recipients) {
       for (const channel of channels) {
         const template = byChannel.get(channel);
@@ -289,12 +357,18 @@ export class NotificationEngine {
     return out;
   }
 
-  private async afterCommit(created: Array<Selectable<NotificationsTable>>, queued: Array<{ id: string; scheduled_at: Date }>): Promise<void> {
+  private async afterCommit(
+    created: Array<Selectable<NotificationsTable>>,
+    queued: Array<{ id: string; scheduled_at: Date }>,
+  ): Promise<void> {
     const now = Date.now();
     const immediate = created.filter((n) => n.available_at.getTime() <= now + 1_000);
-    await this.realtime.notificationsCreated(immediate.map((n) => ({ userId: n.user_id, notification: toNotificationDto(n) })));
+    await this.realtime.notificationsCreated(
+      immediate.map((n) => ({ userId: n.user_id, notification: toNotificationDto(n) })),
+    );
     for (const n of created) {
-      if (n.available_at.getTime() > now + 1_000) await this.pushes.schedule(n.id, n.available_at.getTime() - now);
+      if (n.available_at.getTime() > now + 1_000)
+        await this.pushes.schedule(n.id, n.available_at.getTime() - now);
     }
     await this.email.enqueueMany(queued.map((q) => ({ id: q.id, scheduledAt: q.scheduled_at })));
   }

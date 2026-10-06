@@ -66,12 +66,19 @@ export class ExportsService implements OnModuleInit {
     this.queues.worker<ReportJobData>(REPORT_QUEUE, (job) => this.handle(job), { concurrency: 2 });
     await this.queues
       .queue<ReportJobData>(REPORT_QUEUE)
-      .upsertJobScheduler('analytics.report.maintenance', { every: 15 * 60_000 }, { name: 'maintenance', data: { kind: 'maintenance' } });
+      .upsertJobScheduler(
+        'analytics.report.maintenance',
+        { every: 15 * 60_000 },
+        { name: 'maintenance', data: { kind: 'maintenance' } },
+      );
   }
 
   private async handle(job: Job<ReportJobData>): Promise<unknown> {
     if (job.data.kind === 'maintenance') return this.maintenance();
-    return this.run(job.data.exportId, { attemptsMade: job.attemptsMade, maxAttempts: job.opts.attempts ?? MAX_ATTEMPTS });
+    return this.run(job.data.exportId, {
+      attemptsMade: job.attemptsMade,
+      maxAttempts: job.opts.attempts ?? MAX_ATTEMPTS,
+    });
   }
 
   private toDto(row: JobRow): analytics.ExportJob {
@@ -99,7 +106,9 @@ export class ExportsService implements OnModuleInit {
     if (!RENDERERS[body.format]) {
       throw new PreconditionError(
         'EXPORT_FORMAT_UNSUPPORTED',
-        `${body.format.toUpperCase()} export is not available. Choose ${Object.keys(RENDERERS).map((f) => f.toUpperCase()).join(' or ')}.`,
+        `${body.format.toUpperCase()} export is not available. Choose ${Object.keys(RENDERERS)
+          .map((f) => f.toUpperCase())
+          .join(' or ')}.`,
       );
     }
     this.reports.resolveSort(def, body.sort);
@@ -127,7 +136,12 @@ export class ExportsService implements OnModuleInit {
         resourceType: 'report_export',
         resourceId: id,
         actorDisplay: p.displayName,
-        after: { report: def.key, format: body.format, filters: ctx.filters, scope: ctx.scope.kind },
+        after: {
+          report: def.key,
+          format: body.format,
+          filters: ctx.filters,
+          scope: ctx.scope.kind,
+        },
       });
       return inserted;
     });
@@ -135,13 +149,21 @@ export class ExportsService implements OnModuleInit {
       await this.enqueue(id);
     } catch (err) {
       // The row is committed; the maintenance job re-enqueues jobs that never reached the queue.
-      this.logger.warn({ err, exportId: id }, 'could not enqueue report export; it will be retried');
+      this.logger.warn(
+        { err, exportId: id },
+        'could not enqueue report export; it will be retried',
+      );
     }
     return this.toDto(row);
   }
 
   private async enqueue(exportId: string, jobId: string = exportId): Promise<void> {
-    await this.queues.add<ReportJobData>(REPORT_QUEUE, 'export', { kind: 'export', exportId }, { jobId, attempts: MAX_ATTEMPTS });
+    await this.queues.add<ReportJobData>(
+      REPORT_QUEUE,
+      'export',
+      { kind: 'export', exportId },
+      { jobId, attempts: MAX_ATTEMPTS },
+    );
   }
 
   private async mine(p: Principal, id: string): Promise<JobRow> {
@@ -160,7 +182,17 @@ export class ExportsService implements OnModuleInit {
     return this.toDto(await this.mine(p, id));
   }
 
-  async list(p: Principal, page: number, pageSize: number): Promise<{ items: analytics.ExportJob[]; page: number; pageSize: number; total: number; pageCount: number }> {
+  async list(
+    p: Principal,
+    page: number,
+    pageSize: number,
+  ): Promise<{
+    items: analytics.ExportJob[];
+    page: number;
+    pageSize: number;
+    total: number;
+    pageCount: number;
+  }> {
     const rows = await this.db
       .selectFrom('report_jobs')
       .selectAll()
@@ -184,21 +216,40 @@ export class ExportsService implements OnModuleInit {
               .executeTakeFirst()
           )?.n ?? 0,
         );
-    return { items: rows.map((r) => this.toDto(r)), page, pageSize, total, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
+    return {
+      items: rows.map((r) => this.toDto(r)),
+      page,
+      pageSize,
+      total,
+      pageCount: Math.max(1, Math.ceil(total / pageSize)),
+    };
   }
 
   async download(p: Principal, id: string): Promise<analytics.ExportDownload> {
     const row = await this.mine(p, id);
     // Retention and link lifetimes are wall-clock concerns, independent of the analytics clock.
     const now = new Date();
-    if (row.status === 'expired' || (row.status === 'completed' && row.expires_at && row.expires_at <= now)) {
-      throw new AppError(410, 'EXPORT_EXPIRED', 'This export has expired. Run the export again to download a fresh copy.');
+    if (
+      row.status === 'expired' ||
+      (row.status === 'completed' && row.expires_at && row.expires_at <= now)
+    ) {
+      throw new AppError(
+        410,
+        'EXPORT_EXPIRED',
+        'This export has expired. Run the export again to download a fresh copy.',
+      );
     }
     if (row.status === 'failed') {
-      throw new ConflictError('EXPORT_FAILED', row.error ?? 'This export could not be created. Run it again or narrow the filters.');
+      throw new ConflictError(
+        'EXPORT_FAILED',
+        row.error ?? 'This export could not be created. Run it again or narrow the filters.',
+      );
     }
     if (row.status !== 'completed' || !row.file_key || !row.file_name) {
-      throw new ConflictError('EXPORT_NOT_READY', 'The export is still being prepared. Check again in a moment.');
+      throw new ConflictError(
+        'EXPORT_NOT_READY',
+        'The export is still being prepared. Check again in a moment.',
+      );
     }
     const ttl = this.config.exports.linkTtlSeconds;
     await this.events.audit(this.db, {
@@ -213,7 +264,11 @@ export class ExportsService implements OnModuleInit {
       downloadName: row.file_name,
       contentType: row.content_type ?? undefined,
     });
-    return { url, fileName: row.file_name, expiresAt: new Date(Date.now() + ttl * 1000).toISOString() };
+    return {
+      url,
+      fileName: row.file_name,
+      expiresAt: new Date(Date.now() + ttl * 1000).toISOString(),
+    };
   }
 
   private async describeFilters(ctx: QueryContext): Promise<string> {
@@ -244,8 +299,15 @@ export class ExportsService implements OnModuleInit {
   }
 
   /** Render one export. Retries are handled by BullMQ; the final failure is recorded on the job. */
-  async run(exportId: string, attempt: { attemptsMade: number; maxAttempts: number } = { attemptsMade: 0, maxAttempts: 1 }): Promise<{ rowCount: number } | null> {
-    const job = await this.db.selectFrom('report_jobs').selectAll().where('id', '=', exportId).executeTakeFirst();
+  async run(
+    exportId: string,
+    attempt: { attemptsMade: number; maxAttempts: number } = { attemptsMade: 0, maxAttempts: 1 },
+  ): Promise<{ rowCount: number } | null> {
+    const job = await this.db
+      .selectFrom('report_jobs')
+      .selectAll()
+      .where('id', '=', exportId)
+      .executeTakeFirst();
     if (!job || job.status === 'completed' || job.status === 'expired') return null;
     const renderer = RENDERERS[job.format as analytics.ExportFormat];
     const def = REPORTS_BY_KEY.get(job.report as analytics.ReportKey);
@@ -261,9 +323,21 @@ export class ExportsService implements OnModuleInit {
 
     const tmp = join(tmpdir(), `a5-report-${job.id}-${process.pid}.${renderer.extension}`);
     try {
-      const ctx = await this.scope.build(job.organization_id, job.scope as unknown as ScopeFilter, cleanFilters(job.filters));
-      const limit = Math.min(this.config.exports.maxRows, renderer.maxRows ?? Number.POSITIVE_INFINITY);
-      const source = this.reports.rows(ctx, def.key, { sort: job.sort ?? undefined, q: job.search ?? undefined }, { maxRows: limit + 1 });
+      const ctx = await this.scope.build(
+        job.organization_id,
+        job.scope as unknown as ScopeFilter,
+        cleanFilters(job.filters),
+      );
+      const limit = Math.min(
+        this.config.exports.maxRows,
+        renderer.maxRows ?? Number.POSITIVE_INFINITY,
+      );
+      const source = this.reports.rows(
+        ctx,
+        def.key,
+        { sort: job.sort ?? undefined, q: job.search ?? undefined },
+        { maxRows: limit + 1 },
+      );
       let truncated = false;
       const rows = (async function* (): AsyncGenerator<ReportRow> {
         let n = 0;
@@ -282,14 +356,25 @@ export class ExportsService implements OnModuleInit {
         await this.describeFilters(ctx),
       ].join(' · ');
       const { rowCount } = await renderer.render(
-        { title: def.title, subtitle, columns: def.columns, rows, timezone: ctx.timezone, truncated: () => truncated, rowLimit: limit },
+        {
+          title: def.title,
+          subtitle,
+          columns: def.columns,
+          rows,
+          timezone: ctx.timezone,
+          truncated: () => truncated,
+          rowLimit: limit,
+        },
         createWriteStream(tmp),
       );
       const { size } = await stat(tmp);
       const date = ctx.now.toISOString().slice(0, 10);
       const fileName = `${def.key}-${date}.${renderer.extension}`;
       const key = `reports/${job.organization_id}/${job.id}/${fileName}`;
-      await this.storage.storage.putObject(key, createReadStream(tmp), { contentType: renderer.contentType, contentLength: size });
+      await this.storage.storage.putObject(key, createReadStream(tmp), {
+        contentType: renderer.contentType,
+        contentLength: size,
+      });
       const completedAt = new Date();
       await this.db
         .updateTable('report_jobs')
@@ -301,7 +386,9 @@ export class ExportsService implements OnModuleInit {
           file_size: size,
           content_type: renderer.contentType,
           completed_at: completedAt,
-          expires_at: new Date(completedAt.getTime() + this.config.exports.retentionHours * 3_600_000),
+          expires_at: new Date(
+            completedAt.getTime() + this.config.exports.retentionHours * 3_600_000,
+          ),
         })
         .where('id', '=', job.id)
         .execute();
@@ -309,8 +396,17 @@ export class ExportsService implements OnModuleInit {
     } catch (err) {
       const final = attempt.attemptsMade + 1 >= attempt.maxAttempts;
       this.logger.warn({ err, exportId: job.id, final }, 'report export failed');
-      if (final) await this.fail(job.id, 'The export could not be created. Run it again; if it keeps failing, narrow the filters.');
-      else await this.db.updateTable('report_jobs').set({ status: 'queued' }).where('id', '=', job.id).execute();
+      if (final)
+        await this.fail(
+          job.id,
+          'The export could not be created. Run it again; if it keeps failing, narrow the filters.',
+        );
+      else
+        await this.db
+          .updateTable('report_jobs')
+          .set({ status: 'queued' })
+          .where('id', '=', job.id)
+          .execute();
       throw err;
     } finally {
       await rm(tmp, { force: true });
@@ -318,11 +414,17 @@ export class ExportsService implements OnModuleInit {
   }
 
   private async fail(id: string, message: string): Promise<void> {
-    await this.db.updateTable('report_jobs').set({ status: 'failed', error: message, completed_at: new Date() }).where('id', '=', id).execute();
+    await this.db
+      .updateTable('report_jobs')
+      .set({ status: 'failed', error: message, completed_at: new Date() })
+      .where('id', '=', id)
+      .execute();
   }
 
   /** Expire old files, re-enqueue jobs that never reached the queue and fail jobs stuck while running. */
-  async maintenance(now = new Date()): Promise<{ expired: number; requeued: number; failed: number }> {
+  async maintenance(
+    now = new Date(),
+  ): Promise<{ expired: number; requeued: number; failed: number }> {
     const due = await this.db
       .selectFrom('report_jobs')
       .select(['id', 'file_key'])
@@ -339,7 +441,11 @@ export class ExportsService implements OnModuleInit {
           continue;
         }
       }
-      await this.db.updateTable('report_jobs').set({ status: 'expired', file_key: null }).where('id', '=', job.id).execute();
+      await this.db
+        .updateTable('report_jobs')
+        .set({ status: 'expired', file_key: null })
+        .where('id', '=', job.id)
+        .execute();
     }
 
     const queue = this.queues.queue<ReportJobData>(REPORT_QUEUE);
@@ -362,7 +468,11 @@ export class ExportsService implements OnModuleInit {
 
     const stuck = await this.db
       .updateTable('report_jobs')
-      .set({ status: 'failed', error: 'The export took too long. Run it again with a narrower date range.', completed_at: now })
+      .set({
+        status: 'failed',
+        error: 'The export took too long. Run it again with a narrower date range.',
+        completed_at: now,
+      })
       .where('status', '=', 'running')
       .where('started_at', '<', new Date(now.getTime() - STALE_RUNNING_MS))
       .executeTakeFirst();

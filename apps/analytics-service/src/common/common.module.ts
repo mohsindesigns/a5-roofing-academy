@@ -12,7 +12,13 @@ export class CommonModule {
   static register(config: AnalyticsConfig): DynamicModule {
     return {
       module: CommonModule,
-      providers: [{ provide: ANALYTICS_CONFIG, useValue: config }, AnalyticsClock, SettingsService, AnalyticsScope, StorageProvider],
+      providers: [
+        { provide: ANALYTICS_CONFIG, useValue: config },
+        AnalyticsClock,
+        SettingsService,
+        AnalyticsScope,
+        StorageProvider,
+      ],
       exports: [ANALYTICS_CONFIG, AnalyticsClock, SettingsService, AnalyticsScope, StorageProvider],
     };
   }

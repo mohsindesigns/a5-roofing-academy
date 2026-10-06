@@ -2,7 +2,13 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { pino } from 'pino';
-import { PRINCIPAL_HEADER, SERVICE_TOKEN_HEADER, signPrincipalToken, signServiceToken, type PrincipalData } from '@a5/auth';
+import {
+  PRINCIPAL_HEADER,
+  SERVICE_TOKEN_HEADER,
+  signPrincipalToken,
+  signServiceToken,
+  type PrincipalData,
+} from '@a5/auth';
 import type { Producer } from '@a5/events';
 import type { Logger } from '@a5/observability';
 import type { DataScope, PermissionKey, PermissionMap } from '@a5/permissions';
@@ -47,7 +53,10 @@ export async function createTestApp(
   options: { parseBodies?: boolean } = {},
 ): Promise<NestExpressApplication> {
   const ref = await Test.createTestingModule({ imports: [module as never] }).compile();
-  const app = ref.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+  const app = ref.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    logger: false,
+  });
   configureApplication(app, config, options);
   await configure?.(app);
   await app.init();
@@ -87,7 +96,10 @@ export async function principalHeaders(
   return { [PRINCIPAL_HEADER]: await signPrincipalToken(data, secret) };
 }
 
-export async function serviceHeaders(service: string, secret = TEST_INTERNAL_SECRET): Promise<Record<string, string>> {
+export async function serviceHeaders(
+  service: string,
+  secret = TEST_INTERNAL_SECRET,
+): Promise<Record<string, string>> {
   return { [SERVICE_TOKEN_HEADER]: await signServiceToken(service, secret) };
 }
 

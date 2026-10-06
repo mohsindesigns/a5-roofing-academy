@@ -10,7 +10,10 @@ let h: MediaHarness;
 
 beforeAll(async () => {
   // Worker role with the shortest allowed flush interval, so the real BullMQ schedule runs.
-  h = await createMediaHarness('flush', { role: 'all', env: { MEDIA_PROGRESS_FLUSH_INTERVAL_SECONDS: '5' } });
+  h = await createMediaHarness('flush', {
+    role: 'all',
+    env: { MEDIA_PROGRESS_FLUSH_INTERVAL_SECONDS: '5' },
+  });
 });
 afterAll(() => h?.close());
 
@@ -18,11 +21,24 @@ describe('write-behind schedule', () => {
   it('persists buffered progress from the scheduled flush job without any further request', async () => {
     const assetId = await insertReadyVideo(h, { durationSeconds: 1000 });
     const headers = await h.as('marcus');
-    const grant = await h.grant({ userId: PEOPLE.marcus.id, resource: { type: 'media', id: assetId } });
-    const { playbackToken } = (await h.http.post('/api/v1/media/playback').set(headers).send({ grant })).body;
+    const grant = await h.grant({
+      userId: PEOPLE.marcus.id,
+      resource: { type: 'media', id: assetId },
+    });
+    const { playbackToken } = (
+      await h.http.post('/api/v1/media/playback').set(headers).send({ grant })
+    ).body;
     const beat = (start: number, end: number) =>
-      h.http.post('/api/v1/media/playback/heartbeat').set(headers).send({ playbackToken, intervals: [{ start, end, rate: 1 }], positionSeconds: end });
-    const row = () => h.db.selectFrom('video_progress').select(['watched_seconds', 'last_position_seconds']).where('asset_id', '=', assetId).executeTakeFirst();
+      h.http
+        .post('/api/v1/media/playback/heartbeat')
+        .set(headers)
+        .send({ playbackToken, intervals: [{ start, end, rate: 1 }], positionSeconds: end });
+    const row = () =>
+      h.db
+        .selectFrom('video_progress')
+        .select(['watched_seconds', 'last_position_seconds'])
+        .where('asset_id', '=', assetId)
+        .executeTakeFirst();
 
     h.clock.advance(15_000);
     expect((await beat(0, 15)).status).toBe(200);
@@ -32,7 +48,11 @@ describe('write-behind schedule', () => {
     // 3 % is below the next milestone: only Redis knows about it until the job runs.
     expect(await row()).toMatchObject({ watched_seconds: 15 });
 
-    await waitFor(async () => ((await row())?.watched_seconds === 30 ? true : null), { timeoutMs: 20_000, intervalMs: 250, message: 'the scheduled flush to persist progress' });
+    await waitFor(async () => ((await row())?.watched_seconds === 30 ? true : null), {
+      timeoutMs: 20_000,
+      intervalMs: 250,
+      message: 'the scheduled flush to persist progress',
+    });
     expect(await row()).toMatchObject({ watched_seconds: 30, last_position_seconds: 30 });
   });
 });
@@ -59,14 +79,23 @@ describe('cross-instance exactly-once', () => {
       persisted: false,
     };
     const store = h.app.get(ProgressStore);
-    const results = await Promise.allSettled(Array.from({ length: 8 }, () => store.persist({ ...state })));
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () => store.persist({ ...state })),
+    );
     expect(results.map((r) => r.status)).toEqual(Array(8).fill('fulfilled'));
 
-    const mine = async (type: string) => (await outboxEvents(h, type)).filter((e) => e.payload.assetId === assetId && e.payload.userId === userId);
+    const mine = async (type: string) =>
+      (await outboxEvents(h, type)).filter(
+        (e) => e.payload.assetId === assetId && e.payload.userId === userId,
+      );
     expect(await mine('video.started')).toHaveLength(1);
     expect(await mine('video.progressed')).toHaveLength(1);
     expect(await mine('video.completed')).toHaveLength(1);
-    const rows = await h.db.selectFrom('video_progress').selectAll().where('asset_id', '=', assetId).execute();
+    const rows = await h.db
+      .selectFrom('video_progress')
+      .selectAll()
+      .where('asset_id', '=', assetId)
+      .execute();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ percent: 100, watched_seconds: 200 });
     expect(rows[0]!.milestones_emitted).toHaveLength(20);

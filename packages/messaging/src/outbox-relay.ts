@@ -38,7 +38,10 @@ export class OutboxRelay {
       this.listener = new pg.Client({ connectionString: this.options.databaseUrl });
       this.listener.on('notification', () => this.trigger());
       this.listener.on('error', (err) => {
-        this.options.logger.warn({ err }, 'outbox listener connection error; falling back to polling');
+        this.options.logger.warn(
+          { err },
+          'outbox listener connection error; falling back to polling',
+        );
       });
       await this.listener.connect();
       await this.listener.query(`listen ${OUTBOX_NOTIFY_CHANNEL}`);

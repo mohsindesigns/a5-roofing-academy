@@ -1,5 +1,21 @@
-import { aiEvents, assessmentEvents, certificationEvents, learningEvents, type EventEnvelope } from '@a5/events';
-import { ASSESSMENTS, CERTIFICATION, PEOPLE, PHASES, PROGRAM, SCENARIOS, allLessons, seedId, type PersonKey } from '@a5/seed-data';
+import {
+  aiEvents,
+  assessmentEvents,
+  certificationEvents,
+  learningEvents,
+  type EventEnvelope,
+} from '@a5/events';
+import {
+  ASSESSMENTS,
+  CERTIFICATION,
+  PEOPLE,
+  PHASES,
+  PROGRAM,
+  SCENARIOS,
+  allLessons,
+  seedId,
+  type PersonKey,
+} from '@a5/seed-data';
 import { buildSeedEvents } from '../src/seed/seed-analytics.js';
 import { QUESTIONS } from '../src/seed/question-bank.js';
 import { evt } from './harness.js';
@@ -22,22 +38,42 @@ const lesson = (key: string) => lessons.find((l) => l.key === key)!;
 const assessment = (key: string) => ASSESSMENTS.find((a) => a.key === key)!;
 const scenario = (key: string) => SCENARIOS.find((s) => s.key === key)!;
 const enrollmentId = (p: PersonKey) => seedId(`fixture-enrollment:${p}`);
-const ref = (p: PersonKey) => ({ enrollmentId: enrollmentId(p), programId: PROGRAM.id, userId: PEOPLE[p].id });
+const ref = (p: PersonKey) => ({
+  enrollmentId: enrollmentId(p),
+  programId: PROGRAM.id,
+  userId: PEOPLE[p].id,
+});
 
 const phase1 = PHASES[0]!;
 
 function enroll(p: PersonKey, at: string, due: string): EventEnvelope {
-  return evt(learningEvents.enrolled, { ...ref(p), programTitle: PROGRAM.title, assignedBy: null, dueAt: due, source: 'manual' }, at, `enroll:${p}`);
+  return evt(
+    learningEvents.enrolled,
+    { ...ref(p), programTitle: PROGRAM.title, assignedBy: null, dueAt: due, source: 'manual' },
+    at,
+    `enroll:${p}`,
+  );
 }
 
 function complete(p: PersonKey, at: string): EventEnvelope {
-  return evt(learningEvents.programCompleted, { ...ref(p), programTitle: PROGRAM.title, completedAt: at }, at, `complete:${p}`);
+  return evt(
+    learningEvents.programCompleted,
+    { ...ref(p), programTitle: PROGRAM.title, completedAt: at },
+    at,
+    `complete:${p}`,
+  );
 }
 
 function progress(p: PersonKey, at: string, percent: number): EventEnvelope {
   return evt(
     learningEvents.enrollmentProgressed,
-    { ...ref(p), progressPercent: percent, requiredCompleted: Math.round(percent / 10), requiredTotal: 10, currentPhaseId: phase1.id },
+    {
+      ...ref(p),
+      progressPercent: percent,
+      requiredCompleted: Math.round(percent / 10),
+      requiredTotal: 10,
+      currentPhaseId: phase1.id,
+    },
     at,
     `progress:${p}`,
   );
@@ -63,7 +99,14 @@ function lessonDone(p: PersonKey, key: string, at: string): EventEnvelope {
   );
 }
 
-function attempt(p: PersonKey, key: string, n: number, at: string, score: number, correct: Array<[number, boolean]> = []): EventEnvelope {
+function attempt(
+  p: PersonKey,
+  key: string,
+  n: number,
+  at: string,
+  score: number,
+  correct: Array<[number, boolean]> = [],
+): EventEnvelope {
   const a = assessment(key);
   const attemptId = seedId(`fixture-attempt:${p}:${key}:${n}`);
   return evt(
@@ -80,7 +123,11 @@ function attempt(p: PersonKey, key: string, n: number, at: string, score: number
       passingPercent: a.passingPercent,
       gradedAt: at,
       overridden: false,
-      context: { programId: PROGRAM.id, enrollmentId: enrollmentId(p), lessonId: lesson(a.lessonKey).id },
+      context: {
+        programId: PROGRAM.id,
+        enrollmentId: enrollmentId(p),
+        lessonId: lesson(a.lessonKey).id,
+      },
       questionResults: correct.map(([number, ok]) => {
         const q = QUESTIONS[key]![number - 1]!;
         return {
@@ -132,7 +179,13 @@ function ai(p: PersonKey, key: string, n: number, at: string, overall: number): 
 function eligible(p: PersonKey, at: string, requiresApproval = false): EventEnvelope {
   return evt(
     certificationEvents.eligible,
-    { candidateId: seedId(`fixture-candidate:${p}`), definitionId: CERTIFICATION.id, definitionName: CERTIFICATION.name, userId: PEOPLE[p].id, requiresApproval },
+    {
+      candidateId: seedId(`fixture-candidate:${p}`),
+      definitionId: CERTIFICATION.id,
+      definitionName: CERTIFICATION.name,
+      userId: PEOPLE[p].id,
+      requiresApproval,
+    },
     at,
     `eligible:${p}`,
   );
@@ -183,10 +236,22 @@ export function fixtureEvents(): EventEnvelope[] {
     complete('naomi', '2026-09-28T14:00:00Z'),
     complete('ashlyn', '2026-08-25T14:00:00Z'),
     // Assessments: quiz-w1 passes at 80, the final at 85.
-    attempt('marcus', 'quiz-w1', 1, '2026-09-03T10:00:00Z', 60, [[1, false], [4, false]]),
-    attempt('marcus', 'quiz-w1', 2, '2026-09-04T10:00:00Z', 90, [[1, true], [4, true]]),
-    attempt('tyler', 'quiz-w1', 1, '2026-09-04T11:00:00Z', 80, [[1, true], [4, true]]),
-    attempt('naomi', 'quiz-w1', 1, '2026-09-14T10:00:00Z', 70, [[1, false], [4, true]]),
+    attempt('marcus', 'quiz-w1', 1, '2026-09-03T10:00:00Z', 60, [
+      [1, false],
+      [4, false],
+    ]),
+    attempt('marcus', 'quiz-w1', 2, '2026-09-04T10:00:00Z', 90, [
+      [1, true],
+      [4, true],
+    ]),
+    attempt('tyler', 'quiz-w1', 1, '2026-09-04T11:00:00Z', 80, [
+      [1, true],
+      [4, true],
+    ]),
+    attempt('naomi', 'quiz-w1', 1, '2026-09-14T10:00:00Z', 70, [
+      [1, false],
+      [4, true],
+    ]),
     attempt('tyler', 'final', 1, '2026-09-18T10:00:00Z', 88),
     attempt('naomi', 'final', 1, '2026-09-27T10:00:00Z', 100),
     attempt('ashlyn', 'final', 1, '2026-08-24T10:00:00Z', 91),

@@ -6,11 +6,30 @@ import { createDatabase, migrateToLatest, type Database } from '@a5/database';
 import { DirectoryProjection } from '@a5/directory';
 import { buildEvent, type EventDefinition, type EventEnvelope } from '@a5/events';
 import { createRedis, RedisNamespace, StreamPublisher, type Redis } from '@a5/messaging';
-import { TEST_INTERNAL_SECRET, closeApp, createTestApp, principalHeaders, serviceHeaders, testLogger } from '@a5/nest-kit/testing';
+import {
+  TEST_INTERNAL_SECRET,
+  closeApp,
+  createTestApp,
+  principalHeaders,
+  serviceHeaders,
+  testLogger,
+} from '@a5/nest-kit/testing';
 import { uuidv7 } from '@a5/observability';
-import { DEFAULT_ROLES, widestScope, type DataScope, type PermissionKey, type PermissionMap, type SystemRoleKey } from '@a5/permissions';
+import {
+  DEFAULT_ROLES,
+  widestScope,
+  type DataScope,
+  type PermissionKey,
+  type PermissionMap,
+  type SystemRoleKey,
+} from '@a5/permissions';
 import { ORGANIZATION, PEOPLE, TEAMS, TRAINER_ASSIGNMENTS, type PersonKey } from '@a5/seed-data';
-import { TEST_REDIS_URL, createTestDatabase, testRedisNamespace, type TestDatabase } from '@a5/testing';
+import {
+  TEST_REDIS_URL,
+  createTestDatabase,
+  testRedisNamespace,
+  type TestDatabase,
+} from '@a5/testing';
 import { AppModule } from '../src/app.module.js';
 import { loadLearningConfig, type LearningConfig } from '../src/config.js';
 import { LearningEventsConsumer } from '../src/consumers/learning-events.consumer.js';
@@ -31,9 +50,19 @@ export interface LearningHarness {
   /** Principal headers for a seeded person, resolved like identity-service would (roles → permissions, teams, trainees). */
   as(person: PersonKey): Promise<Record<string, string>>;
   /** Headers for an arbitrary principal. */
-  asCustom(input: { userId: string; permissions: PermissionKey[] | PermissionMap; scope?: DataScope; managedTeamIds?: string[]; managedUserIds?: string[] }): Promise<Record<string, string>>;
+  asCustom(input: {
+    userId: string;
+    permissions: PermissionKey[] | PermissionMap;
+    scope?: DataScope;
+    managedTeamIds?: string[];
+    managedUserIds?: string[];
+  }): Promise<Record<string, string>>;
   /** Build a validated event envelope as its producer would. */
-  envelope<T extends string, S extends z.ZodType>(def: EventDefinition<T, S>, payload: z.input<S>, occurredAt?: Date): EventEnvelope;
+  envelope<T extends string, S extends z.ZodType>(
+    def: EventDefinition<T, S>,
+    payload: z.input<S>,
+    occurredAt?: Date,
+  ): EventEnvelope;
   /** Hand an envelope to the matching consumer handler (the same code the stream consumer calls). */
   consume(event: EventEnvelope): Promise<void>;
   /** Publish onto the producer's Redis stream so the running consumer picks it up. */
@@ -72,14 +101,21 @@ export function principalFor(person: PersonKey): {
   return {
     userId: p.id,
     permissions,
-    managedTeamIds: TEAMS.filter((t) => (t.managers as readonly string[]).includes(person)).map((t) => t.id),
-    managedUserIds: TRAINER_ASSIGNMENTS.filter((a) => a.trainer === person).flatMap((a) => a.trainees.map((t) => PEOPLE[t].id)),
+    managedTeamIds: TEAMS.filter((t) => (t.managers as readonly string[]).includes(person)).map(
+      (t) => t.id,
+    ),
+    managedUserIds: TRAINER_ASSIGNMENTS.filter((a) => a.trainer === person).flatMap((a) =>
+      a.trainees.map((t) => PEOPLE[t].id),
+    ),
     roles: [...p.roles],
     displayName: `${p.firstName} ${p.lastName}`,
   };
 }
 
-export async function createLearningHarness(name: string, options: HarnessOptions = {}): Promise<LearningHarness> {
+export async function createLearningHarness(
+  name: string,
+  options: HarnessOptions = {},
+): Promise<LearningHarness> {
   const tdb: TestDatabase = await createTestDatabase(`learning_${name}`);
   const namespace = testRedisNamespace(`learning-${name}`);
   const config = loadLearningConfig({
@@ -109,11 +145,24 @@ export async function createLearningHarness(name: string, options: HarnessOption
     config,
     overdue: app.get(OverdueService),
     async as(person) {
-      const { userId, permissions, managedTeamIds, managedUserIds, roles, displayName } = principalFor(person);
-      return principalHeaders({ userId, organizationId: ORGANIZATION.id, displayName, roles, permissions, managedTeamIds, managedUserIds });
+      const { userId, permissions, managedTeamIds, managedUserIds, roles, displayName } =
+        principalFor(person);
+      return principalHeaders({
+        userId,
+        organizationId: ORGANIZATION.id,
+        displayName,
+        roles,
+        permissions,
+        managedTeamIds,
+        managedUserIds,
+      });
     },
     asCustom(input) {
-      return principalHeaders({ organizationId: ORGANIZATION.id, scope: input.scope ?? 'organization', ...input });
+      return principalHeaders({
+        organizationId: ORGANIZATION.id,
+        scope: input.scope ?? 'organization',
+        ...input,
+      });
     },
     envelope(def, payload, occurredAt) {
       return buildEvent(def, payload, {
@@ -147,7 +196,11 @@ export async function createLearningHarness(name: string, options: HarnessOption
       await new StreamPublisher(redis, ns).publish([{ stream, envelope: event }]);
     },
     async outbox(type) {
-      let q = database.db.selectFrom('outbox_events').select('envelope').orderBy('created_at').orderBy('id');
+      let q = database.db
+        .selectFrom('outbox_events')
+        .select('envelope')
+        .orderBy('created_at')
+        .orderBy('id');
       if (type) q = q.where('type', '=', type);
       return (await q.execute()).map((r) => r.envelope as EventEnvelope);
     },

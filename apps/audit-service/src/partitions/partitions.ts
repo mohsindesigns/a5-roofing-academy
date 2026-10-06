@@ -27,11 +27,16 @@ export function monthsBetween(from: Date, to: Date): Date[] {
  * already collected in the default partition for a created month are moved into it by the
  * database function, without deleting anything.
  */
-export async function ensurePartitions(db: Kysely<unknown>, months: Iterable<Date>): Promise<string[]> {
+export async function ensurePartitions(
+  db: Kysely<unknown>,
+  months: Iterable<Date>,
+): Promise<string[]> {
   const created: string[] = [];
   for (const month of months) {
     const day = monthStart(month).toISOString().slice(0, 10);
-    const result = await sql<{ name: string | null }>`select audit_logs_ensure_partition(${day}::date) as name`.execute(db);
+    const result = await sql<{
+      name: string | null;
+    }>`select audit_logs_ensure_partition(${day}::date) as name`.execute(db);
     const name = result.rows[0]?.name;
     if (name) created.push(name);
   }
@@ -39,7 +44,11 @@ export async function ensurePartitions(db: Kysely<unknown>, months: Iterable<Dat
 }
 
 /** Ensure the current month and `monthsAhead` following months exist. */
-export function ensureUpcomingPartitions(db: Kysely<unknown>, monthsAhead: number, now = new Date()): Promise<string[]> {
+export function ensureUpcomingPartitions(
+  db: Kysely<unknown>,
+  monthsAhead: number,
+  now = new Date(),
+): Promise<string[]> {
   return ensurePartitions(db, monthsBetween(now, addMonths(monthStart(now), monthsAhead)));
 }
 
@@ -63,8 +72,15 @@ export async function listPartitions(db: Kysely<unknown>): Promise<PartitionInfo
   const out: PartitionInfo[] = [];
   for (const row of result.rows) {
     const match = /FROM \('([^']+)'\) TO \('([^']+)'\)/.exec(row.bound);
-    const count = await sql<{ n: number }>`select count(*)::int as n from ${sql.table(row.name)}`.execute(db);
-    out.push({ name: row.name, from: match?.[1] ?? null, to: match?.[2] ?? null, rows: count.rows[0]?.n ?? 0 });
+    const count = await sql<{
+      n: number;
+    }>`select count(*)::int as n from ${sql.table(row.name)}`.execute(db);
+    out.push({
+      name: row.name,
+      from: match?.[1] ?? null,
+      to: match?.[2] ?? null,
+      rows: count.rows[0]?.n ?? 0,
+    });
   }
   return out;
 }

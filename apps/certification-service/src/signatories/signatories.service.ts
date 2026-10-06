@@ -2,12 +2,24 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import type { certification } from '@a5/contracts';
 import { likePattern, paginate, type Page } from '@a5/database';
-import { EventBus, InjectDb, NotFoundError, PreconditionError, ValidationError } from '@a5/nest-kit';
+import {
+  EventBus,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+  ValidationError,
+} from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import type { ObjectStorage } from '@a5/storage';
 import { CERTIFICATION_CONFIG, type CertificationConfig } from '../config.js';
 import type { Db, DbOrTrx, Trx } from '../database/index.js';
-import { currentSignatures, currentStampImages, imageVersionDto, type CurrentImage, type ImageVersionDto } from '../common/artwork-repo.js';
+import {
+  currentSignatures,
+  currentStampImages,
+  imageVersionDto,
+  type CurrentImage,
+  type ImageVersionDto,
+} from '../common/artwork-repo.js';
 import { InjectStorage } from '../common/storage.js';
 import { personRef } from '../common/timeline.js';
 
@@ -35,7 +47,11 @@ interface StampInput {
   allowedCertificationIds?: string[];
 }
 
-async function assertCertificationsExist(db: DbOrTrx, organizationId: string, ids: readonly string[] | undefined): Promise<void> {
+async function assertCertificationsExist(
+  db: DbOrTrx,
+  organizationId: string,
+  ids: readonly string[] | undefined,
+): Promise<void> {
   if (!ids?.length) return;
   const found = await db
     .selectFrom('certification_definitions')
@@ -44,7 +60,9 @@ async function assertCertificationsExist(db: DbOrTrx, organizationId: string, id
     .where('id', 'in', [...ids])
     .execute();
   if (found.length !== new Set(ids).size) {
-    throw new ValidationError([{ path: 'allowedCertificationIds', message: 'One or more certifications do not exist.' }]);
+    throw new ValidationError([
+      { path: 'allowedCertificationIds', message: 'One or more certifications do not exist.' },
+    ]);
   }
 }
 
@@ -57,7 +75,9 @@ abstract class ArtworkService {
 
   protected async imageDto(img: CurrentImage | undefined): Promise<ImageVersionDto | null> {
     if (!img) return null;
-    const url = await this.storage.signedGetUrl(img.asset.storage_key, { expiresInSeconds: this.config.certification.previewUrlTtlSeconds });
+    const url = await this.storage.signedGetUrl(img.asset.storage_key, {
+      expiresInSeconds: this.config.certification.previewUrlTtlSeconds,
+    });
     return imageVersionDto(img, url);
   }
 }
@@ -73,20 +93,35 @@ export class SignatoriesService extends ArtworkService {
     super(storage, config);
   }
 
-  async list(p: Principal, f: { q?: string; active?: 'true' | 'false'; page: number; pageSize: number }): Promise<Page<Signatory>> {
-    let q = this.db.selectFrom('signatories').selectAll().where('organization_id', '=', p.organizationId);
-    if (f.q) q = q.where((eb) => eb.or([eb('name', 'ilike', likePattern(f.q!)), eb('title', 'ilike', likePattern(f.q!))]));
+  async list(
+    p: Principal,
+    f: { q?: string; active?: 'true' | 'false'; page: number; pageSize: number },
+  ): Promise<Page<Signatory>> {
+    let q = this.db
+      .selectFrom('signatories')
+      .selectAll()
+      .where('organization_id', '=', p.organizationId);
+    if (f.q)
+      q = q.where((eb) =>
+        eb.or([eb('name', 'ilike', likePattern(f.q!)), eb('title', 'ilike', likePattern(f.q!))]),
+      );
     if (f.active) q = q.where('active', '=', f.active === 'true');
     const page = await paginate(q.orderBy('name').orderBy('id'), f);
     return { ...page, items: await this.toDtos(page.items) };
   }
 
-  private async toDtos(rows: Array<Awaited<ReturnType<SignatoriesService['load']>>>): Promise<Signatory[]> {
+  private async toDtos(
+    rows: Array<Awaited<ReturnType<SignatoriesService['load']>>>,
+  ): Promise<Signatory[]> {
     const ids = rows.map((r) => r.id);
     const [signatures, allowed] = await Promise.all([
       currentSignatures(this.db, ids),
       ids.length
-        ? this.db.selectFrom('signatory_certifications').select(['signatory_id', 'definition_id']).where('signatory_id', 'in', ids).execute()
+        ? this.db
+            .selectFrom('signatory_certifications')
+            .select(['signatory_id', 'definition_id'])
+            .where('signatory_id', 'in', ids)
+            .execute()
         : Promise.resolve([]),
     ]);
     return Promise.all(
@@ -99,7 +134,9 @@ export class SignatoriesService extends ArtworkService {
         active: r.active,
         effectiveFrom: r.effective_from,
         effectiveTo: r.effective_to,
-        allowedCertificationIds: allowed.filter((a) => a.signatory_id === r.id).map((a) => a.definition_id),
+        allowedCertificationIds: allowed
+          .filter((a) => a.signatory_id === r.id)
+          .map((a) => a.definition_id),
         currentSignature: await this.imageDto(signatures.get(r.id)),
         createdAt: r.created_at.toISOString(),
         updatedAt: r.updated_at.toISOString(),
@@ -110,7 +147,11 @@ export class SignatoriesService extends ArtworkService {
   }
 
   async load(db: DbOrTrx, p: Principal, id: string, forUpdate = false) {
-    let q = db.selectFrom('signatories').selectAll().where('id', '=', id).where('organization_id', '=', p.organizationId);
+    let q = db
+      .selectFrom('signatories')
+      .selectAll()
+      .where('id', '=', id)
+      .where('organization_id', '=', p.organizationId);
     if (forUpdate) q = q.forUpdate();
     const row = await q.executeTakeFirst();
     if (!row) throw new NotFoundError('Signatory');
@@ -121,7 +162,10 @@ export class SignatoriesService extends ArtworkService {
     return (await this.toDtos([await this.load(this.db, p, id)]))[0]!;
   }
 
-  async create(p: Principal, input: Required<Pick<SignatoryInput, 'name' | 'title'>> & SignatoryInput): Promise<Signatory> {
+  async create(
+    p: Principal,
+    input: Required<Pick<SignatoryInput, 'name' | 'title'>> & SignatoryInput,
+  ): Promise<Signatory> {
     await assertCertificationsExist(this.db, p.organizationId, input.allowedCertificationIds);
     const id = uuidv7();
     await this.db.transaction().execute(async (trx) => {
@@ -144,7 +188,13 @@ export class SignatoriesService extends ArtworkService {
         })
         .execute();
       await this.replaceAllowed(trx, id, input.allowedCertificationIds ?? []);
-      await this.events.audit(trx, { action: 'signatory.created', resourceType: 'signatory', resourceId: id, actorDisplay: p.displayName, after: input });
+      await this.events.audit(trx, {
+        action: 'signatory.created',
+        resourceType: 'signatory',
+        resourceId: id,
+        actorDisplay: p.displayName,
+        after: input,
+      });
     });
     return this.get(p, id);
   }
@@ -155,7 +205,10 @@ export class SignatoriesService extends ArtworkService {
       const before = await this.load(trx, p, id, true);
       const from = input.effectiveFrom !== undefined ? input.effectiveFrom : before.effective_from;
       const to = input.effectiveTo !== undefined ? input.effectiveTo : before.effective_to;
-      if (from && to && from > to) throw new ValidationError([{ path: 'effectiveTo', message: 'The end date must be on or after the start date' }]);
+      if (from && to && from > to)
+        throw new ValidationError([
+          { path: 'effectiveTo', message: 'The end date must be on or after the start date' },
+        ]);
       const usedBy = await trx
         .selectFrom('certification_signatory_slots as s')
         .innerJoin('certification_definitions as d', 'd.id', 's.definition_id')
@@ -193,13 +246,20 @@ export class SignatoriesService extends ArtworkService {
         })
         .where('id', '=', id)
         .execute();
-      if (input.allowedCertificationIds) await this.replaceAllowed(trx, id, input.allowedCertificationIds);
+      if (input.allowedCertificationIds)
+        await this.replaceAllowed(trx, id, input.allowedCertificationIds);
       await this.events.audit(trx, {
         action: 'signatory.updated',
         resourceType: 'signatory',
         resourceId: id,
         actorDisplay: p.displayName,
-        before: { name: before.name, title: before.title, active: before.active, effectiveFrom: before.effective_from, effectiveTo: before.effective_to },
+        before: {
+          name: before.name,
+          title: before.title,
+          active: before.active,
+          effectiveFrom: before.effective_from,
+          effectiveTo: before.effective_to,
+        },
         after: input,
       });
     });
@@ -211,7 +271,20 @@ export class SignatoriesService extends ArtworkService {
     const rows = await this.db
       .selectFrom('signatory_signatures as s')
       .innerJoin('certification_assets as a', 'a.id', 's.asset_id')
-      .select(['s.id as version_id', 's.version', 's.created_at', 's.created_by', 's.created_by_name', 'a.id', 'a.storage_key', 'a.content_type', 'a.width', 'a.height', 'a.byte_size', 'a.sha256'])
+      .select([
+        's.id as version_id',
+        's.version',
+        's.created_at',
+        's.created_by',
+        's.created_by_name',
+        'a.id',
+        'a.storage_key',
+        'a.content_type',
+        'a.width',
+        'a.height',
+        'a.byte_size',
+        'a.sha256',
+      ])
       .where('s.signatory_id', '=', id)
       .orderBy('s.version', 'desc')
       .execute();
@@ -224,7 +297,15 @@ export class SignatoriesService extends ArtworkService {
             createdAt: r.created_at,
             createdBy: r.created_by,
             createdByName: r.created_by_name,
-            asset: { id: r.id, storage_key: r.storage_key, content_type: r.content_type, width: r.width, height: r.height, byte_size: r.byte_size, sha256: r.sha256 },
+            asset: {
+              id: r.id,
+              storage_key: r.storage_key,
+              content_type: r.content_type,
+              width: r.width,
+              height: r.height,
+              byte_size: r.byte_size,
+              sha256: r.sha256,
+            },
           }),
         ),
       )) as ImageVersionDto[],
@@ -236,7 +317,9 @@ export class SignatoriesService extends ArtworkService {
     if (definitionIds.length) {
       await trx
         .insertInto('signatory_certifications')
-        .values([...new Set(definitionIds)].map((definition_id) => ({ signatory_id: id, definition_id })))
+        .values(
+          [...new Set(definitionIds)].map((definition_id) => ({ signatory_id: id, definition_id })),
+        )
         .execute();
     }
   }
@@ -253,8 +336,14 @@ export class StampsService extends ArtworkService {
     super(storage, config);
   }
 
-  async list(p: Principal, f: { q?: string; active?: 'true' | 'false'; page: number; pageSize: number }): Promise<Page<Stamp>> {
-    let q = this.db.selectFrom('stamps').selectAll().where('organization_id', '=', p.organizationId);
+  async list(
+    p: Principal,
+    f: { q?: string; active?: 'true' | 'false'; page: number; pageSize: number },
+  ): Promise<Page<Stamp>> {
+    let q = this.db
+      .selectFrom('stamps')
+      .selectAll()
+      .where('organization_id', '=', p.organizationId);
     if (f.q) q = q.where('name', 'ilike', likePattern(f.q));
     if (f.active) q = q.where('active', '=', f.active === 'true');
     const page = await paginate(q.orderBy('name').orderBy('id'), f);
@@ -262,7 +351,11 @@ export class StampsService extends ArtworkService {
   }
 
   async load(db: DbOrTrx, p: Principal, id: string, forUpdate = false) {
-    let q = db.selectFrom('stamps').selectAll().where('id', '=', id).where('organization_id', '=', p.organizationId);
+    let q = db
+      .selectFrom('stamps')
+      .selectAll()
+      .where('id', '=', id)
+      .where('organization_id', '=', p.organizationId);
     if (forUpdate) q = q.forUpdate();
     const row = await q.executeTakeFirst();
     if (!row) throw new NotFoundError('Stamp');
@@ -273,7 +366,13 @@ export class StampsService extends ArtworkService {
     const ids = rows.map((r) => r.id);
     const [images, allowed] = await Promise.all([
       currentStampImages(this.db, ids),
-      ids.length ? this.db.selectFrom('stamp_certifications').select(['stamp_id', 'definition_id']).where('stamp_id', 'in', ids).execute() : Promise.resolve([]),
+      ids.length
+        ? this.db
+            .selectFrom('stamp_certifications')
+            .select(['stamp_id', 'definition_id'])
+            .where('stamp_id', 'in', ids)
+            .execute()
+        : Promise.resolve([]),
     ]);
     return Promise.all(
       rows.map(async (r) => ({
@@ -284,7 +383,9 @@ export class StampsService extends ArtworkService {
         active: r.active,
         effectiveFrom: r.effective_from,
         effectiveTo: r.effective_to,
-        allowedCertificationIds: allowed.filter((a) => a.stamp_id === r.id).map((a) => a.definition_id),
+        allowedCertificationIds: allowed
+          .filter((a) => a.stamp_id === r.id)
+          .map((a) => a.definition_id),
         currentImage: await this.imageDto(images.get(r.id)),
         createdAt: r.created_at.toISOString(),
         updatedAt: r.updated_at.toISOString(),
@@ -298,7 +399,10 @@ export class StampsService extends ArtworkService {
     return (await this.toDtos([await this.load(this.db, p, id)]))[0]!;
   }
 
-  async create(p: Principal, input: Required<Pick<StampInput, 'name' | 'kind'>> & StampInput): Promise<Stamp> {
+  async create(
+    p: Principal,
+    input: Required<Pick<StampInput, 'name' | 'kind'>> & StampInput,
+  ): Promise<Stamp> {
     await assertCertificationsExist(this.db, p.organizationId, input.allowedCertificationIds);
     const id = uuidv7();
     await this.db.transaction().execute(async (trx) => {
@@ -320,7 +424,13 @@ export class StampsService extends ArtworkService {
         })
         .execute();
       await this.replaceAllowed(trx, id, input.allowedCertificationIds ?? []);
-      await this.events.audit(trx, { action: 'stamp.created', resourceType: 'stamp', resourceId: id, actorDisplay: p.displayName, after: input });
+      await this.events.audit(trx, {
+        action: 'stamp.created',
+        resourceType: 'stamp',
+        resourceId: id,
+        actorDisplay: p.displayName,
+        after: input,
+      });
     });
     return this.get(p, id);
   }
@@ -331,7 +441,10 @@ export class StampsService extends ArtworkService {
       const before = await this.load(trx, p, id, true);
       const from = input.effectiveFrom !== undefined ? input.effectiveFrom : before.effective_from;
       const to = input.effectiveTo !== undefined ? input.effectiveTo : before.effective_to;
-      if (from && to && from > to) throw new ValidationError([{ path: 'effectiveTo', message: 'The end date must be on or after the start date' }]);
+      if (from && to && from > to)
+        throw new ValidationError([
+          { path: 'effectiveTo', message: 'The end date must be on or after the start date' },
+        ]);
       const usedBy = await trx
         .selectFrom('certification_definitions')
         .select(['id', 'name'])
@@ -344,8 +457,14 @@ export class StampsService extends ArtworkService {
           `This stamp is used by ${usedBy.map((d) => `"${d.name}"`).join(', ')}. Choose another stamp for those certifications before deactivating.`,
         );
       }
-      if (input.allowedCertificationIds?.length && usedBy.some((d) => !input.allowedCertificationIds!.includes(d.id))) {
-        throw new PreconditionError('STAMP_IN_USE', 'Keep every certification that uses this stamp in the allowed list.');
+      if (
+        input.allowedCertificationIds?.length &&
+        usedBy.some((d) => !input.allowedCertificationIds!.includes(d.id))
+      ) {
+        throw new PreconditionError(
+          'STAMP_IN_USE',
+          'Keep every certification that uses this stamp in the allowed list.',
+        );
       }
       await trx
         .updateTable('stamps')
@@ -361,7 +480,8 @@ export class StampsService extends ArtworkService {
         })
         .where('id', '=', id)
         .execute();
-      if (input.allowedCertificationIds) await this.replaceAllowed(trx, id, input.allowedCertificationIds);
+      if (input.allowedCertificationIds)
+        await this.replaceAllowed(trx, id, input.allowedCertificationIds);
       await this.events.audit(trx, {
         action: 'stamp.updated',
         resourceType: 'stamp',
@@ -379,7 +499,9 @@ export class StampsService extends ArtworkService {
     if (definitionIds.length) {
       await trx
         .insertInto('stamp_certifications')
-        .values([...new Set(definitionIds)].map((definition_id) => ({ stamp_id: id, definition_id })))
+        .values(
+          [...new Set(definitionIds)].map((definition_id) => ({ stamp_id: id, definition_id })),
+        )
         .execute();
     }
   }

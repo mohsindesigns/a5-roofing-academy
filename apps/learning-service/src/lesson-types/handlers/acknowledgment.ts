@@ -7,7 +7,10 @@ export const acknowledgmentLesson = defineLessonType<learning.AcknowledgmentLess
   configSchema: learning.acknowledgmentLessonConfigSchema,
   completion: 'acknowledgment',
   learnerCompletion() {
-    return { allowed: false, reason: 'Read the statement and acknowledge it by typing your full name.' };
+    return {
+      allowed: false,
+      reason: 'Read the statement and acknowledge it by typing your full name.',
+    };
   },
   completionHint() {
     return 'Read the statement, then type your full name to acknowledge it.';

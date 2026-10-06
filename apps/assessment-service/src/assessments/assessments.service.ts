@@ -2,12 +2,25 @@ import { Injectable } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import { assessment } from '@a5/contracts';
 import { likePattern, paginate, sql, type Page } from '@a5/database';
-import { ConflictError, EventBus, InjectDb, NotFoundError, PreconditionError, ValidationError } from '@a5/nest-kit';
+import {
+  ConflictError,
+  EventBus,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+  ValidationError,
+} from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import type { z } from 'zod';
 import { People, refOrNull } from '../common/people.js';
 import type { AssessmentItemRow, AssessmentRow, Db, DbOrTrx, Trx } from '../database/index.js';
-import { DrawError, drawQuestions, planItems, poolCandidateIds, validateItems } from '../engine/draw.js';
+import {
+  DrawError,
+  drawQuestions,
+  planItems,
+  poolCandidateIds,
+  validateItems,
+} from '../engine/draw.js';
 import { correctAnswer, learnerQuestion, round2 } from '../engine/question-types.js';
 import { randomRng } from '../engine/random.js';
 
@@ -54,7 +67,20 @@ function itemDraft(input: ItemInput, id: string, position: number): ItemDraft {
       };
 }
 
-function describeItem(i: Pick<AssessmentItemRow, 'position' | 'kind' | 'question_id' | 'pool_bank_id' | 'pool_category_id' | 'pool_difficulty' | 'pool_tags' | 'pool_count' | 'points'>) {
+function describeItem(
+  i: Pick<
+    AssessmentItemRow,
+    | 'position'
+    | 'kind'
+    | 'question_id'
+    | 'pool_bank_id'
+    | 'pool_category_id'
+    | 'pool_difficulty'
+    | 'pool_tags'
+    | 'pool_count'
+    | 'points'
+  >,
+) {
   return i.kind === 'question'
     ? { position: i.position, kind: i.kind, questionId: i.question_id, points: i.points }
     : {
@@ -84,18 +110,32 @@ export class AssessmentsService {
       .selectFrom('assessments as a')
       .selectAll('a')
       .select((eb) => [
-        eb.selectFrom('assessment_items as i').select(eb.fn.countAll<number>().as('n')).whereRef('i.assessment_id', '=', 'a.id').as('item_count'),
         eb
           .selectFrom('assessment_items as i')
-          .select(sql<number>`coalesce(sum(case when i.kind = 'question' then 1 else i.pool_count end), 0)`.as('n'))
+          .select(eb.fn.countAll<number>().as('n'))
+          .whereRef('i.assessment_id', '=', 'a.id')
+          .as('item_count'),
+        eb
+          .selectFrom('assessment_items as i')
+          .select(
+            sql<number>`coalesce(sum(case when i.kind = 'question' then 1 else i.pool_count end), 0)`.as(
+              'n',
+            ),
+          )
           .whereRef('i.assessment_id', '=', 'a.id')
           .as('question_count'),
-        eb.selectFrom('attempts as t').select(eb.fn.countAll<number>().as('n')).whereRef('t.assessment_id', '=', 'a.id').as('attempt_count'),
+        eb
+          .selectFrom('attempts as t')
+          .select(eb.fn.countAll<number>().as('n'))
+          .whereRef('t.assessment_id', '=', 'a.id')
+          .as('attempt_count'),
       ])
       .where('a.organization_id', '=', organizationId);
   }
 
-  private toSummary(r: Awaited<ReturnType<ReturnType<AssessmentsService['summaryQuery']>['execute']>>[number]): assessment.AssessmentSummary {
+  private toSummary(
+    r: Awaited<ReturnType<ReturnType<AssessmentsService['summaryQuery']>['execute']>>[number],
+  ): assessment.AssessmentSummary {
     return {
       id: r.id,
       title: r.title,
@@ -115,14 +155,23 @@ export class AssessmentsService {
 
   async list(
     p: Principal,
-    f: { q?: string; status?: assessment.AssessmentStatus[]; kind?: assessment.AssessmentKind[]; sort?: string; page: number; pageSize: number },
+    f: {
+      q?: string;
+      status?: assessment.AssessmentStatus[];
+      kind?: assessment.AssessmentKind[];
+      sort?: string;
+      page: number;
+      pageSize: number;
+    },
   ): Promise<Page<assessment.AssessmentSummary>> {
     let query = this.summaryQuery(this.db, p.organizationId);
     if (f.status?.length) query = query.where('a.status', 'in', f.status);
     if (f.kind?.length) query = query.where('a.kind', 'in', f.kind);
     if (f.q) {
       const pattern = likePattern(f.q);
-      query = query.where((eb) => eb.or([eb('a.title', 'ilike', pattern), eb('a.description', 'ilike', pattern)]));
+      query = query.where((eb) =>
+        eb.or([eb('a.title', 'ilike', pattern), eb('a.description', 'ilike', pattern)]),
+      );
     }
     const desc = f.sort?.startsWith('-') ?? false;
     const key = (f.sort?.replace(/^-/, '') ?? 'title') as keyof typeof SORTS;
@@ -132,7 +181,11 @@ export class AssessmentsService {
   }
 
   async row(db: DbOrTrx, organizationId: string, id: string, lock = false): Promise<AssessmentRow> {
-    let query = db.selectFrom('assessments').selectAll().where('id', '=', id).where('organization_id', '=', organizationId);
+    let query = db
+      .selectFrom('assessments')
+      .selectAll()
+      .where('id', '=', id)
+      .where('organization_id', '=', organizationId);
     if (lock) query = query.forUpdate();
     const row = await query.executeTakeFirst();
     if (!row) throw new NotFoundError('Assessment');
@@ -140,26 +193,61 @@ export class AssessmentsService {
   }
 
   private items(db: DbOrTrx, assessmentId: string): Promise<AssessmentItemRow[]> {
-    return db.selectFrom('assessment_items').selectAll().where('assessment_id', '=', assessmentId).orderBy('position').execute();
+    return db
+      .selectFrom('assessment_items')
+      .selectAll()
+      .where('assessment_id', '=', assessmentId)
+      .orderBy('position')
+      .execute();
   }
 
-  private async itemDtos(db: DbOrTrx, organizationId: string, items: readonly AssessmentItemRow[]): Promise<assessment.AssessmentItem[]> {
+  private async itemDtos(
+    db: DbOrTrx,
+    organizationId: string,
+    items: readonly AssessmentItemRow[],
+  ): Promise<assessment.AssessmentItem[]> {
     const questionIds = items.filter((i) => i.kind === 'question').map((i) => i.question_id!);
-    const bankIds = [...new Set(items.map((i) => i.pool_bank_id).filter((b): b is string => b !== null))];
+    const bankIds = [
+      ...new Set(items.map((i) => i.pool_bank_id).filter((b): b is string => b !== null)),
+    ];
     const [questions, banks] = await Promise.all([
       questionIds.length
         ? db
             .selectFrom('questions as q')
             .innerJoin('question_versions as v', 'v.id', 'q.current_version_id')
             .leftJoin('question_categories as c', 'c.id', 'v.category_id')
-            .select(['q.id', 'q.status', 'v.version', 'v.type', 'v.prompt', 'v.difficulty', 'v.points', 'c.id as category_id', 'c.name as category_name'])
+            .select([
+              'q.id',
+              'q.status',
+              'v.version',
+              'v.type',
+              'v.prompt',
+              'v.difficulty',
+              'v.points',
+              'c.id as category_id',
+              'c.name as category_name',
+            ])
             .where('q.id', 'in', questionIds)
             .execute()
         : [],
-      bankIds.length ? db.selectFrom('question_banks').select(['id', 'title']).where('id', 'in', bankIds).execute() : [],
+      bankIds.length
+        ? db
+            .selectFrom('question_banks')
+            .select(['id', 'title'])
+            .where('id', 'in', bankIds)
+            .execute()
+        : [],
     ]);
-    const categoryIds = [...new Set(items.map((i) => i.pool_category_id).filter((c): c is string => c !== null))];
-    const categories = categoryIds.length ? await db.selectFrom('question_categories').select(['id', 'name']).where('id', 'in', categoryIds).execute() : [];
+    const categoryIds = [
+      ...new Set(items.map((i) => i.pool_category_id).filter((c): c is string => c !== null)),
+    ];
+    const categories = categoryIds.length
+      ? await db
+          .selectFrom('question_categories')
+          .select(['id', 'name'])
+          .where('id', 'in', categoryIds)
+          .execute()
+      : [];
     const question = new Map(questions.map((q) => [q.id, q]));
     const bank = new Map(banks.map((b) => [b.id, b.title]));
     const category = new Map(categories.map((c) => [c.id, c.name]));
@@ -196,7 +284,12 @@ export class AssessmentsService {
           kind: 'pool',
           points: i.points,
           bank: { id: i.pool_bank_id!, title: bank.get(i.pool_bank_id!) ?? 'Removed bank' },
-          category: i.pool_category_id ? { id: i.pool_category_id, name: category.get(i.pool_category_id) ?? 'Removed category' } : null,
+          category: i.pool_category_id
+            ? {
+                id: i.pool_category_id,
+                name: category.get(i.pool_category_id) ?? 'Removed category',
+              }
+            : null,
           difficulty: i.pool_difficulty,
           tags: i.pool_tags,
           count: i.pool_count!,
@@ -208,9 +301,14 @@ export class AssessmentsService {
   }
 
   async get(p: Principal, id: string): Promise<assessment.AssessmentDetail> {
-    const row = await this.summaryQuery(this.db, p.organizationId).where('a.id', '=', id).executeTakeFirst();
+    const row = await this.summaryQuery(this.db, p.organizationId)
+      .where('a.id', '=', id)
+      .executeTakeFirst();
     if (!row) throw new NotFoundError('Assessment');
-    const [items, people] = await Promise.all([this.items(this.db, id), this.people.refs([row.created_by, row.updated_by])]);
+    const [items, people] = await Promise.all([
+      this.items(this.db, id),
+      this.people.refs([row.created_by, row.updated_by]),
+    ]);
     return {
       ...this.toSummary(row),
       config: row.config,
@@ -235,12 +333,24 @@ export class AssessmentsService {
       drawn = await drawQuestions(this.db, p.organizationId, items, a.config, randomRng());
     } catch (err) {
       if (err instanceof DrawError) {
-        throw new PreconditionError('ASSESSMENT_INCOMPLETE', `This assessment cannot be previewed yet. ${err.issues[0]!.message}`, { issues: err.issues });
+        throw new PreconditionError(
+          'ASSESSMENT_INCOMPLETE',
+          `This assessment cannot be previewed yet. ${err.issues[0]!.message}`,
+          { issues: err.issues },
+        );
       }
       throw err;
     }
-    const categoryIds = [...new Set(drawn.map((d) => d.question.categoryId).filter((c): c is string => c !== null))];
-    const categories = categoryIds.length ? await this.db.selectFrom('question_categories').select(['id', 'name']).where('id', 'in', categoryIds).execute() : [];
+    const categoryIds = [
+      ...new Set(drawn.map((d) => d.question.categoryId).filter((c): c is string => c !== null)),
+    ];
+    const categories = categoryIds.length
+      ? await this.db
+          .selectFrom('question_categories')
+          .select(['id', 'name'])
+          .where('id', 'in', categoryIds)
+          .execute()
+      : [];
     const category = new Map(categories.map((c) => [c.id, c.name]));
     return {
       questionCount: drawn.length,
@@ -253,7 +363,12 @@ export class AssessmentsService {
         questionVersionId: d.question.versionId,
         version: d.question.version,
         difficulty: d.question.difficulty,
-        category: d.question.categoryId ? { id: d.question.categoryId, name: category.get(d.question.categoryId) ?? 'Removed category' } : null,
+        category: d.question.categoryId
+          ? {
+              id: d.question.categoryId,
+              name: category.get(d.question.categoryId) ?? 'Removed category',
+            }
+          : null,
         question: learnerQuestion(d.question.def, d.optionOrder, {
           id: uuidv7(),
           position: index + 1,
@@ -302,7 +417,10 @@ export class AssessmentsService {
 
   private assertEditable(a: AssessmentRow): void {
     if (a.status === 'archived') {
-      throw new ConflictError('ASSESSMENT_ARCHIVED', 'This assessment is archived. Publish it again or duplicate it before making changes.');
+      throw new ConflictError(
+        'ASSESSMENT_ARCHIVED',
+        'This assessment is archived. Publish it again or duplicate it before making changes.',
+      );
     }
   }
 
@@ -310,9 +428,17 @@ export class AssessmentsService {
     await this.db.transaction().execute(async (trx) => {
       const before = await this.row(trx, p.organizationId, id, true);
       this.assertEditable(before);
-      const merged = assessment.assessmentConfigSchema.safeParse({ ...before.config, ...(input.config ?? {}) });
+      const merged = assessment.assessmentConfigSchema.safeParse({
+        ...before.config,
+        ...(input.config ?? {}),
+      });
       if (!merged.success) {
-        throw new ValidationError(merged.error.issues.map((i) => ({ path: ['config', ...i.path].join('.'), message: i.message })));
+        throw new ValidationError(
+          merged.error.issues.map((i) => ({
+            path: ['config', ...i.path].join('.'),
+            message: i.message,
+          })),
+        );
       }
       const after = await trx
         .updateTable('assessments')
@@ -332,8 +458,18 @@ export class AssessmentsService {
         resourceType: 'assessment',
         resourceId: id,
         actorDisplay: p.displayName,
-        before: { title: before.title, description: before.description, kind: before.kind, config: before.config },
-        after: { title: after.title, description: after.description, kind: after.kind, config: after.config },
+        before: {
+          title: before.title,
+          description: before.description,
+          kind: before.kind,
+          config: before.config,
+        },
+        after: {
+          title: after.title,
+          description: after.description,
+          kind: after.kind,
+          config: after.config,
+        },
       });
     });
     return this.get(p, id);
@@ -343,10 +479,21 @@ export class AssessmentsService {
     await this.db.transaction().execute(async (trx) => {
       const a = await this.row(trx, p.organizationId, id, true);
       if (a.status !== 'draft') {
-        throw new ConflictError('ASSESSMENT_NOT_DRAFT', 'Only draft assessments can be deleted. Archive a published assessment instead.');
+        throw new ConflictError(
+          'ASSESSMENT_NOT_DRAFT',
+          'Only draft assessments can be deleted. Archive a published assessment instead.',
+        );
       }
-      const attempts = await trx.selectFrom('attempts').select((eb) => eb.fn.countAll<number>().as('n')).where('assessment_id', '=', id).executeTakeFirstOrThrow();
-      if (Number(attempts.n) > 0) throw new ConflictError('ASSESSMENT_HAS_ATTEMPTS', 'Learners have attempts on this assessment. Archive it instead.');
+      const attempts = await trx
+        .selectFrom('attempts')
+        .select((eb) => eb.fn.countAll<number>().as('n'))
+        .where('assessment_id', '=', id)
+        .executeTakeFirstOrThrow();
+      if (Number(attempts.n) > 0)
+        throw new ConflictError(
+          'ASSESSMENT_HAS_ATTEMPTS',
+          'Learners have attempts on this assessment. Archive it instead.',
+        );
       await trx.deleteFrom('assessments').where('id', '=', id).execute();
       await this.events.audit(trx, {
         action: 'assessment.deleted',
@@ -383,7 +530,15 @@ export class AssessmentsService {
       if (items.length) {
         await trx
           .insertInto('assessment_items')
-          .values(items.map((i) => ({ ...i, id: uuidv7(), assessment_id: newId, created_at: undefined, updated_at: undefined })))
+          .values(
+            items.map((i) => ({
+              ...i,
+              id: uuidv7(),
+              assessment_id: newId,
+              created_at: undefined,
+              updated_at: undefined,
+            })),
+          )
           .execute();
       }
       await this.events.audit(trx, {
@@ -403,13 +558,22 @@ export class AssessmentsService {
       if (a.status === 'published') return;
       const validation = await validateItems(trx, p.organizationId, await this.items(trx, id));
       if (!validation.valid) {
-        throw new PreconditionError('ASSESSMENT_INCOMPLETE', `This assessment cannot be published yet. ${validation.issues[0]!.message}`, {
-          issues: validation.issues,
-        });
+        throw new PreconditionError(
+          'ASSESSMENT_INCOMPLETE',
+          `This assessment cannot be published yet. ${validation.issues[0]!.message}`,
+          {
+            issues: validation.issues,
+          },
+        );
       }
       await trx
         .updateTable('assessments')
-        .set({ status: 'published', published_at: new Date(), archived_at: null, updated_by: p.userId })
+        .set({
+          status: 'published',
+          published_at: new Date(),
+          archived_at: null,
+          updated_by: p.userId,
+        })
         .where('id', '=', id)
         .execute();
       await this.events.audit(trx, {
@@ -428,7 +592,11 @@ export class AssessmentsService {
     await this.db.transaction().execute(async (trx) => {
       const a = await this.row(trx, p.organizationId, id, true);
       if (a.status === 'archived') return;
-      await trx.updateTable('assessments').set({ status: 'archived', archived_at: new Date(), updated_by: p.userId }).where('id', '=', id).execute();
+      await trx
+        .updateTable('assessments')
+        .set({ status: 'archived', archived_at: new Date(), updated_by: p.userId })
+        .where('id', '=', id)
+        .execute();
       await this.events.audit(trx, {
         action: 'assessment.archived',
         resourceType: 'assessment',
@@ -443,11 +611,17 @@ export class AssessmentsService {
 
   // ---------------------------------------------------------------- items
 
-  async addItem(p: Principal, id: string, input: ItemInput & { position?: number }): Promise<assessment.AssessmentDetail> {
+  async addItem(
+    p: Principal,
+    id: string,
+    input: ItemInput & { position?: number },
+  ): Promise<assessment.AssessmentDetail> {
     return this.mutateItems(p, id, (current) => {
       const position = input.position ?? current.length + 1;
       if (position > current.length + 1) {
-        throw new ValidationError([{ path: 'position', message: `Choose a position between 1 and ${current.length + 1}` }]);
+        throw new ValidationError([
+          { path: 'position', message: `Choose a position between 1 and ${current.length + 1}` },
+        ]);
       }
       const next = [...current];
       next.splice(position - 1, 0, itemDraft(input, uuidv7(), position));
@@ -455,12 +629,19 @@ export class AssessmentsService {
     });
   }
 
-  async updateItem(p: Principal, id: string, itemId: string, input: ItemInput & { position: number }): Promise<assessment.AssessmentDetail> {
+  async updateItem(
+    p: Principal,
+    id: string,
+    itemId: string,
+    input: ItemInput & { position: number },
+  ): Promise<assessment.AssessmentDetail> {
     return this.mutateItems(p, id, (current) => {
       const index = current.findIndex((i) => i.id === itemId);
       if (index === -1) throw new NotFoundError('Assessment item');
       if (input.position > current.length) {
-        throw new ValidationError([{ path: 'position', message: `Choose a position between 1 and ${current.length}` }]);
+        throw new ValidationError([
+          { path: 'position', message: `Choose a position between 1 and ${current.length}` },
+        ]);
       }
       const next = current.filter((i) => i.id !== itemId);
       next.splice(input.position - 1, 0, itemDraft(input, itemId, input.position));
@@ -475,16 +656,33 @@ export class AssessmentsService {
     });
   }
 
-  async replaceItems(p: Principal, id: string, items: Array<ItemInput & { id?: string; position: number }>): Promise<assessment.AssessmentDetail> {
+  async replaceItems(
+    p: Principal,
+    id: string,
+    items: Array<ItemInput & { id?: string; position: number }>,
+  ): Promise<assessment.AssessmentDetail> {
     const positions = items.map((i) => i.position).sort((a, b) => a - b);
     if (positions.some((pos, index) => pos !== index + 1)) {
-      throw new ValidationError([{ path: 'items', message: `Positions must run from 1 to ${items.length} without gaps or duplicates` }]);
+      throw new ValidationError([
+        {
+          path: 'items',
+          message: `Positions must run from 1 to ${items.length} without gaps or duplicates`,
+        },
+      ]);
     }
     return this.mutateItems(p, id, (current) => {
       const known = new Set(current.map((i) => i.id));
       const unknown = items.find((i) => i.id && !known.has(i.id));
-      if (unknown) throw new ValidationError([{ path: 'items', message: 'An item id does not belong to this assessment. Reload and try again.' }]);
-      return [...items].sort((a, b) => a.position - b.position).map((i) => itemDraft(i, i.id ?? uuidv7(), i.position));
+      if (unknown)
+        throw new ValidationError([
+          {
+            path: 'items',
+            message: 'An item id does not belong to this assessment. Reload and try again.',
+          },
+        ]);
+      return [...items]
+        .sort((a, b) => a.position - b.position)
+        .map((i) => itemDraft(i, i.id ?? uuidv7(), i.position));
     });
   }
 
@@ -492,12 +690,18 @@ export class AssessmentsService {
    * Apply an item-list change: validate references, renumber positions 1..n, persist (deferred
    * unique positions allow reordering in place) and keep published assessments valid.
    */
-  private async mutateItems(p: Principal, id: string, change: (current: ItemDraft[]) => ItemDraft[]): Promise<assessment.AssessmentDetail> {
+  private async mutateItems(
+    p: Principal,
+    id: string,
+    change: (current: ItemDraft[]) => ItemDraft[],
+  ): Promise<assessment.AssessmentDetail> {
     await this.db.transaction().execute(async (trx) => {
       const a = await this.row(trx, p.organizationId, id, true);
       this.assertEditable(a);
       const currentRows = await this.items(trx, id);
-      const next = change(currentRows.map(({ assessment_id: _a, created_at: _c, updated_at: _u, ...rest }) => rest)).map((item, index) => ({
+      const next = change(
+        currentRows.map(({ assessment_id: _a, created_at: _c, updated_at: _u, ...rest }) => rest),
+      ).map((item, index) => ({
         ...item,
         position: index + 1,
       }));
@@ -505,25 +709,37 @@ export class AssessmentsService {
 
       const keep = new Set(next.map((i) => i.id));
       const removed = currentRows.filter((i) => !keep.has(i.id)).map((i) => i.id);
-      if (removed.length) await trx.deleteFrom('assessment_items').where('id', 'in', removed).execute();
+      if (removed.length)
+        await trx.deleteFrom('assessment_items').where('id', 'in', removed).execute();
       const existing = new Set(currentRows.map((i) => i.id));
       for (const item of next) {
         if (existing.has(item.id)) {
           const { id: itemId, ...values } = item;
           await trx.updateTable('assessment_items').set(values).where('id', '=', itemId).execute();
         } else {
-          await trx.insertInto('assessment_items').values({ ...item, assessment_id: id }).execute();
+          await trx
+            .insertInto('assessment_items')
+            .values({ ...item, assessment_id: id })
+            .execute();
         }
       }
       if (a.status === 'published') {
         const plan = await planItems(trx, p.organizationId, await this.items(trx, id));
         if (plan.issues.length) {
-          throw new PreconditionError('ASSESSMENT_INCOMPLETE', `A published assessment must stay ready to take. ${plan.issues[0]!.message}`, {
-            issues: plan.issues,
-          });
+          throw new PreconditionError(
+            'ASSESSMENT_INCOMPLETE',
+            `A published assessment must stay ready to take. ${plan.issues[0]!.message}`,
+            {
+              issues: plan.issues,
+            },
+          );
         }
       }
-      await trx.updateTable('assessments').set({ revision: sql<number>`revision + 1`, updated_by: p.userId }).where('id', '=', id).execute();
+      await trx
+        .updateTable('assessments')
+        .set({ revision: sql<number>`revision + 1`, updated_by: p.userId })
+        .where('id', '=', id)
+        .execute();
       await this.events.audit(trx, {
         action: 'assessment.items_updated',
         resourceType: 'assessment',
@@ -536,12 +752,20 @@ export class AssessmentsService {
     return this.get(p, id);
   }
 
-  private async assertItemReferences(trx: Trx, organizationId: string, items: readonly ItemDraft[]): Promise<void> {
+  private async assertItemReferences(
+    trx: Trx,
+    organizationId: string,
+    items: readonly ItemDraft[],
+  ): Promise<void> {
     const fields: Array<{ path: string; message: string }> = [];
     const fixed = items.filter((i) => i.kind === 'question');
     const seen = new Set<string>();
     for (const item of fixed) {
-      if (seen.has(item.question_id!)) fields.push({ path: `items.${item.position}`, message: 'This question is already in the assessment' });
+      if (seen.has(item.question_id!))
+        fields.push({
+          path: `items.${item.position}`,
+          message: 'This question is already in the assessment',
+        });
       seen.add(item.question_id!);
     }
     if (fixed.length) {
@@ -554,8 +778,16 @@ export class AssessmentsService {
       const status = new Map(questions.map((q) => [q.id, q.status]));
       for (const item of fixed) {
         const s = status.get(item.question_id!);
-        if (!s) fields.push({ path: `items.${item.position}.questionId`, message: 'Choose an existing question' });
-        else if (s === 'archived') fields.push({ path: `items.${item.position}.questionId`, message: 'This question is archived; restore it or choose another' });
+        if (!s)
+          fields.push({
+            path: `items.${item.position}.questionId`,
+            message: 'Choose an existing question',
+          });
+        else if (s === 'archived')
+          fields.push({
+            path: `items.${item.position}.questionId`,
+            message: 'This question is archived; restore it or choose another',
+          });
       }
     }
     for (const item of items.filter((i) => i.kind === 'pool')) {
@@ -566,7 +798,10 @@ export class AssessmentsService {
         .where('organization_id', '=', organizationId)
         .executeTakeFirst();
       if (!bank) {
-        fields.push({ path: `items.${item.position}.bankId`, message: 'Choose an existing question bank' });
+        fields.push({
+          path: `items.${item.position}.bankId`,
+          message: 'Choose an existing question bank',
+        });
         continue;
       }
       if (item.pool_category_id) {
@@ -576,7 +811,11 @@ export class AssessmentsService {
           .where('id', '=', item.pool_category_id)
           .where('bank_id', '=', item.pool_bank_id!)
           .executeTakeFirst();
-        if (!category) fields.push({ path: `items.${item.position}.categoryId`, message: 'Choose a category from the selected bank' });
+        if (!category)
+          fields.push({
+            path: `items.${item.position}.categoryId`,
+            message: 'Choose a category from the selected bank',
+          });
       }
     }
     if (fields.length) throw new ValidationError(fields);

@@ -2,7 +2,14 @@ import { Delete, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import type { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { learning } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZResponse,
+} from '@a5/nest-kit';
 import { StructureService } from './structure.service.js';
 
 type Out<T extends z.ZodType> = z.output<T>;
@@ -15,7 +22,10 @@ export class LessonsController {
   @Post()
   @RequirePermissions('lessons.create')
   @ZResponse(learning.adminLessonSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(learning.createLessonRequestSchema) body: Out<typeof learning.createLessonRequestSchema>) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(learning.createLessonRequestSchema) body: Out<typeof learning.createLessonRequestSchema>,
+  ) {
     return this.structure.createLesson(p, body);
   }
 
@@ -29,7 +39,11 @@ export class LessonsController {
   @Patch(':id')
   @RequirePermissions('lessons.update')
   @ZResponse(learning.adminLessonSchema)
-  update(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(learning.updateLessonRequestSchema) body: Out<typeof learning.updateLessonRequestSchema>) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(learning.updateLessonRequestSchema) body: Out<typeof learning.updateLessonRequestSchema>,
+  ) {
     return this.structure.updateLesson(p, id, body);
   }
 
@@ -37,7 +51,11 @@ export class LessonsController {
   @HttpCode(200)
   @RequirePermissions('lessons.update')
   @ZResponse(learning.programDetailSchema)
-  move(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(learning.moveLessonRequestSchema) body: Out<typeof learning.moveLessonRequestSchema>) {
+  move(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(learning.moveLessonRequestSchema) body: Out<typeof learning.moveLessonRequestSchema>,
+  ) {
     return this.structure.moveLesson(p, id, body);
   }
 
@@ -84,7 +102,8 @@ export class LessonsController {
   async addResource(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(learning.lessonResourceRequestSchema) body: Out<typeof learning.lessonResourceRequestSchema>,
+    @ZBody(learning.lessonResourceRequestSchema)
+    body: Out<typeof learning.lessonResourceRequestSchema>,
   ) {
     return { items: await this.structure.addResource(p, id, body) };
   }
@@ -96,7 +115,8 @@ export class LessonsController {
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
     @ZParam('resourceId') resourceId: string,
-    @ZBody(learning.updateLessonResourceRequestSchema) body: Out<typeof learning.updateLessonResourceRequestSchema>,
+    @ZBody(learning.updateLessonResourceRequestSchema)
+    body: Out<typeof learning.updateLessonResourceRequestSchema>,
   ) {
     return { items: await this.structure.updateResource(p, id, resourceId, body) };
   }
@@ -104,7 +124,11 @@ export class LessonsController {
   @Delete(':id/resources/:resourceId')
   @RequirePermissions('lessons.update')
   @ZResponse(learning.lessonResourceListSchema)
-  async deleteResource(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('resourceId') resourceId: string) {
+  async deleteResource(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('resourceId') resourceId: string,
+  ) {
     return { items: await this.structure.deleteResource(p, id, resourceId) };
   }
 }

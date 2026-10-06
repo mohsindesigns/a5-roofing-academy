@@ -19,7 +19,10 @@ export function pageSize(design: Pick<TemplateDesign, 'page'>): { width: number;
   return certification.pageDimensions(design.page);
 }
 
-export function elementBox(el: Pick<DesignElement, 'x' | 'y' | 'width' | 'height'>, page: { width: number; height: number }): Box {
+export function elementBox(
+  el: Pick<DesignElement, 'x' | 'y' | 'width' | 'height'>,
+  page: { width: number; height: number },
+): Box {
   return {
     x: (el.x / 100) * page.width,
     y: (el.y / 100) * page.height,
@@ -29,10 +32,28 @@ export function elementBox(el: Pick<DesignElement, 'x' | 'y' | 'width' | 'height
 }
 
 /** PDF standard fonts (embedded by PDFKit from its AFM metrics) per design family and style. */
-const PDF_FONTS: Record<FontFamily, { normal: string; bold: string; italic: string; boldItalic: string }> = {
-  serif: { normal: 'Times-Roman', bold: 'Times-Bold', italic: 'Times-Italic', boldItalic: 'Times-BoldItalic' },
-  sans: { normal: 'Helvetica', bold: 'Helvetica-Bold', italic: 'Helvetica-Oblique', boldItalic: 'Helvetica-BoldOblique' },
-  display: { normal: 'Helvetica-Bold', bold: 'Helvetica-Bold', italic: 'Helvetica-BoldOblique', boldItalic: 'Helvetica-BoldOblique' },
+const PDF_FONTS: Record<
+  FontFamily,
+  { normal: string; bold: string; italic: string; boldItalic: string }
+> = {
+  serif: {
+    normal: 'Times-Roman',
+    bold: 'Times-Bold',
+    italic: 'Times-Italic',
+    boldItalic: 'Times-BoldItalic',
+  },
+  sans: {
+    normal: 'Helvetica',
+    bold: 'Helvetica-Bold',
+    italic: 'Helvetica-Oblique',
+    boldItalic: 'Helvetica-BoldOblique',
+  },
+  display: {
+    normal: 'Helvetica-Bold',
+    bold: 'Helvetica-Bold',
+    italic: 'Helvetica-BoldOblique',
+    boldItalic: 'Helvetica-BoldOblique',
+  },
 };
 
 /** CSS stacks that match the PDF fonts for the live HTML preview. */
@@ -42,11 +63,18 @@ export const CSS_FONTS: Record<FontFamily, string> = {
   display: '"Helvetica Neue", Helvetica, Arial, sans-serif',
 };
 
-export function elementFontFamily(el: Pick<DesignElement, 'fontFamily'>, design: Pick<TemplateDesign, 'theme'>): FontFamily {
+export function elementFontFamily(
+  el: Pick<DesignElement, 'fontFamily'>,
+  design: Pick<TemplateDesign, 'theme'>,
+): FontFamily {
   return el.fontFamily ?? design.theme.fontFamily;
 }
 
-export function pdfFontName(family: FontFamily, weight: 'normal' | 'bold', style: 'normal' | 'italic'): string {
+export function pdfFontName(
+  family: FontFamily,
+  weight: 'normal' | 'bold',
+  style: 'normal' | 'italic',
+): string {
   const f = PDF_FONTS[family];
   if (weight === 'bold') return style === 'italic' ? f.boldItalic : f.bold;
   return style === 'italic' ? f.italic : f.normal;
@@ -58,8 +86,14 @@ export function cssFontWeight(family: FontFamily, weight: 'normal' | 'bold'): 'n
 }
 
 /** Resolved text of a text element (placeholders filled, case applied). */
-export function elementText(el: Pick<DesignElement, 'content' | 'uppercase'>, values: Readonly<Record<string, string>>): string {
-  const text = certification.resolvePlaceholders(el.content, values).replace(/[ \t]+/g, ' ').trim();
+export function elementText(
+  el: Pick<DesignElement, 'content' | 'uppercase'>,
+  values: Readonly<Record<string, string>>,
+): string {
+  const text = certification
+    .resolvePlaceholders(el.content, values)
+    .replace(/[ \t]+/g, ' ')
+    .trim();
   return el.uppercase ? text.toUpperCase() : text;
 }
 
@@ -76,7 +110,11 @@ export function pdfSafeText(text: string): string {
   let out = '';
   for (const ch of text.normalize('NFC')) {
     const code = ch.codePointAt(0)!;
-    if ((code >= 0x20 && code <= 0x7e) || (code >= 0xa0 && code <= 0xff) || WIN_ANSI_EXTRA.includes(ch)) {
+    if (
+      (code >= 0x20 && code <= 0x7e) ||
+      (code >= 0xa0 && code <= 0xff) ||
+      WIN_ANSI_EXTRA.includes(ch)
+    ) {
       out += ch;
     } else {
       const base = ch.normalize('NFD').replace(/[̀-ͯ]/g, '');

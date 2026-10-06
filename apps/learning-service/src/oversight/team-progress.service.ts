@@ -55,7 +55,11 @@ export class TeamProgressService {
 
   /** Team must exist in the caller's organization and be inside their scope; 404 otherwise. */
   async assertTeamVisible(p: Principal, teamId: string): Promise<void> {
-    const team = await this.db.selectFrom('dir_teams').select(['id', 'organization_id']).where('id', '=', teamId).executeTakeFirst();
+    const team = await this.db
+      .selectFrom('dir_teams')
+      .select(['id', 'organization_id'])
+      .where('id', '=', teamId)
+      .executeTakeFirst();
     if (!team || team.organization_id !== p.organizationId) throw new NotFoundError('Team');
     const filter = p.scopeFilter('enrollments.view');
     if (filter.kind === 'organization' || filter.kind === 'platform') return;
@@ -108,20 +112,36 @@ export class TeamProgressService {
     const now = new Date();
     const flags = this.flags(now);
     let query = this.flagged(now)
-      .where(this.scope.condition(p, 'enrollments.view', { userColumn: 'e.user_id', orgColumn: 'e.organization_id' }))
+      .where(
+        this.scope.condition(p, 'enrollments.view', {
+          userColumn: 'e.user_id',
+          orgColumn: 'e.organization_id',
+        }),
+      )
       .where('e.status', 'in', f.status?.length ? f.status : ['active', 'completed']);
     if (f.programId) query = query.where('e.program_id', '=', f.programId);
-    if (f.teamId) query = query.where('e.user_id', 'in', this.db.selectFrom('dir_user_teams').select('user_id').where('team_id', '=', f.teamId));
+    if (f.teamId)
+      query = query.where(
+        'e.user_id',
+        'in',
+        this.db.selectFrom('dir_user_teams').select('user_id').where('team_id', '=', f.teamId),
+      );
     if (f.q) {
       const pattern = likePattern(f.q);
-      query = query.where((eb) => eb.or([eb('u.display_name', 'ilike', pattern), eb('u.email', 'ilike', pattern)]));
+      query = query.where((eb) =>
+        eb.or([eb('u.display_name', 'ilike', pattern), eb('u.email', 'ilike', pattern)]),
+      );
     }
     if (f.attention) {
-      query = query.where(sql<SqlBool>`(${flags.overdue} or ${flags.inactive} or ${flags.notStarted} or ${flags.failing} or ${flags.approval})`);
+      query = query.where(
+        sql<SqlBool>`(${flags.overdue} or ${flags.inactive} or ${flags.notStarted} or ${flags.failing} or ${flags.approval})`,
+      );
     }
     const desc = f.sort?.startsWith('-') ?? false;
     const key = (f.sort?.replace(/^-/, '') ?? 'name') as keyof typeof SORTS;
-    query = query.orderBy(SORTS[key] ?? SORTS.name, sql.raw(desc ? 'desc nulls last' : 'asc nulls last')).orderBy('e.id');
+    query = query
+      .orderBy(SORTS[key] ?? SORTS.name, sql.raw(desc ? 'desc nulls last' : 'asc nulls last'))
+      .orderBy('e.id');
     const page = await paginate(query, { page: f.page, pageSize: f.pageSize });
     return { ...page, items: await this.rows(page.items as Row[], now) };
   }
@@ -133,7 +153,8 @@ export class TeamProgressService {
       rows.map((r) => r.user_id),
     );
     const trees = new Map<string, ProgramTree | null>();
-    for (const id of new Set(rows.map((r) => r.program_id))) trees.set(id, await this.trees.published(id));
+    for (const id of new Set(rows.map((r) => r.program_id)))
+      trees.set(id, await this.trees.published(id));
     const failingUsers = rows.filter((r) => r.flag_failing).map((r) => r.user_id);
     const failing = failingUsers.length
       ? await this.db
@@ -152,24 +173,38 @@ export class TeamProgressService {
         attention.push({ code: 'overdue', message: `Overdue by ${plural(days, 'day')}` });
       }
       if (r.flag_not_started) {
-        attention.push({ code: 'not_started', message: `Has not started since being enrolled ${plural(Math.floor((now.getTime() - r.enrolled_at.getTime()) / DAY), 'day')} ago` });
+        attention.push({
+          code: 'not_started',
+          message: `Has not started since being enrolled ${plural(Math.floor((now.getTime() - r.enrolled_at.getTime()) / DAY), 'day')} ago`,
+        });
       }
       if (r.flag_inactive) {
         const last = r.last_activity_at ?? r.started_at!;
-        attention.push({ code: 'inactive', message: `No activity in ${plural(Math.floor((now.getTime() - last.getTime()) / DAY), 'day')}` });
+        attention.push({
+          code: 'inactive',
+          message: `No activity in ${plural(Math.floor((now.getTime() - last.getTime()) / DAY), 'day')}`,
+        });
       }
       if (r.flag_failing && tree) {
         const programAssessments = new Set(
-          tree.phases.flatMap((ph) => ph.modules.flatMap((m) => m.lessons.map((l) => String(l.config.assessmentId ?? '')))),
+          tree.phases.flatMap((ph) =>
+            ph.modules.flatMap((m) => m.lessons.map((l) => String(l.config.assessmentId ?? ''))),
+          ),
         );
-        for (const s of failing.filter((x) => x.user_id === r.user_id && programAssessments.has(x.assessment_id))) {
+        for (const s of failing.filter(
+          (x) => x.user_id === r.user_id && programAssessments.has(x.assessment_id),
+        )) {
           attention.push({
             code: 'failing_assessment',
             message: `${s.assessment_title}: best score ${Math.round(Number(s.best_score))}% after ${plural(s.attempts, 'attempt')}`,
           });
         }
       }
-      if (r.flag_approval) attention.push({ code: 'awaiting_approval', message: 'Waiting for a sign-off or assignment review' });
+      if (r.flag_approval)
+        attention.push({
+          code: 'awaiting_approval',
+          message: 'Waiting for a sign-off or assignment review',
+        });
       return {
         enrollmentId: r.id,
         learner: learners.get(r.user_id)!,
@@ -190,9 +225,18 @@ export class TeamProgressService {
 
   /** One learner across programs, with assessment and AI practice scores. 404 outside scope. */
   async learner(p: Principal, userId: string): Promise<learning.LearnerProgress> {
-    const user = await this.db.selectFrom('dir_users').select(['id', 'organization_id']).where('id', '=', userId).executeTakeFirst();
+    const user = await this.db
+      .selectFrom('dir_users')
+      .select(['id', 'organization_id'])
+      .where('id', '=', userId)
+      .executeTakeFirst();
     if (!user) throw new NotFoundError('Learner');
-    await this.scope.assertAdmits(p, ['enrollments.view'], { userId, organizationId: user.organization_id }, 'Learner');
+    await this.scope.assertAdmits(
+      p,
+      ['enrollments.view'],
+      { userId, organizationId: user.organization_id },
+      'Learner',
+    );
     const now = new Date();
     const rows = await this.flagged(now)
       .where('e.user_id', '=', userId)
@@ -203,8 +247,18 @@ export class TeamProgressService {
     const enrollments = await this.rows(rows as Row[], now);
     const [learners, assessments, ai] = await Promise.all([
       learnerRefs(this.db, [userId]),
-      this.db.selectFrom('learner_assessment_scores').selectAll().where('user_id', '=', userId).orderBy('last_attempt_at', 'desc').execute(),
-      this.db.selectFrom('learner_ai_scores').selectAll().where('user_id', '=', userId).orderBy('last_session_at', 'desc').execute(),
+      this.db
+        .selectFrom('learner_assessment_scores')
+        .selectAll()
+        .where('user_id', '=', userId)
+        .orderBy('last_attempt_at', 'desc')
+        .execute(),
+      this.db
+        .selectFrom('learner_ai_scores')
+        .selectAll()
+        .where('user_id', '=', userId)
+        .orderBy('last_session_at', 'desc')
+        .execute(),
     ]);
     return {
       learner: learners.get(userId)!,

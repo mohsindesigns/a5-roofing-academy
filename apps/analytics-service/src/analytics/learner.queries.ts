@@ -43,9 +43,12 @@ export class LearnerQueries {
 
   async summary(input: LearnerQueryInput): Promise<analytics.LearnerSummary> {
     const { organizationId: org, userId: me, timezone: tz } = input;
-    const program = (column: string) => (input.programId ? sql`and ${sql.ref(column)} = ${input.programId}` : sql``);
+    const program = (column: string) =>
+      input.programId ? sql`and ${sql.ref(column)} = ${input.programId}` : sql``;
 
-    const [person] = await this.rows(sql<{ display_name: string }>`select display_name from dir_users where id = ${me}`);
+    const [person] = await this.rows(
+      sql<{ display_name: string }>`select display_name from dir_users where id = ${me}`,
+    );
 
     const enrollments = await this.rows(sql<{
       enrollment_id: string;
@@ -69,7 +72,10 @@ export class LearnerQueries {
     `);
 
     // Progress trend for the most relevant enrollment: active first, then most recent.
-    const focus = enrollments.find((e) => e.status === 'active') ?? enrollments.find((e) => e.status !== 'withdrawn') ?? null;
+    const focus =
+      enrollments.find((e) => e.status === 'active') ??
+      enrollments.find((e) => e.status !== 'withdrawn') ??
+      null;
     let progressTrend: analytics.LearnerSummary['progressTrend'] = null;
     if (focus) {
       const days = await this.rows(sql<{ d: string; n: number; req: number }>`
@@ -92,7 +98,8 @@ export class LearnerQueries {
           return {
             date: d.d,
             completedLessons: lessons,
-            progressPercent: total && total > 0 ? round1(Math.min(100, (required / total) * 100)) : null,
+            progressPercent:
+              total && total > 0 ? round1(Math.min(100, (required / total) * 100)) : null,
           };
         }),
       };
@@ -146,12 +153,20 @@ export class LearnerQueries {
           passed: a.passed,
           gradedAt: isoRequired(a.graded_at),
         })),
-        cohortAverage: cohort ? this.cohort(cohort.avg, Number(cohort.n), input.minCohortSize) : null,
+        cohortAverage: cohort
+          ? this.cohort(cohort.avg, Number(cohort.n), input.minCohortSize)
+          : null,
       };
     });
 
     const sessions = (
-      await this.rows(sql<{ session_id: string; evaluated_at: Date; scenario_title: string; overall_score: number; passed: boolean }>`
+      await this.rows(sql<{
+        session_id: string;
+        evaluated_at: Date;
+        scenario_title: string;
+        overall_score: number;
+        passed: boolean;
+      }>`
         select s.session_id, s.evaluated_at, s.scenario_title, s.overall_score, s.passed
         from fact_ai_sessions s
         where s.organization_id = ${org} and s.user_id = ${me}
@@ -159,7 +174,12 @@ export class LearnerQueries {
         limit ${MAX_SESSIONS}
       `)
     ).reverse();
-    const categoryRows = await this.rows(sql<{ key: string; label: string; d: string; score: number }>`
+    const categoryRows = await this.rows(sql<{
+      key: string;
+      label: string;
+      d: string;
+      score: number;
+    }>`
       select c.category_key as key, c.category_label as label, (c.evaluated_at at time zone ${tz})::date::text as d, c.score
       from fact_ai_category_scores c
       where c.organization_id = ${org} and c.user_id = ${me}
@@ -177,7 +197,10 @@ export class LearnerQueries {
       group by x.key
     `);
     const cohortByCategory = new Map(cohortCategories.map((c) => [c.key, c]));
-    const categoryMap = new Map<string, { label: string; points: Array<{ date: string; score: number }> }>();
+    const categoryMap = new Map<
+      string,
+      { label: string; points: Array<{ date: string; score: number }> }
+    >();
     for (const r of categoryRows) {
       const entry = categoryMap.get(r.key) ?? { label: r.label, points: [] };
       entry.label = r.label;
@@ -191,7 +214,9 @@ export class LearnerQueries {
           key,
           label: v.label,
           myAverage: round1(v.points.reduce((s, p) => s + p.score, 0) / v.points.length) ?? 0,
-          cohortAverage: cohort ? this.cohort(cohort.avg, Number(cohort.n), input.minCohortSize) : null,
+          cohortAverage: cohort
+            ? this.cohort(cohort.avg, Number(cohort.n), input.minCohortSize)
+            : null,
           points: v.points,
         };
       })
@@ -265,10 +290,17 @@ export class LearnerQueries {
       comparisons: {
         cohortSize,
         minimumCohortSize: min,
-        progressPercent: { mine: round1(cmp?.my_progress ?? null), cohort: this.cohort(cmp?.cohort_progress ?? null, cohortSize, min) },
+        progressPercent: {
+          mine: round1(cmp?.my_progress ?? null),
+          cohort: this.cohort(cmp?.cohort_progress ?? null, cohortSize, min),
+        },
         assessmentAverage: {
           mine: round1(cmp?.my_assessment ?? null),
-          cohort: this.cohort(cmp?.cohort_assessment ?? null, Number(cmp?.cohort_assessment_n ?? 0), min),
+          cohort: this.cohort(
+            cmp?.cohort_assessment ?? null,
+            Number(cmp?.cohort_assessment_n ?? 0),
+            min,
+          ),
         },
         aiAverage: {
           mine: round1(cmp?.my_ai ?? null),

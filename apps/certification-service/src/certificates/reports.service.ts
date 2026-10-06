@@ -55,17 +55,37 @@ export class ReportsService {
    */
   async teamStatus(
     p: Principal,
-    f: { q?: string; definitionId?: string; teamId?: string; filter?: certification.TeamFilter; expiringWithinDays: number; page: number; pageSize: number },
+    f: {
+      q?: string;
+      definitionId?: string;
+      teamId?: string;
+      filter?: certification.TeamFilter;
+      expiringWithinDays: number;
+      page: number;
+      pageSize: number;
+    },
   ): Promise<Page<certification.TeamStatusRow>> {
     const now = new Date();
     const cutoff = addDays(now, f.expiringWithinDays);
-    const scope = userScopeCondition(p.scopeFilter('certificates.view'), { userColumn: 'u.id', orgColumn: 'u.organization_id' });
-    const conditions = [sql<SqlBool>`u.organization_id = ${p.organizationId}`, sql<SqlBool>`d.organization_id = ${p.organizationId}`, scope];
+    const scope = userScopeCondition(p.scopeFilter('certificates.view'), {
+      userColumn: 'u.id',
+      orgColumn: 'u.organization_id',
+    });
+    const conditions = [
+      sql<SqlBool>`u.organization_id = ${p.organizationId}`,
+      sql<SqlBool>`d.organization_id = ${p.organizationId}`,
+      scope,
+    ];
     if (f.definitionId) conditions.push(sql<SqlBool>`d.id = ${f.definitionId}`);
-    if (f.teamId) conditions.push(sql<SqlBool>`u.id in (select user_id from dir_user_teams where team_id = ${f.teamId})`);
+    if (f.teamId)
+      conditions.push(
+        sql<SqlBool>`u.id in (select user_id from dir_user_teams where team_id = ${f.teamId})`,
+      );
     if (f.q) {
       const pattern = likePattern(f.q);
-      conditions.push(sql<SqlBool>`(u.display_name ilike ${pattern} or u.employee_id ilike ${pattern})`);
+      conditions.push(
+        sql<SqlBool>`(u.display_name ilike ${pattern} or u.employee_id ilike ${pattern})`,
+      );
     }
     const outer = f.filter ? sql`where ${sql.raw(TEAM_FILTERS[f.filter])}` : sql``;
     const offset = (f.page - 1) * f.pageSize;
@@ -111,14 +131,25 @@ export class ReportsService {
     const total = result.rows.length ? Number(result.rows[0]!.total) : 0;
     return {
       items: result.rows.map((r) => ({
-        user: { id: r.user_id, displayName: r.display_name, employeeId: r.employee_id, jobTitle: r.job_title },
+        user: {
+          id: r.user_id,
+          displayName: r.display_name,
+          employeeId: r.employee_id,
+          jobTitle: r.job_title,
+        },
         definition: { id: r.definition_id, name: r.definition_name, code: r.definition_code },
         state: r.state,
         candidateStatus: r.candidate_status,
         metCount: Number(r.met_count),
         totalCount: Number(r.total_count),
         certificate: r.cert_id
-          ? { id: r.cert_id, certificateNumber: r.certificate_number!, status: r.cert_status!, issuedAt: new Date(r.issued_at!).toISOString(), expiresAt: r.expires_at ? new Date(r.expires_at).toISOString() : null }
+          ? {
+              id: r.cert_id,
+              certificateNumber: r.certificate_number!,
+              status: r.cert_status!,
+              issuedAt: new Date(r.issued_at!).toISOString(),
+              expiresAt: r.expires_at ? new Date(r.expires_at).toISOString() : null,
+            }
           : null,
       })),
       page: f.page,
@@ -132,16 +163,27 @@ export class ReportsService {
     const now = new Date();
     const settings = await loadSettings(this.db, p.organizationId, this.config.publicAppUrl);
     const filter = p.scopeFilter('certificates.view');
-    const certScope = userScopeCondition(filter, { userColumn: 'c.user_id', orgColumn: 'c.organization_id' });
+    const certScope = userScopeCondition(filter, {
+      userColumn: 'c.user_id',
+      orgColumn: 'c.organization_id',
+    });
     const [certs, approvals, eligible, revocations, renewals] = await Promise.all([
       this.db
         .selectFrom('issued_certificates as c')
         .select([
           sql<number>`count(*)`.as('issued'),
-          sql<number>`count(*) filter (where c.status = 'issued' and (c.expires_at is null or c.expires_at > ${now}))`.as('active'),
-          sql<number>`count(*) filter (where c.status = 'issued' and c.expires_at > ${now} and c.expires_at <= ${addDays(now, 30)})`.as('e30'),
-          sql<number>`count(*) filter (where c.status = 'issued' and c.expires_at > ${now} and c.expires_at <= ${addDays(now, 60)})`.as('e60'),
-          sql<number>`count(*) filter (where c.status = 'issued' and c.expires_at > ${now} and c.expires_at <= ${addDays(now, 90)})`.as('e90'),
+          sql<number>`count(*) filter (where c.status = 'issued' and (c.expires_at is null or c.expires_at > ${now}))`.as(
+            'active',
+          ),
+          sql<number>`count(*) filter (where c.status = 'issued' and c.expires_at > ${now} and c.expires_at <= ${addDays(now, 30)})`.as(
+            'e30',
+          ),
+          sql<number>`count(*) filter (where c.status = 'issued' and c.expires_at > ${now} and c.expires_at <= ${addDays(now, 60)})`.as(
+            'e60',
+          ),
+          sql<number>`count(*) filter (where c.status = 'issued' and c.expires_at > ${now} and c.expires_at <= ${addDays(now, 90)})`.as(
+            'e90',
+          ),
           sql<number>`count(*) filter (where c.pdf_status = 'failed')`.as('pdf_failed'),
         ])
         .where('c.organization_id', '=', p.organizationId)
@@ -152,7 +194,9 @@ export class ReportsService {
         .select((eb) => eb.fn.countAll<number>().as('n'))
         .where('a.organization_id', '=', p.organizationId)
         .where('a.status', '=', 'pending')
-        .where(userScopeCondition(filter, { userColumn: 'a.user_id', orgColumn: 'a.organization_id' }))
+        .where(
+          userScopeCondition(filter, { userColumn: 'a.user_id', orgColumn: 'a.organization_id' }),
+        )
         .executeTakeFirstOrThrow(),
       this.db
         .selectFrom('certification_candidates as k')
@@ -161,14 +205,18 @@ export class ReportsService {
         .where('k.organization_id', '=', p.organizationId)
         .where('d.status', '=', 'active')
         .where('k.status', 'in', ['eligible', 'approved'])
-        .where(userScopeCondition(filter, { userColumn: 'k.user_id', orgColumn: 'k.organization_id' }))
+        .where(
+          userScopeCondition(filter, { userColumn: 'k.user_id', orgColumn: 'k.organization_id' }),
+        )
         .executeTakeFirstOrThrow(),
       this.db
         .selectFrom('certificate_revocations as r')
         .innerJoin('issued_certificates as c', 'c.id', 'r.certificate_id')
         .select((eb) => eb.fn.countAll<number>().as('n'))
         .where('c.organization_id', '=', p.organizationId)
-        .where(sql<SqlBool>`r.revoked_at >= (date_trunc('month', ${now}::timestamptz at time zone ${settings.timezone}) at time zone ${settings.timezone})`)
+        .where(
+          sql<SqlBool>`r.revoked_at >= (date_trunc('month', ${now}::timestamptz at time zone ${settings.timezone}) at time zone ${settings.timezone})`,
+        )
         .where(certScope)
         .executeTakeFirstOrThrow(),
       this.db
@@ -183,7 +231,11 @@ export class ReportsService {
     return {
       issued: Number(certs.issued),
       active: Number(certs.active),
-      expiring: { within30: Number(certs.e30), within60: Number(certs.e60), within90: Number(certs.e90) },
+      expiring: {
+        within30: Number(certs.e30),
+        within60: Number(certs.e60),
+        within90: Number(certs.e90),
+      },
       pendingApprovals: Number(approvals.n),
       eligible: Number(eligible.n),
       revokedThisMonth: Number(revocations.n),
@@ -195,7 +247,13 @@ export class ReportsService {
   /** People who met the requirements but have no certificate yet (eligibility queue). */
   async candidates(
     p: Principal,
-    f: { q?: string; status?: certification.CandidateStatus[]; definitionId?: string; page: number; pageSize: number },
+    f: {
+      q?: string;
+      status?: certification.CandidateStatus[];
+      definitionId?: string;
+      page: number;
+      pageSize: number;
+    },
   ): Promise<Page<certification.Candidate>> {
     let q = this.db
       .selectFrom('certification_candidates as k')
@@ -221,15 +279,30 @@ export class ReportsService {
       .where('k.organization_id', '=', p.organizationId)
       .where('d.status', '=', 'active')
       .where('k.status', 'in', f.status?.length ? f.status : ['eligible', 'approved'])
-      .where(userScopeCondition(p.scopeFilter('certificates.view'), { userColumn: 'k.user_id', orgColumn: 'k.organization_id' }));
+      .where(
+        userScopeCondition(p.scopeFilter('certificates.view'), {
+          userColumn: 'k.user_id',
+          orgColumn: 'k.organization_id',
+        }),
+      );
     if (f.definitionId) q = q.where('k.definition_id', '=', f.definitionId);
-    if (f.q) q = q.where((eb) => eb.or([eb('u.display_name', 'ilike', likePattern(f.q!)), eb('u.employee_id', 'ilike', likePattern(f.q!))]));
+    if (f.q)
+      q = q.where((eb) =>
+        eb.or([
+          eb('u.display_name', 'ilike', likePattern(f.q!)),
+          eb('u.employee_id', 'ilike', likePattern(f.q!)),
+        ]),
+      );
     const page = await paginate(q.orderBy('k.eligible_at').orderBy('k.id'), f);
     return {
       ...page,
       items: page.items.map((r) => ({
         id: r.id,
-        user: { id: r.user_id, displayName: r.display_name ?? 'Unknown person', employeeId: r.employee_id },
+        user: {
+          id: r.user_id,
+          displayName: r.display_name ?? 'Unknown person',
+          employeeId: r.employee_id,
+        },
         definition: { id: r.definition_id, name: r.definition_name, code: r.definition_code },
         status: r.status,
         purpose: r.purpose,
@@ -244,14 +317,34 @@ export class ReportsService {
     };
   }
 
-  async revocations(p: Principal, f: { q?: string; definitionId?: string; page: number; pageSize: number }) {
+  async revocations(
+    p: Principal,
+    f: { q?: string; definitionId?: string; page: number; pageSize: number },
+  ) {
     let q = certificateSummaryQuery(this.db)
       .innerJoin('certificate_revocations as r', 'r.certificate_id', 'c.id')
-      .select(['r.revoked_at as rev_at', 'r.reason as rev_reason', 'r.public_note as rev_note', 'r.revoked_by as rev_by', 'r.revoked_by_name as rev_by_name'])
+      .select([
+        'r.revoked_at as rev_at',
+        'r.reason as rev_reason',
+        'r.public_note as rev_note',
+        'r.revoked_by as rev_by',
+        'r.revoked_by_name as rev_by_name',
+      ])
       .where('c.organization_id', '=', p.organizationId)
-      .where(userScopeCondition(p.scopeFilter('certificates.view'), { userColumn: 'c.user_id', orgColumn: 'c.organization_id' }));
+      .where(
+        userScopeCondition(p.scopeFilter('certificates.view'), {
+          userColumn: 'c.user_id',
+          orgColumn: 'c.organization_id',
+        }),
+      );
     if (f.definitionId) q = q.where('c.definition_id', '=', f.definitionId);
-    if (f.q) q = q.where((eb) => eb.or([eb('c.certificate_number', 'ilike', likePattern(f.q!)), eb(sql`s.data->'recipient'->>'legalName'`, 'ilike', likePattern(f.q!))]));
+    if (f.q)
+      q = q.where((eb) =>
+        eb.or([
+          eb('c.certificate_number', 'ilike', likePattern(f.q!)),
+          eb(sql`s.data->'recipient'->>'legalName'`, 'ilike', likePattern(f.q!)),
+        ]),
+      );
     const page = await paginate(q.orderBy('r.revoked_at', 'desc').orderBy('c.id'), f);
     const now = new Date();
     return {
@@ -266,7 +359,16 @@ export class ReportsService {
     };
   }
 
-  async renewals(p: Principal, f: { q?: string; status?: Array<'open' | 'completed' | 'lapsed' | 'cancelled'>; definitionId?: string; page: number; pageSize: number }) {
+  async renewals(
+    p: Principal,
+    f: {
+      q?: string;
+      status?: Array<'open' | 'completed' | 'lapsed' | 'cancelled'>;
+      definitionId?: string;
+      page: number;
+      pageSize: number;
+    },
+  ) {
     let q = certificateSummaryQuery(this.db)
       .innerJoin('certificate_renewals as n', 'n.certificate_id', 'c.id')
       .leftJoin('certification_candidates as k', (j) => j.onRef('k.renewal_id', '=', 'n.id'))
@@ -283,9 +385,20 @@ export class ReportsService {
       ])
       .where('c.organization_id', '=', p.organizationId)
       .where('n.status', 'in', f.status?.length ? f.status : ['open', 'lapsed'])
-      .where(userScopeCondition(p.scopeFilter('certificates.view'), { userColumn: 'c.user_id', orgColumn: 'c.organization_id' }));
+      .where(
+        userScopeCondition(p.scopeFilter('certificates.view'), {
+          userColumn: 'c.user_id',
+          orgColumn: 'c.organization_id',
+        }),
+      );
     if (f.definitionId) q = q.where('c.definition_id', '=', f.definitionId);
-    if (f.q) q = q.where((eb) => eb.or([eb('c.certificate_number', 'ilike', likePattern(f.q!)), eb(sql`s.data->'recipient'->>'legalName'`, 'ilike', likePattern(f.q!))]));
+    if (f.q)
+      q = q.where((eb) =>
+        eb.or([
+          eb('c.certificate_number', 'ilike', likePattern(f.q!)),
+          eb(sql`s.data->'recipient'->>'legalName'`, 'ilike', likePattern(f.q!)),
+        ]),
+      );
     const page = await paginate(q.orderBy('n.due_at').orderBy('n.id'), f);
     const now = new Date();
     return {
@@ -299,7 +412,9 @@ export class ReportsService {
         completedAt: r.completed_at?.toISOString() ?? null,
         newCertificateId: r.new_certificate_id,
         certificate: summaryDto(r as unknown as SummaryRow, now),
-        progress: r.cand_status ? { status: r.cand_status, metCount: r.met_count ?? 0, totalCount: r.total_count ?? 0 } : null,
+        progress: r.cand_status
+          ? { status: r.cand_status, metCount: r.met_count ?? 0, totalCount: r.total_count ?? 0 }
+          : null,
       })),
     };
   }

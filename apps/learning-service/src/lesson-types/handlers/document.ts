@@ -4,7 +4,10 @@ import { defineLessonType, type LessonTypeHandler } from '../types.js';
 type DocumentConfig = learning.DocumentLessonConfig;
 
 /** PDF and document lessons: the learner opens the file, then confirms they reviewed it. */
-function documentLessonType(type: 'pdf' | 'document', label: string): LessonTypeHandler<DocumentConfig> {
+function documentLessonType(
+  type: 'pdf' | 'document',
+  label: string,
+): LessonTypeHandler<DocumentConfig> {
   return defineLessonType<DocumentConfig>({
     type,
     label,
@@ -19,7 +22,10 @@ function documentLessonType(type: 'pdf' | 'document', label: string): LessonType
       return 'Open the document, review it, then select "Mark complete".';
     },
     grant(config) {
-      return { resource: { type: 'document', id: config.mediaAssetId }, policy: { allowDownload: config.allowDownload } };
+      return {
+        resource: { type: 'document', id: config.mediaAssetId },
+        policy: { allowDownload: config.allowDownload },
+      };
     },
     references(config) {
       return { mediaAssetIds: [config.mediaAssetId] };

@@ -1,7 +1,12 @@
 import { createHash } from 'node:crypto';
 import { learning } from '@a5/contracts';
 import type { Insertable, Transaction } from '@a5/database';
-import { applyDirectoryTeam, applyDirectoryUnit, applyDirectoryUser, type DirectorySchema } from '@a5/directory';
+import {
+  applyDirectoryTeam,
+  applyDirectoryUnit,
+  applyDirectoryUser,
+  type DirectorySchema,
+} from '@a5/directory';
 import type { InboxSchema } from '@a5/database';
 import { EventBus, type ServiceRuntimeConfig } from '@a5/nest-kit';
 import type { Rule } from '@a5/rules';
@@ -34,7 +39,14 @@ import { emptyFacts, evaluateProgram, type LearnerFacts } from '../engine/progre
 import { loadWorkingTree } from '../engine/tree-loader.js';
 import { lessonTypes } from '../lesson-types/registry.js';
 import { PublishCore } from '../programs/publish-core.js';
-import { ARTICLES, CODE_OF_CONDUCT, LESSON_NOTES, RIDE_ALONG_INSTRUCTIONS, RIDE_ALONG_REFLECTIONS, SIGNOFF_INSTRUCTIONS } from './content.js';
+import {
+  ARTICLES,
+  CODE_OF_CONDUCT,
+  LESSON_NOTES,
+  RIDE_ALONG_INSTRUCTIONS,
+  RIDE_ALONG_REFLECTIONS,
+  SIGNOFF_INSTRUCTIONS,
+} from './content.js';
 
 export interface LearningSeedOptions {
   log?: (line: string) => void;
@@ -48,7 +60,8 @@ const DEFAULT_DUE_DAYS = 56;
 
 type DirectoryTrx = Transaction<DirectorySchema & InboxSchema>;
 
-const hashInt = (text: string): number => createHash('sha256').update(text).digest().readUInt32BE(0);
+const hashInt = (text: string): number =>
+  createHash('sha256').update(text).digest().readUInt32BE(0);
 const at = (base: Date, ms: number): Date => new Date(base.getTime() + ms);
 
 // ---------------------------------------------------------------- program structure
@@ -116,7 +129,9 @@ function phaseRule(index: number): Rule | null {
   const previous = PHASES[index - 1]!;
   const quizLesson = previous.modules.flatMap((m) => m.lessons).find((l) => l.type === 'quiz')!;
   const quiz = ASSESSMENTS.find((a) => a.key === quizLesson.ref)!;
-  const rules: Rule[] = [{ type: 'assessment_score', assessmentId: quiz.id, minPercent: quiz.passingPercent }];
+  const rules: Rule[] = [
+    { type: 'assessment_score', assessmentId: quiz.id, minPercent: quiz.passingPercent },
+  ];
   if (index === PHASES.length - 1) {
     const busy = SCENARIOS.find((s) => s.key === 'no-time')!;
     rules.push({ type: 'ai_scenario_score', scenarioId: busy.id, minScore: busy.passingScore });
@@ -175,9 +190,18 @@ async function seedProgram(trx: Trx): Promise<void> {
       created_at: at(PUBLISHED_AT, -14 * DAY),
     })
     .execute();
-  await trx.insertInto('program_audiences').values({ program_id: PROGRAM.id, kind: 'role', ref: 'sales_rep' }).execute();
+  await trx
+    .insertInto('program_audiences')
+    .values({ program_id: PROGRAM.id, kind: 'role', ref: 'sales_rep' })
+    .execute();
 
-  const nodeDefaults = { status: 'draft' as const, first_published_at: null, archived_at: null, created_by: owner, updated_by: owner };
+  const nodeDefaults = {
+    status: 'draft' as const,
+    first_published_at: null,
+    archived_at: null,
+    created_by: owner,
+    updated_by: owner,
+  };
   await trx
     .insertInto('program_phases')
     .values(
@@ -243,7 +267,12 @@ async function seedProgram(trx: Trx): Promise<void> {
  * times (AI role-plays have recorded dates). Completions stay in program order and inside working
  * hours (8am-6pm Central, expressed in UTC).
  */
-function schedule(keys: string[], start: Date, end: Date, anchors: Map<string, Date>): Map<string, Date> {
+function schedule(
+  keys: string[],
+  start: Date,
+  end: Date,
+  anchors: Map<string, Date>,
+): Map<string, Date> {
   const n = keys.length;
   const points: Array<{ i: number; t: number }> = [{ i: -1, t: start.getTime() }];
   keys.forEach((key, i) => {
@@ -253,7 +282,8 @@ function schedule(keys: string[], start: Date, end: Date, anchors: Map<string, D
     points.push({ i, t: Math.max(anchor.getTime(), last.t + (i - last.i) * 10 * MIN) });
   });
   const tail = points[points.length - 1]!;
-  if (tail.i < n - 1) points.push({ i: n - 1, t: Math.max(end.getTime(), tail.t + (n - 1 - tail.i) * 10 * MIN) });
+  if (tail.i < n - 1)
+    points.push({ i: n - 1, t: Math.max(end.getTime(), tail.t + (n - 1 - tail.i) * 10 * MIN) });
 
   const out = new Map<string, Date>();
   let p = 0;
@@ -313,13 +343,20 @@ function completionSource(l: SeedLesson): learning.CompletionSource {
 }
 
 const REVIEW_FEEDBACK: Record<string, string> = {
-  ashlyn: 'Strong observations on discovery. Keep using the deductible wording exactly as you wrote it.',
-  sofia: 'Good point about being honest on age versus hail damage. That is what builds trust at the door.',
+  ashlyn:
+    'Strong observations on discovery. Keep using the deductible wording exactly as you wrote it.',
+  sofia:
+    'Good point about being honest on age versus hail damage. That is what builds trust at the door.',
   destiny: 'Great preparation habits. Watch the pace of your introduction, as you noted.',
-  brianna: 'Clear and specific. Practice asking one discovery question at a time before your sign-off.',
+  brianna:
+    'Clear and specific. Practice asking one discovery question at a time before your sign-off.',
 };
 
-async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<ReturnType<typeof loadWorkingTree>> & object): Promise<void> {
+async function seedJourney(
+  trx: Trx,
+  journey: LearnerJourney,
+  tree: Awaited<ReturnType<typeof loadWorkingTree>> & object,
+): Promise<void> {
   const person = PEOPLE[journey.person];
   const dir = directoryUser(journey.person);
   const lessons = allLessons();
@@ -355,14 +392,16 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
   const awaiting = journey.stage === 'awaiting_approval';
   const anchors = new Map<string, Date>();
   for (const s of sessions) {
-    if (s.lesson && completedKeys.has(s.lesson.key) && s.passed && !anchors.has(s.lesson.key)) anchors.set(s.lesson.key, at(s.evaluatedAt, 8 * MIN));
+    if (s.lesson && completedKeys.has(s.lesson.key) && s.passed && !anchors.has(s.lesson.key))
+      anchors.set(s.lesson.key, at(s.evaluatedAt, 8 * MIN));
   }
   const lastAnchor = Math.max(0, ...[...anchors.values()].map((d) => d.getTime()));
   const start = at(enrolledAt, (2 + (hashInt(journey.person) % 3)) * HOUR);
   let end: Date;
   if (certified) end = new Date(new Date(journey.certificates![0]!.issuedAt).getTime() - DAY);
   else if (awaiting) end = daysAgo(8);
-  else end = at(daysAgo(ACTIVE_DAYS_AGO[journey.person] ?? 3), -(hashInt(journey.person) % 90) * MIN);
+  else
+    end = at(daysAgo(ACTIVE_DAYS_AGO[journey.person] ?? 3), -(hashInt(journey.person) % 90) * MIN);
   if (lastAnchor) end = new Date(Math.max(end.getTime(), lastAnchor + 5 * MIN));
   const completions = schedule(
     completedOrdered.map((l) => l.key),
@@ -375,7 +414,11 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
   const next = lessons.find((l) => !completedKeys.has(l.key)) ?? null;
   const inProgress =
     !certified && !awaiting && next && (next.type === 'video' || next.type === 'pdf')
-      ? { lesson: next, percent: next.type === 'video' ? 20 + (hashInt(`${journey.person}:${next.key}`) % 60) : 0, at: at(end, 25 * MIN) }
+      ? {
+          lesson: next,
+          percent: next.type === 'video' ? 20 + (hashInt(`${journey.person}:${next.key}`) % 60) : 0,
+          at: at(end, 25 * MIN),
+        }
       : null;
   const lastActivity = inProgress ? inProgress.at : end;
   const tAt = (key: string) => completions.get(key)!;
@@ -387,7 +430,10 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
     const lessonTime = completions.get(assessment.lessonKey) ?? end;
     scores!.forEach((score, i) => {
       const fromEnd = scores!.length - 1 - i;
-      const gradedAt = i === scores!.length - 1 ? at(lessonTime, -3 * MIN) : new Date(Math.max(start.getTime() + HOUR, lessonTime.getTime() - fromEnd * 20 * HOUR));
+      const gradedAt =
+        i === scores!.length - 1
+          ? at(lessonTime, -3 * MIN)
+          : new Date(Math.max(start.getTime() + HOUR, lessonTime.getTime() - fromEnd * 20 * HOUR));
       attemptRows.push({
         attempt_id: seedId(`attempt:${journey.person}:${assessmentKey}:${i + 1}`),
         organization_id: ORGANIZATION.id,
@@ -405,7 +451,10 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
       });
     });
   }
-  const assessmentScores = new Map<string, Insertable<LearningDatabase['learner_assessment_scores']>>();
+  const assessmentScores = new Map<
+    string,
+    Insertable<LearningDatabase['learner_assessment_scores']>
+  >();
   for (const a of [...attemptRows].sort((x, y) => x.graded_at.getTime() - y.graded_at.getTime())) {
     const row = assessmentScores.get(a.assessment_id);
     assessmentScores.set(a.assessment_id, {
@@ -445,8 +494,11 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
   let previous = start;
   for (const l of completedOrdered) {
     const completedAt = tAt(l.key);
-    const lessonStart = new Date(Math.max(previous.getTime() + MIN, completedAt.getTime() - Math.max(l.minutes, 3) * MIN));
-    const decider = l.type === 'manager_approval' ? manager : l.type === 'assignment' ? reviewer : null;
+    const lessonStart = new Date(
+      Math.max(previous.getTime() + MIN, completedAt.getTime() - Math.max(l.minutes, 3) * MIN),
+    );
+    const decider =
+      l.type === 'manager_approval' ? manager : l.type === 'assignment' ? reviewer : null;
     const data: LessonProgressData = {};
     if (l.type === 'video') data.watchedPercent = 92 + (hashInt(`${journey.person}:${l.key}`) % 9);
     if (l.type === 'quiz' || l.type === 'final_assessment') {
@@ -543,7 +595,9 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
       lastAt: s.last_session_at,
     });
   }
-  facts.aiSessions = [...sessions].sort((a, b) => b.evaluatedAt.getTime() - a.evaluatedAt.getTime()).map((s) => ({ scenarioId: s.scenario.id, score: s.score }));
+  facts.aiSessions = [...sessions]
+    .sort((a, b) => b.evaluatedAt.getTime() - a.evaluatedAt.getTime())
+    .map((s) => ({ scenarioId: s.scenario.id, score: s.score }));
   if (completedKeys.has('w4-signoff')) facts.approvals.add('manager');
   for (const [phaseId, when] of phaseDone) facts.phaseCompletedAt.set(phaseId, when);
   const ev = evaluateProgram(tree, facts);
@@ -577,8 +631,13 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
     .execute();
   if (progressRows.length) await trx.insertInto('lesson_progress').values(progressRows).execute();
   if (phaseRows.length) await trx.insertInto('phase_completions').values(phaseRows).execute();
-  if (attemptRows.length) await trx.insertInto('learner_assessment_attempts').values(attemptRows).execute();
-  if (assessmentScores.size) await trx.insertInto('learner_assessment_scores').values([...assessmentScores.values()]).execute();
+  if (attemptRows.length)
+    await trx.insertInto('learner_assessment_attempts').values(attemptRows).execute();
+  if (assessmentScores.size)
+    await trx
+      .insertInto('learner_assessment_scores')
+      .values([...assessmentScores.values()])
+      .execute();
   if (sessions.length) {
     await trx
       .insertInto('learner_ai_sessions')
@@ -599,7 +658,11 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
       )
       .execute();
   }
-  if (aiScores.size) await trx.insertInto('learner_ai_scores').values([...aiScores.values()]).execute();
+  if (aiScores.size)
+    await trx
+      .insertInto('learner_ai_scores')
+      .values([...aiScores.values()])
+      .execute();
 
   // Code of conduct acknowledgment.
   if (completedKeys.has('w1-handbook')) {
@@ -625,7 +688,12 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
   if (completedKeys.has('w4-ridealong')) {
     const decidedAt = tAt('w4-ridealong');
     const prior = tAt('w4-compliance');
-    const submittedAt = new Date(Math.max(prior.getTime() + HOUR, decidedAt.getTime() - Math.min(20 * HOUR, (decidedAt.getTime() - prior.getTime()) / 2)));
+    const submittedAt = new Date(
+      Math.max(
+        prior.getTime() + HOUR,
+        decidedAt.getTime() - Math.min(20 * HOUR, (decidedAt.getTime() - prior.getTime()) / 2),
+      ),
+    );
     const body = RIDE_ALONG_REFLECTIONS[journey.person]!;
     const submissionId = seedId(`submission:${journey.person}:w4-ridealong`);
     await trx
@@ -692,7 +760,9 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
         decided_by: certified ? manager : null,
         decided_by_name: certified ? reviewerName(manager) : null,
         decided_at: decided,
-        comment: certified ? 'Field-ready. Clean paperwork, strong discovery and consistent compliance language.' : null,
+        comment: certified
+          ? 'Field-ready. Clean paperwork, strong discovery and consistent compliance language.'
+          : null,
         created_at: requestedAt,
         updated_at: decided ?? requestedAt,
       })
@@ -705,10 +775,17 @@ async function seedJourney(trx: Trx, journey: LearnerJourney, tree: Awaited<Retu
  * code path as the API), enrollments and history for every journey in @a5/seed-data, score
  * projections, acknowledgments and approvals. Idempotent: does nothing when the program exists.
  */
-export async function seedLearning(db: Db, options: LearningSeedOptions = {}): Promise<{ created: boolean }> {
+export async function seedLearning(
+  db: Db,
+  options: LearningSeedOptions = {},
+): Promise<{ created: boolean }> {
   const log = options.log ?? (() => undefined);
   await seedDirectoryProjection(db);
-  const existing = await db.selectFrom('programs').select('id').where('id', '=', PROGRAM.id).executeTakeFirst();
+  const existing = await db
+    .selectFrom('programs')
+    .select('id')
+    .where('id', '=', PROGRAM.id)
+    .executeTakeFirst();
   if (existing) {
     log('learning: academy already seeded');
     return { created: false };
@@ -723,7 +800,10 @@ export async function seedLearning(db: Db, options: LearningSeedOptions = {}): P
       organizationId: ORGANIZATION.id,
       programId: PROGRAM.id,
       changeNote: 'Initial publication of the A5 New Hire Sales Academy.',
-      actor: { userId: PEOPLE.shelby.id, displayName: `${PEOPLE.shelby.firstName} ${PEOPLE.shelby.lastName}` },
+      actor: {
+        userId: PEOPLE.shelby.id,
+        displayName: `${PEOPLE.shelby.firstName} ${PEOPLE.shelby.lastName}`,
+      },
       at: PUBLISHED_AT,
     });
     const tree = { ...(await loadWorkingTree(trx, PROGRAM.id))!, version };

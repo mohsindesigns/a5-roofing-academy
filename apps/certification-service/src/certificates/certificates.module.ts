@@ -2,7 +2,10 @@ import { Module } from '@nestjs/common';
 import { EligibilityModule } from '../eligibility/eligibility.module.js';
 import { IssuanceModule } from '../issuance/issuance.module.js';
 import { ApprovalsService } from './approvals.service.js';
-import { CertificatesController, LearnerCertificatesController } from './certificates.controller.js';
+import {
+  CertificatesController,
+  LearnerCertificatesController,
+} from './certificates.controller.js';
 import { CertificatesService } from './certificates.service.js';
 import { LearnerService } from './learner.service.js';
 import { ReportsService } from './reports.service.js';

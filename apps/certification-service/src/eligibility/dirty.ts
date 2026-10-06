@@ -11,7 +11,12 @@ import type { DbOrTrx } from '../database/index.js';
  */
 export async function markDirty(
   db: DbOrTrx,
-  input: { organizationId: string; userIds: readonly string[]; definitionIds?: readonly string[]; learnerActivity: boolean },
+  input: {
+    organizationId: string;
+    userIds: readonly string[];
+    definitionIds?: readonly string[];
+    learnerActivity: boolean;
+  },
 ): Promise<void> {
   const userIds = [...new Set(input.userIds)];
   if (userIds.length === 0) return;
@@ -42,7 +47,11 @@ export async function markDirty(
 }
 
 /** Mark every candidate (and enrolled learner) of the given certifications, e.g. after a rule change. */
-export async function markDefinitionsDirty(db: DbOrTrx, definitionIds: readonly string[], learnerActivity = false): Promise<void> {
+export async function markDefinitionsDirty(
+  db: DbOrTrx,
+  definitionIds: readonly string[],
+  learnerActivity = false,
+): Promise<void> {
   if (definitionIds.length === 0) return;
   await sql`
     insert into eligibility_dirty (definition_id, user_id, organization_id, marked_at, learner_activity)

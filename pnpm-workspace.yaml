@@ -3,9 +3,9 @@ packages:
   - packages/*
   - e2e
 onlyBuiltDependencies:
-  - "@swc/core"
+  - '@swc/core'
   - esbuild
   - msgpackr-extract
 ignoredBuiltDependencies:
   - protobufjs
-  - "@scarf/scarf"
+  - '@scarf/scarf'

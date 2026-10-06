@@ -14,7 +14,9 @@ const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
 /** Sort and merge overlapping or touching intervals. */
 export function mergeIntervals(list: readonly Interval[]): Interval[] {
-  const sorted = list.filter(([s, e]) => Number.isFinite(s) && Number.isFinite(e) && e > s).sort((a, b) => a[0] - b[0]);
+  const sorted = list
+    .filter(([s, e]) => Number.isFinite(s) && Number.isFinite(e) && e > s)
+    .sort((a, b) => a[0] - b[0]);
   const merged: Interval[] = [];
   for (const [s, e] of sorted) {
     const last = merged[merged.length - 1];

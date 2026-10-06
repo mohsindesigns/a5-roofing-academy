@@ -37,11 +37,21 @@ export class DashboardService {
     this.learners = new LearnerQueries(db);
   }
 
-  private async cached<T>(kind: string, ctx: QueryContext, extra: unknown, load: () => Promise<T>): Promise<T> {
+  private async cached<T>(
+    kind: string,
+    ctx: QueryContext,
+    extra: unknown,
+    load: () => Promise<T>,
+  ): Promise<T> {
     const s = ctx.scope;
     const scopeKey =
       s.kind === 'managed'
-        ? { kind: s.kind, userId: s.userId, teams: [...s.teamIds].sort(), users: [...s.userIds].sort() }
+        ? {
+            kind: s.kind,
+            userId: s.userId,
+            teams: [...s.teamIds].sort(),
+            users: [...s.userIds].sort(),
+          }
         : s.kind === 'own'
           ? { kind: s.kind, userId: s.userId }
           : { kind: s.kind };
@@ -75,17 +85,25 @@ export class DashboardService {
     return this.cached('team', ctx, { interval: query.interval ?? null }, async () => {
       const q = new QuerySql(ctx);
       const window = trendWindow(q, query.interval);
-      const [kpis, fallingBehind, requiringAttention, expiringCertifications, recentActivity, weakestAreas, lessons, ai] =
-        await Promise.all([
-          this.queries.kpis(q),
-          this.queries.fallingBehind(q),
-          this.queries.requiringAttention(q),
-          this.queries.expiringCertificates(q),
-          this.queries.recentActivity(q),
-          this.queries.weakestAreas(q),
-          this.trends.trend(q, 'lessons_completed', window),
-          this.trends.trend(q, 'ai_score', window),
-        ]);
+      const [
+        kpis,
+        fallingBehind,
+        requiringAttention,
+        expiringCertifications,
+        recentActivity,
+        weakestAreas,
+        lessons,
+        ai,
+      ] = await Promise.all([
+        this.queries.kpis(q),
+        this.queries.fallingBehind(q),
+        this.queries.requiringAttention(q),
+        this.queries.expiringCertificates(q),
+        this.queries.recentActivity(q),
+        this.queries.weakestAreas(q),
+        this.trends.trend(q, 'lessons_completed', window),
+        this.trends.trend(q, 'ai_score', window),
+      ]);
       return {
         meta: this.meta(ctx),
         kpis: DashboardQueries.teamKpis(kpis),
@@ -102,7 +120,9 @@ export class DashboardService {
   async company(p: Principal, query: DashboardQuery): Promise<analytics.CompanyDashboard> {
     const scope = p.scopeOf('analytics.view');
     if (!scope || !scopeCovers(scope, 'organization')) {
-      throw new ForbiddenError('The company dashboard needs organization-wide analytics access. Use the team dashboard instead.');
+      throw new ForbiddenError(
+        'The company dashboard needs organization-wide analytics access. Use the team dashboard instead.',
+      );
     }
     const ctx = await this.scope.context(p, 'analytics.view', query);
     return this.cached('company', ctx, { interval: query.interval ?? null }, async () => {
@@ -164,7 +184,11 @@ export class DashboardService {
     });
   }
 
-  async trend(p: Principal, metric: analytics.TrendMetric, query: DashboardQuery): Promise<analytics.Trend & { metric: analytics.TrendMetric }> {
+  async trend(
+    p: Principal,
+    metric: analytics.TrendMetric,
+    query: DashboardQuery,
+  ): Promise<analytics.Trend & { metric: analytics.TrendMetric }> {
     const ctx = await this.scope.context(p, 'analytics.view', query);
     return this.cached(`trend:${metric}`, ctx, { interval: query.interval ?? null }, async () => {
       const q = new QuerySql(ctx);
@@ -180,12 +204,18 @@ export class DashboardService {
       programId,
       now: this.scope.now(),
       timezone: this.scope.timezone,
-      minCohortSize: (await this.scope.build(p.organizationId, { kind: 'own', userId: p.userId }, {})).settings.minCohortSize,
+      minCohortSize: (
+        await this.scope.build(p.organizationId, { kind: 'own', userId: p.userId }, {})
+      ).settings.minCohortSize,
     });
   }
 
   /** A learner's summary for a manager, trainer or administrator (scoped; 404 when out of scope). */
-  async learnerSummary(p: Principal, userId: string, programId: string | undefined): Promise<analytics.LearnerSummary> {
+  async learnerSummary(
+    p: Principal,
+    userId: string,
+    programId: string | undefined,
+  ): Promise<analytics.LearnerSummary> {
     await this.scope.assertLearnerVisible(p, 'analytics.view', userId);
     const ctx = await this.scope.build(p.organizationId, p.scopeFilter('analytics.view'), {});
     return this.learners.summary({

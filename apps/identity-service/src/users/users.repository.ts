@@ -41,7 +41,9 @@ export function userScope(filter: ScopeFilter, organizationId: string): Expressi
       return sql<SqlBool>`u.organization_id = ${organizationId}`;
     case 'managed': {
       const users = [filter.userId, ...filter.userIds];
-      const teams = filter.teamIds.length ? filter.teamIds : ['00000000-0000-0000-0000-000000000000'];
+      const teams = filter.teamIds.length
+        ? filter.teamIds
+        : ['00000000-0000-0000-0000-000000000000'];
       return sql<SqlBool>`(u.organization_id = ${organizationId} and (
         u.id = any(${sql.val(users)}::uuid[])
         or u.id in (select user_id from team_members where team_id = any(${sql.val(teams)}::uuid[]))
@@ -91,10 +93,18 @@ export class UsersRepository {
     if (f.departmentId) query = query.where('u.department_id', '=', f.departmentId);
     if (f.ids?.length) query = query.where('u.id', 'in', f.ids);
     if (f.teamId) {
-      query = query.where('u.id', 'in', this.db.selectFrom('team_members').select('user_id').where('team_id', '=', f.teamId));
+      query = query.where(
+        'u.id',
+        'in',
+        this.db.selectFrom('team_members').select('user_id').where('team_id', '=', f.teamId),
+      );
     }
     if (f.roleId) {
-      query = query.where('u.id', 'in', this.db.selectFrom('user_roles').select('user_id').where('role_id', '=', f.roleId));
+      query = query.where(
+        'u.id',
+        'in',
+        this.db.selectFrom('user_roles').select('user_id').where('role_id', '=', f.roleId),
+      );
     }
 
     const desc = f.sort?.startsWith('-') ?? false;
@@ -106,7 +116,10 @@ export class UsersRepository {
 
     const page = await paginate(query, { page: f.page, pageSize: f.pageSize });
     const ids = page.items.map((r) => r.id);
-    const [teams, roles] = await Promise.all([this.teamsOf(this.db, ids), this.rolesOf(this.db, ids)]);
+    const [teams, roles] = await Promise.all([
+      this.teamsOf(this.db, ids),
+      this.rolesOf(this.db, ids),
+    ]);
     return {
       ...page,
       items: page.items.map((r) => ({
@@ -195,7 +208,10 @@ export class UsersRepository {
     };
   }
 
-  async teamsOf(db: DbOrTrx, userIds: string[]): Promise<Map<string, Array<{ id: string; name: string }>>> {
+  async teamsOf(
+    db: DbOrTrx,
+    userIds: string[],
+  ): Promise<Map<string, Array<{ id: string; name: string }>>> {
     if (!userIds.length) return new Map();
     const rows = await db
       .selectFrom('team_members as tm')
@@ -206,11 +222,15 @@ export class UsersRepository {
       .orderBy('t.name')
       .execute();
     const map = new Map<string, Array<{ id: string; name: string }>>();
-    for (const r of rows) map.set(r.user_id, [...(map.get(r.user_id) ?? []), { id: r.id, name: r.name }]);
+    for (const r of rows)
+      map.set(r.user_id, [...(map.get(r.user_id) ?? []), { id: r.id, name: r.name }]);
     return map;
   }
 
-  async rolesOf(db: DbOrTrx, userIds: string[]): Promise<Map<string, Array<{ id: string; key: string; name: string }>>> {
+  async rolesOf(
+    db: DbOrTrx,
+    userIds: string[],
+  ): Promise<Map<string, Array<{ id: string; key: string; name: string }>>> {
     if (!userIds.length) return new Map();
     const rows = await db
       .selectFrom('user_roles as ur')
@@ -220,13 +240,18 @@ export class UsersRepository {
       .orderBy('r.name')
       .execute();
     const map = new Map<string, Array<{ id: string; key: string; name: string }>>();
-    for (const r of rows) map.set(r.user_id, [...(map.get(r.user_id) ?? []), { id: r.id, key: r.key, name: r.name }]);
+    for (const r of rows)
+      map.set(r.user_id, [...(map.get(r.user_id) ?? []), { id: r.id, key: r.key, name: r.name }]);
     return map;
   }
 
   /** Team ids of a user (for single-record scope checks). */
   async teamIdsOf(db: DbOrTrx, userId: string): Promise<string[]> {
-    const rows = await db.selectFrom('team_members').select('team_id').where('user_id', '=', userId).execute();
+    const rows = await db
+      .selectFrom('team_members')
+      .select('team_id')
+      .where('user_id', '=', userId)
+      .execute();
     return rows.map((r) => r.team_id);
   }
 }

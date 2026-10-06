@@ -3,7 +3,15 @@ import type { Principal } from '@a5/auth';
 import { defaultFeatureFlags, type FeatureFlagState, type identity } from '@a5/contracts';
 import { sql } from '@a5/database';
 import { identityEvents } from '@a5/events';
-import { AppError, EventBus, InjectDb, LOGGER, PreconditionError, UnauthenticatedError, ValidationError } from '@a5/nest-kit';
+import {
+  AppError,
+  EventBus,
+  InjectDb,
+  LOGGER,
+  PreconditionError,
+  UnauthenticatedError,
+  ValidationError,
+} from '@a5/nest-kit';
 import { getContext, randomToken, uuidv7, type Logger } from '@a5/observability';
 import { PasswordService } from '../common/passwords.js';
 import { IamCache } from '../common/iam-cache.js';
@@ -47,15 +55,32 @@ export class AuthService {
   ) {}
 
   private async securityOf(organizationId: string): Promise<OrganizationsTable['security']> {
-    const org = await this.db.selectFrom('organizations').select('security').where('id', '=', organizationId).executeTakeFirstOrThrow();
+    const org = await this.db
+      .selectFrom('organizations')
+      .select('security')
+      .where('id', '=', organizationId)
+      .executeTakeFirstOrThrow();
     return org.security;
   }
 
-  private async recordAttempt(email: string, userId: string | null, success: boolean, reason: string | null) {
+  private async recordAttempt(
+    email: string,
+    userId: string | null,
+    success: boolean,
+    reason: string | null,
+  ) {
     const ctx = getContext();
     await this.db
       .insertInto('login_attempts')
-      .values({ id: uuidv7(), user_id: userId, email, ip: ctx?.ip ?? null, user_agent: ctx?.userAgent ?? null, success, reason })
+      .values({
+        id: uuidv7(),
+        user_id: userId,
+        email,
+        ip: ctx?.ip ?? null,
+        user_agent: ctx?.userAgent ?? null,
+        success,
+        reason,
+      })
       .execute();
   }
 
@@ -94,11 +119,18 @@ export class AuthService {
         .updateTable('users')
         .set({
           failed_login_count: lock ? 0 : failures,
-          locked_until: lock ? new Date(Date.now() + security.lockoutMinutes * 60_000) : user.locked_until,
+          locked_until: lock
+            ? new Date(Date.now() + security.lockoutMinutes * 60_000)
+            : user.locked_until,
         })
         .where('id', '=', user.id)
         .execute();
-      await this.recordAttempt(email, user.id, false, lock ? 'locked_after_failures' : 'bad_password');
+      await this.recordAttempt(
+        email,
+        user.id,
+        false,
+        lock ? 'locked_after_failures' : 'bad_password',
+      );
       if (lock) throw new AccountLockedError(security.lockoutMinutes);
       throw new UnauthenticatedError('INVALID_CREDENTIALS', 'The email or password is incorrect.');
     }
@@ -106,11 +138,19 @@ export class AuthService {
     // Account state is only revealed after a correct password, so it cannot be probed.
     if (user.status === 'deactivated') {
       await this.recordAttempt(email, user.id, false, 'deactivated');
-      throw new AppError(403, 'ACCOUNT_DISABLED', 'Your account has been deactivated. Contact your manager or administrator.');
+      throw new AppError(
+        403,
+        'ACCOUNT_DISABLED',
+        'Your account has been deactivated. Contact your manager or administrator.',
+      );
     }
     if (user.status !== 'active') {
       await this.recordAttempt(email, user.id, false, 'not_activated');
-      throw new AppError(403, 'ACCOUNT_NOT_ACTIVATED', 'Activate your account with the link from your invitation email first.');
+      throw new AppError(
+        403,
+        'ACCOUNT_NOT_ACTIVATED',
+        'Activate your account with the link from your invitation email first.',
+      );
     }
 
     const issued = await this.db.transaction().execute(async (trx) => {
@@ -126,7 +166,12 @@ export class AuthService {
     return issued;
   }
 
-  private async startSession(trx: Trx, userId: string, organizationId: string, maxHours: number): Promise<IssuedSession> {
+  private async startSession(
+    trx: Trx,
+    userId: string,
+    organizationId: string,
+    maxHours: number,
+  ): Promise<IssuedSession> {
     const ctx = getContext();
     const sessionId = uuidv7();
     const expiresAt = new Date(Date.now() + maxHours * 3_600_000);
@@ -146,7 +191,13 @@ export class AuthService {
     const refreshToken = randomToken(32);
     await trx
       .insertInto('refresh_tokens')
-      .values({ id: uuidv7(), session_id: sessionId, token_hash: hashToken(refreshToken), expires_at: expiresAt, rotated_at: null })
+      .values({
+        id: uuidv7(),
+        session_id: sessionId,
+        token_hash: hashToken(refreshToken),
+        expires_at: expiresAt,
+        rotated_at: null,
+      })
       .execute();
     const user = await this.sessionUser(trx, userId);
     return {
@@ -229,27 +280,53 @@ export class AuthService {
         return { error: 'SESSION_EXPIRED' as const };
       }
       if (token.status !== 'active') {
-        await trx.updateTable('sessions').set({ revoked_at: new Date(), revoked_reason: 'account_inactive' }).where('id', '=', token.session_id).execute();
+        await trx
+          .updateTable('sessions')
+          .set({ revoked_at: new Date(), revoked_reason: 'account_inactive' })
+          .where('id', '=', token.session_id)
+          .execute();
         return { error: 'SESSION_REVOKED' as const, revokedSession: token.session_id };
       }
-      const security = (await trx.selectFrom('organizations').select('security').where('id', '=', token.organization_id).executeTakeFirstOrThrow()).security;
+      const security = (
+        await trx
+          .selectFrom('organizations')
+          .select('security')
+          .where('id', '=', token.organization_id)
+          .executeTakeFirstOrThrow()
+      ).security;
       if (token.last_seen_at.getTime() + security.sessionIdleMinutes * 60_000 <= now) {
-        await trx.updateTable('sessions').set({ revoked_at: new Date(), revoked_reason: 'idle_timeout' }).where('id', '=', token.session_id).execute();
+        await trx
+          .updateTable('sessions')
+          .set({ revoked_at: new Date(), revoked_reason: 'idle_timeout' })
+          .where('id', '=', token.session_id)
+          .execute();
         return { error: 'SESSION_EXPIRED' as const, revokedSession: token.session_id };
       }
       if (token.rotated_at && now - token.rotated_at.getTime() > ROTATION_GRACE_MS) {
-        await trx.updateTable('sessions').set({ revoked_at: new Date(), revoked_reason: 'refresh_token_reuse' }).where('id', '=', token.session_id).execute();
-        await this.events.audit(trx, {
-          action: 'session.refresh_token_reused',
-          resourceType: 'session',
-          resourceId: token.session_id,
-          actorDisplay: null,
-          metadata: { userId: token.user_id },
-        }, { organizationId: token.organization_id, actor: { type: 'system', id: null } });
+        await trx
+          .updateTable('sessions')
+          .set({ revoked_at: new Date(), revoked_reason: 'refresh_token_reuse' })
+          .where('id', '=', token.session_id)
+          .execute();
+        await this.events.audit(
+          trx,
+          {
+            action: 'session.refresh_token_reused',
+            resourceType: 'session',
+            resourceId: token.session_id,
+            actorDisplay: null,
+            metadata: { userId: token.user_id },
+          },
+          { organizationId: token.organization_id, actor: { type: 'system', id: null } },
+        );
         return { error: 'SESSION_REVOKED' as const, revokedSession: token.session_id };
       }
       if (!token.rotated_at) {
-        await trx.updateTable('refresh_tokens').set({ rotated_at: new Date() }).where('id', '=', token.id).execute();
+        await trx
+          .updateTable('refresh_tokens')
+          .set({ rotated_at: new Date() })
+          .where('id', '=', token.id)
+          .execute();
       }
       const next = randomToken(32);
       await trx
@@ -262,7 +339,11 @@ export class AuthService {
           rotated_at: null,
         })
         .execute();
-      await trx.updateTable('sessions').set({ last_seen_at: new Date() }).where('id', '=', token.session_id).execute();
+      await trx
+        .updateTable('sessions')
+        .set({ last_seen_at: new Date() })
+        .where('id', '=', token.session_id)
+        .execute();
       const user = await this.sessionUser(trx, token.user_id);
       return {
         issued: {
@@ -292,7 +373,10 @@ export class AuthService {
             : 'Sign in to continue.';
       throw new UnauthenticatedError(result.error, message);
     }
-    await this.cache.markSessionActive(result.issued.response.sessionId, result.issued.refreshExpiresAt);
+    await this.cache.markSessionActive(
+      result.issued.response.sessionId,
+      result.issued.refreshExpiresAt,
+    );
     return result.issued;
   }
 
@@ -344,7 +428,11 @@ export class AuthService {
           resetUrl: `${this.config.publicAppUrl}/reset-password?token=${encodeURIComponent(token)}`,
           expiresAt: expiresAt.toISOString(),
         },
-        { organizationId: user.organization_id, subject: { type: 'user', id: user.id }, actor: { type: 'user', id: user.id } },
+        {
+          organizationId: user.organization_id,
+          subject: { type: 'user', id: user.id },
+          actor: { type: 'user', id: user.id },
+        },
       );
     });
   }
@@ -393,13 +481,21 @@ export class AuthService {
     };
   }
 
-  private async assertPolicy(organizationId: string, password: string, user: { email: string; first_name: string; last_name: string }) {
+  private async assertPolicy(
+    organizationId: string,
+    password: string,
+    user: { email: string; first_name: string; last_name: string },
+  ) {
     const security = await this.securityOf(organizationId);
-    const problem = this.passwords.policyProblem(password, { minLength: security.passwordMinLength }, {
-      email: user.email,
-      firstName: user.first_name,
-      lastName: user.last_name,
-    });
+    const problem = this.passwords.policyProblem(
+      password,
+      { minLength: security.passwordMinLength },
+      {
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+      },
+    );
     if (problem) throw new ValidationError([{ path: 'password', message: problem }]);
   }
 
@@ -409,13 +505,25 @@ export class AuthService {
     const hash = await this.passwords.hash(password);
     const sessions = await this.db.transaction().execute(async (trx) => {
       const row = await this.findToken(token, 'password_reset', trx);
-      await trx.updateTable('one_time_tokens').set({ used_at: new Date() }).where('id', '=', row.id).execute();
+      await trx
+        .updateTable('one_time_tokens')
+        .set({ used_at: new Date() })
+        .where('id', '=', row.id)
+        .execute();
       await trx
         .insertInto('credentials')
         .values({ user_id: row.user_id, password_hash: hash })
-        .onConflict((oc) => oc.column('user_id').doUpdateSet({ password_hash: hash, password_changed_at: new Date() }))
+        .onConflict((oc) =>
+          oc
+            .column('user_id')
+            .doUpdateSet({ password_hash: hash, password_changed_at: new Date() }),
+        )
         .execute();
-      await trx.updateTable('users').set({ failed_login_count: 0, locked_until: null }).where('id', '=', row.user_id).execute();
+      await trx
+        .updateTable('users')
+        .set({ failed_login_count: 0, locked_until: null })
+        .where('id', '=', row.user_id)
+        .execute();
       const revoked = await trx
         .updateTable('sessions')
         .set({ revoked_at: new Date(), revoked_reason: 'password_reset' })
@@ -425,7 +533,12 @@ export class AuthService {
         .execute();
       await this.events.audit(
         trx,
-        { action: 'user.password_reset', resourceType: 'user', resourceId: row.user_id, actorDisplay: `${row.first_name} ${row.last_name}` },
+        {
+          action: 'user.password_reset',
+          resourceType: 'user',
+          resourceId: row.user_id,
+          actorDisplay: `${row.first_name} ${row.last_name}`,
+        },
         { organizationId: row.organization_id, actor: { type: 'user', id: row.user_id } },
       );
       return revoked.map((s) => s.id);
@@ -436,18 +549,29 @@ export class AuthService {
   async activate(token: string, password: string): Promise<IssuedSession> {
     const preview = await this.findToken(token, 'activation');
     if (preview.status !== 'invited') {
-      throw new PreconditionError('ALREADY_ACTIVATED', 'This account is already active. Sign in instead.');
+      throw new PreconditionError(
+        'ALREADY_ACTIVATED',
+        'This account is already active. Sign in instead.',
+      );
     }
     await this.assertPolicy(preview.organization_id, password, preview);
     const hash = await this.passwords.hash(password);
     const security = await this.securityOf(preview.organization_id);
     const issued = await this.db.transaction().execute(async (trx) => {
       const row = await this.findToken(token, 'activation', trx);
-      await trx.updateTable('one_time_tokens').set({ used_at: new Date() }).where('id', '=', row.id).execute();
+      await trx
+        .updateTable('one_time_tokens')
+        .set({ used_at: new Date() })
+        .where('id', '=', row.id)
+        .execute();
       await trx
         .insertInto('credentials')
         .values({ user_id: row.user_id, password_hash: hash })
-        .onConflict((oc) => oc.column('user_id').doUpdateSet({ password_hash: hash, password_changed_at: new Date() }))
+        .onConflict((oc) =>
+          oc
+            .column('user_id')
+            .doUpdateSet({ password_hash: hash, password_changed_at: new Date() }),
+        )
         .execute();
       await trx
         .updateTable('users')
@@ -458,7 +582,11 @@ export class AuthService {
         trx,
         identityEvents.userActivated,
         { userId: row.user_id },
-        { organizationId: row.organization_id, subject: { type: 'user', id: row.user_id }, actor: { type: 'user', id: row.user_id } },
+        {
+          organizationId: row.organization_id,
+          subject: { type: 'user', id: row.user_id },
+          actor: { type: 'user', id: row.user_id },
+        },
       );
       await this.directory.users(trx, [row.user_id]);
       return this.startSession(trx, row.user_id, row.organization_id, security.sessionMaxHours);
@@ -468,20 +596,37 @@ export class AuthService {
     return issued;
   }
 
-  async changePassword(actor: Principal, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(
+    actor: Principal,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
     const user = await this.db
       .selectFrom('users')
       .innerJoin('credentials', 'credentials.user_id', 'users.id')
-      .select(['users.id', 'users.organization_id', 'users.email', 'users.first_name', 'users.last_name', 'credentials.password_hash'])
+      .select([
+        'users.id',
+        'users.organization_id',
+        'users.email',
+        'users.first_name',
+        'users.last_name',
+        'credentials.password_hash',
+      ])
       .where('users.id', '=', actor.userId)
       .executeTakeFirstOrThrow();
     if (!(await this.passwords.verify(user.password_hash, currentPassword))) {
-      throw new ValidationError([{ path: 'currentPassword', message: 'Your current password is incorrect.' }]);
+      throw new ValidationError([
+        { path: 'currentPassword', message: 'Your current password is incorrect.' },
+      ]);
     }
     await this.assertPolicy(user.organization_id, newPassword, user);
     const hash = await this.passwords.hash(newPassword);
     const others = await this.db.transaction().execute(async (trx) => {
-      await trx.updateTable('credentials').set({ password_hash: hash, password_changed_at: new Date() }).where('user_id', '=', user.id).execute();
+      await trx
+        .updateTable('credentials')
+        .set({ password_hash: hash, password_changed_at: new Date() })
+        .where('user_id', '=', user.id)
+        .execute();
       const revoked = await trx
         .updateTable('sessions')
         .set({ revoked_at: new Date(), revoked_reason: 'password_changed' })
@@ -490,14 +635,23 @@ export class AuthService {
         .$if(Boolean(actor.sessionId), (q) => q.where('id', '!=', actor.sessionId!))
         .returning('id')
         .execute();
-      await this.events.audit(trx, { action: 'user.password_changed', resourceType: 'user', resourceId: user.id, actorDisplay: actor.displayName });
+      await this.events.audit(trx, {
+        action: 'user.password_changed',
+        resourceType: 'user',
+        resourceId: user.id,
+        actorDisplay: actor.displayName,
+      });
       return revoked.map((r) => r.id);
     });
     await this.cache.revokeSessions(others);
   }
 
   async featureFlags(organizationId: string): Promise<FeatureFlagState> {
-    const rows = await this.db.selectFrom('feature_flags').select(['key', 'enabled']).where('organization_id', '=', organizationId).execute();
+    const rows = await this.db
+      .selectFrom('feature_flags')
+      .select(['key', 'enabled'])
+      .where('organization_id', '=', organizationId)
+      .execute();
     const flags = defaultFeatureFlags();
     for (const r of rows) if (r.key in flags) flags[r.key as keyof FeatureFlagState] = r.enabled;
     return flags;

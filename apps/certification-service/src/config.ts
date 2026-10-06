@@ -38,18 +38,26 @@ export function loadCertificationConfig(source?: Record<string, string | undefin
   const config = loadServiceConfig('certification-service', 4060, certificationEnv, { source });
   const e = config.env;
   if (e.STORAGE_DRIVER === 'local' && !e.STORAGE_SIGNING_SECRET) {
-    throw new ConfigError('Invalid configuration:\n  - STORAGE_SIGNING_SECRET: required when STORAGE_DRIVER=local. Run `pnpm keys:generate`.', [
-      { key: 'STORAGE_SIGNING_SECRET', message: 'required when STORAGE_DRIVER=local' },
-    ]);
+    throw new ConfigError(
+      'Invalid configuration:\n  - STORAGE_SIGNING_SECRET: required when STORAGE_DRIVER=local. Run `pnpm keys:generate`.',
+      [{ key: 'STORAGE_SIGNING_SECRET', message: 'required when STORAGE_DRIVER=local' }],
+    );
   }
-  assertProductionSafe(config.nodeEnv, [[e.STORAGE_DRIVER === 's3', 'STORAGE_DRIVER must be s3 (local disk storage is for development only)']]);
+  assertProductionSafe(config.nodeEnv, [
+    [
+      e.STORAGE_DRIVER === 's3',
+      'STORAGE_DRIVER must be s3 (local disk storage is for development only)',
+    ],
+  ]);
   return {
     ...config,
     storage: {
       driver: e.STORAGE_DRIVER,
       localRoot: resolve(e.STORAGE_LOCAL_ROOT),
       signingSecret: e.STORAGE_SIGNING_SECRET ?? '',
-      filesBaseUrl: (e.CERTIFICATION_FILES_URL ?? `${config.publicAppUrl}/api/v1/certification-files`).replace(/\/$/, ''),
+      filesBaseUrl: (
+        e.CERTIFICATION_FILES_URL ?? `${config.publicAppUrl}/api/v1/certification-files`
+      ).replace(/\/$/, ''),
       s3: {
         bucket: e.S3_BUCKET,
         region: e.S3_REGION,

@@ -1,4 +1,12 @@
-import { BeforeApplicationShutdown, Global, Inject, Injectable, Module, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
+import {
+  BeforeApplicationShutdown,
+  Global,
+  Inject,
+  Injectable,
+  Module,
+  OnApplicationShutdown,
+  OnModuleInit,
+} from '@nestjs/common';
 import {
   Cache,
   DistributedLock,
@@ -55,7 +63,11 @@ class RedisLifecycle implements OnModuleInit, BeforeApplicationShutdown, OnAppli
       inject: [SERVICE_CONFIG],
       useFactory: (config: ServiceRuntimeConfig) => new RedisNamespace(config.redisNamespace),
     },
-    { provide: Cache, inject: [REDIS, RedisNamespace], useFactory: (r: Redis, ns: RedisNamespace) => new Cache(r, ns) },
+    {
+      provide: Cache,
+      inject: [REDIS, RedisNamespace],
+      useFactory: (r: Redis, ns: RedisNamespace) => new Cache(r, ns),
+    },
     {
       provide: DistributedLock,
       inject: [REDIS, RedisNamespace],
@@ -75,7 +87,11 @@ class RedisLifecycle implements OnModuleInit, BeforeApplicationShutdown, OnAppli
       provide: QueueFactory,
       inject: [SERVICE_CONFIG, LOGGER],
       useFactory: (config: ServiceRuntimeConfig, logger: Logger) =>
-        new QueueFactory({ redisUrl: config.redisUrl, prefix: `${config.redisNamespace}:bull`, logger }),
+        new QueueFactory({
+          redisUrl: config.redisUrl,
+          prefix: `${config.redisNamespace}:bull`,
+          logger,
+        }),
     },
     RedisLifecycle,
   ],

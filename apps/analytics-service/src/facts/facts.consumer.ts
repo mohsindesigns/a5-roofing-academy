@@ -28,12 +28,20 @@ export class FactsConsumer {
     @Inject(LOGGER) private readonly logger: Logger,
   ) {}
 
-  private async run<T extends EventType>(event: EventEnvelope, apply: (trx: Trx, e: Typed<T>) => Promise<void>): Promise<boolean> {
+  private async run<T extends EventType>(
+    event: EventEnvelope,
+    apply: (trx: Trx, e: Typed<T>) => Promise<void>,
+  ): Promise<boolean> {
     if (!event.organizationId) {
-      this.logger.warn({ eventId: event.id, type: event.type }, 'analytics skipped an event without organization');
+      this.logger.warn(
+        { eventId: event.id, type: event.type },
+        'analytics skipped an event without organization',
+      );
       return false;
     }
-    return processOnce(this.db, `analytics.${event.type}`, event, (trx) => apply(trx, event as Typed<T>));
+    return processOnce(this.db, `analytics.${event.type}`, event, (trx) =>
+      apply(trx, event as Typed<T>),
+    );
   }
 
   // learning
@@ -90,7 +98,9 @@ export class FactsConsumer {
   // assessment
   @OnEvent(assessmentEvents.attemptGraded)
   onAttemptGraded(e: EventEnvelope) {
-    return this.run<'assessment.attempt.graded'>(e, (trx, ev) => this.writer.attemptGraded(trx, ev));
+    return this.run<'assessment.attempt.graded'>(e, (trx, ev) =>
+      this.writer.attemptGraded(trx, ev),
+    );
   }
 
   // ai coaching
@@ -102,12 +112,16 @@ export class FactsConsumer {
   // certification
   @OnEvent(certificationEvents.eligible)
   onCertificateEligible(e: EventEnvelope) {
-    return this.run<'certificate.eligible'>(e, (trx, ev) => this.writer.certificateEligible(trx, ev));
+    return this.run<'certificate.eligible'>(e, (trx, ev) =>
+      this.writer.certificateEligible(trx, ev),
+    );
   }
 
   @OnEvent(certificationEvents.approvalRequested)
   onCertificateApprovalRequested(e: EventEnvelope) {
-    return this.run<'certificate.approval_requested'>(e, (trx, ev) => this.writer.certificateApprovalRequested(trx, ev));
+    return this.run<'certificate.approval_requested'>(e, (trx, ev) =>
+      this.writer.certificateApprovalRequested(trx, ev),
+    );
   }
 
   @OnEvent(certificationEvents.issued)
@@ -127,6 +141,8 @@ export class FactsConsumer {
 
   @OnEvent(certificationEvents.reissued)
   onCertificateReissued(e: EventEnvelope) {
-    return this.run<'certificate.reissued'>(e, (trx, ev) => this.writer.certificateReissued(trx, ev));
+    return this.run<'certificate.reissued'>(e, (trx, ev) =>
+      this.writer.certificateReissued(trx, ev),
+    );
   }
 }

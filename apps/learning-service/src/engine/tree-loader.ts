@@ -3,7 +3,11 @@ import { assembleTree, type ProgramTree } from './tree.js';
 
 /** The working copy of a program without archived nodes, as learners would see it once published. */
 export async function loadWorkingTree(db: DbOrTrx, programId: string): Promise<ProgramTree | null> {
-  const program = await db.selectFrom('programs').selectAll().where('id', '=', programId).executeTakeFirst();
+  const program = await db
+    .selectFrom('programs')
+    .selectAll()
+    .where('id', '=', programId)
+    .executeTakeFirst();
   if (!program) return null;
   const [phases, modules, lessons] = await Promise.all([
     db.selectFrom('program_phases').selectAll().where('program_id', '=', programId).execute(),

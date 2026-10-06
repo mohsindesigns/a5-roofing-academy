@@ -1,6 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Principal } from '@a5/auth';
-import { createDatabase, createInboxTable, migrateToLatest, sql, type Database, type InboxSchema } from '@a5/database';
+import {
+  createDatabase,
+  createInboxTable,
+  migrateToLatest,
+  sql,
+  type Database,
+  type InboxSchema,
+} from '@a5/database';
 import type { DirectoryUserRecord } from '@a5/events';
 import { createTestDatabase, type TestDatabase } from '@a5/testing';
 import {
@@ -59,7 +66,9 @@ beforeAll(async () => {
       up: async (db) => {
         await createInboxTable(db);
         await createDirectoryTables(db);
-        await sql`create table enrollments (id text primary key, user_id uuid not null, organization_id uuid not null)`.execute(db);
+        await sql`create table enrollments (id text primary key, user_id uuid not null, organization_id uuid not null)`.execute(
+          db,
+        );
       },
     },
   });
@@ -69,11 +78,30 @@ beforeAll(async () => {
     await applyDirectoryUser(trx, user(REP_B, { teamIds: [TEAM_B] }), 1);
     await applyDirectoryUser(trx, user(TRAINEE, { trainerIds: [MANAGER] }), 1);
     await applyDirectoryUser(trx, user(OUTSIDER, { organizationId: OTHER_ORG }), 1);
-    await applyDirectoryTeam(trx, { id: TEAM_A, organizationId: ORG, name: 'Dallas Storm A', locationId: null, departmentId: null, managerIds: [MANAGER], memberIds: [REP_A], archived: false }, 1);
+    await applyDirectoryTeam(
+      trx,
+      {
+        id: TEAM_A,
+        organizationId: ORG,
+        name: 'Dallas Storm A',
+        locationId: null,
+        departmentId: null,
+        managerIds: [MANAGER],
+        memberIds: [REP_A],
+        archived: false,
+      },
+      1,
+    );
   });
   await database.db
     .insertInto('enrollments')
-    .values([REP_A, REP_B, TRAINEE, MANAGER, OUTSIDER].map((u, i) => ({ id: `e${i}`, user_id: u, organization_id: u === OUTSIDER ? OTHER_ORG : ORG })))
+    .values(
+      [REP_A, REP_B, TRAINEE, MANAGER, OUTSIDER].map((u, i) => ({
+        id: `e${i}`,
+        user_id: u,
+        organization_id: u === OUTSIDER ? OTHER_ORG : ORG,
+      })),
+    )
     .execute();
 });
 
@@ -84,18 +112,26 @@ afterAll(async () => {
 
 describe('projection', () => {
   it('ignores stale revisions', async () => {
-    const applied = await database.db.transaction().execute((trx) =>
-      applyDirectoryUser(trx, user(REP_A, { displayName: 'Stale Name', teamIds: [] }), 0),
-    );
+    const applied = await database.db
+      .transaction()
+      .execute((trx) =>
+        applyDirectoryUser(trx, user(REP_A, { displayName: 'Stale Name', teamIds: [] }), 0),
+      );
     expect(applied).toBe(false);
     const reader = new DirectoryReader(database.db);
     expect((await reader.getUser(REP_A))?.teamIds).toEqual([TEAM_A]);
   });
 
   it('applies newer revisions and replaces team membership', async () => {
-    await database.db.transaction().execute((trx) =>
-      applyDirectoryUser(trx, user(REP_A, { displayName: 'Marcus Delgado', teamIds: [TEAM_A] }), 2),
-    );
+    await database.db
+      .transaction()
+      .execute((trx) =>
+        applyDirectoryUser(
+          trx,
+          user(REP_A, { displayName: 'Marcus Delgado', teamIds: [TEAM_A] }),
+          2,
+        ),
+      );
     const reader = new DirectoryReader(database.db);
     expect((await reader.getUser(REP_A))?.displayName).toBe('Marcus Delgado');
     expect(await reader.managersOf(REP_A)).toEqual([MANAGER]);
@@ -110,16 +146,27 @@ describe('userScopeCondition', () => {
     sessionId: null,
     displayName: 'Manager',
     roles: ['manager'],
-    permissions: { 'enrollments.view': 'managed', 'training.participate': 'own', 'reports.view': 'organization' },
+    permissions: {
+      'enrollments.view': 'managed',
+      'training.participate': 'own',
+      'reports.view': 'organization',
+    },
     managedTeamIds: [TEAM_A],
     managedUserIds: [TRAINEE],
   });
 
-  async function visible(permission: 'enrollments.view' | 'training.participate' | 'reports.view' | 'users.view') {
+  async function visible(
+    permission: 'enrollments.view' | 'training.participate' | 'reports.view' | 'users.view',
+  ) {
     const rows = await database.db
       .selectFrom('enrollments as e')
       .select('e.user_id')
-      .where(userScopeCondition(manager.scopeFilter(permission), { userColumn: 'e.user_id', orgColumn: 'e.organization_id' }))
+      .where(
+        userScopeCondition(manager.scopeFilter(permission), {
+          userColumn: 'e.user_id',
+          orgColumn: 'e.organization_id',
+        }),
+      )
       .execute();
     return rows.map((r) => r.user_id).sort();
   }

@@ -2,7 +2,16 @@ import { Get, HttpCode, Patch, Post } from '@nestjs/common';
 import { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { certification } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequireAnyPermission, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequireAnyPermission,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { DefinitionsService } from './definitions.service.js';
 
 const c = certification;
@@ -14,8 +23,16 @@ export class DefinitionsController {
   @Get()
   @RequirePermissions('certifications.view')
   @ZResponse(c.certificationSummaryPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(c.listCertificationsQuerySchema) q: z.infer<typeof c.listCertificationsQuerySchema>) {
-    return this.definitions.list(p, { q: q.q, status: q.status, page: q.page, pageSize: q.pageSize });
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(c.listCertificationsQuerySchema) q: z.infer<typeof c.listCertificationsQuerySchema>,
+  ) {
+    return this.definitions.list(p, {
+      q: q.q,
+      status: q.status,
+      page: q.page,
+      pageSize: q.pageSize,
+    });
   }
 
   @Get(':id')
@@ -28,14 +45,21 @@ export class DefinitionsController {
   @Post()
   @RequirePermissions('certifications.create')
   @ZResponse(c.certificationDetailSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(c.createCertificationRequestSchema) body: certification.CreateCertificationRequest) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(c.createCertificationRequestSchema) body: certification.CreateCertificationRequest,
+  ) {
     return this.definitions.create(p, body);
   }
 
   @Patch(':id')
   @RequirePermissions('certifications.update')
   @ZResponse(c.certificationDetailSchema)
-  update(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(c.updateCertificationRequestSchema) body: certification.UpdateCertificationRequest) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(c.updateCertificationRequestSchema) body: certification.UpdateCertificationRequest,
+  ) {
     return this.definitions.update(p, id, body);
   }
 
@@ -59,7 +83,11 @@ export class DefinitionsController {
   @Get(':id/progress')
   @RequireAnyPermission('certificates.view_own', 'certificates.view')
   @ZResponse(c.progressSchema)
-  progress(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZQuery(c.progressQuerySchema) q: { userId?: string }) {
+  progress(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZQuery(c.progressQuerySchema) q: { userId?: string },
+  ) {
     return this.definitions.progress(p, id, q.userId);
   }
 
@@ -67,7 +95,11 @@ export class DefinitionsController {
   @HttpCode(200)
   @RequirePermissions('certifications.update')
   @ZResponse(c.progressSchema)
-  reopen(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(c.reopenCandidateRequestSchema) body: { userId: string; note?: string | null }) {
+  reopen(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(c.reopenCandidateRequestSchema) body: { userId: string; note?: string | null },
+  ) {
     return this.definitions.reopen(p, id, body.userId, body.note ?? null);
   }
 }

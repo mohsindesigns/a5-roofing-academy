@@ -29,7 +29,8 @@ export function toDefinition(row: { type: assessment.QuestionType; config: unkno
 
 function choiceOptions(def: Def): assessment.ChoiceOption[] | null {
   if (def.type === 'multiple_choice' || def.type === 'multiple_select') return def.config.options;
-  if (def.type === 'scenario' && def.config.subQuestion.kind === 'multiple_choice') return def.config.subQuestion.options;
+  if (def.type === 'scenario' && def.config.subQuestion.kind === 'multiple_choice')
+    return def.config.subQuestion.options;
   return null;
 }
 
@@ -47,16 +48,35 @@ export function initialOrder(def: Def, randomizeOptions: boolean, rng: Rng): Opt
     const ids = options.map((o) => o.id);
     return { options: randomizeOptions ? shuffle(ids, rng) : ids };
   }
-  if (def.type === 'ordering') return { items: shuffledAwayFrom(def.config.items.map((i) => i.id), rng) };
-  if (def.type === 'matching') return { choices: shuffledAwayFrom(def.config.pairs.map((p) => p.rightId), rng) };
+  if (def.type === 'ordering')
+    return {
+      items: shuffledAwayFrom(
+        def.config.items.map((i) => i.id),
+        rng,
+      ),
+    };
+  if (def.type === 'matching')
+    return {
+      choices: shuffledAwayFrom(
+        def.config.pairs.map((p) => p.rightId),
+        rng,
+      ),
+    };
   return {};
 }
 
 /** Order the authored entries by a snapshot; entries missing from the snapshot keep authored order at the end. */
-function ordered<T>(entries: readonly T[], key: (e: T) => string, order: readonly string[] | undefined): T[] {
+function ordered<T>(
+  entries: readonly T[],
+  key: (e: T) => string,
+  order: readonly string[] | undefined,
+): T[] {
   if (!order) return [...entries];
   const rank = new Map(order.map((id, i) => [id, i]));
-  return [...entries].sort((a, b) => (rank.get(key(a)) ?? Number.MAX_SAFE_INTEGER) - (rank.get(key(b)) ?? Number.MAX_SAFE_INTEGER));
+  return [...entries].sort(
+    (a, b) =>
+      (rank.get(key(a)) ?? Number.MAX_SAFE_INTEGER) - (rank.get(key(b)) ?? Number.MAX_SAFE_INTEGER),
+  );
 }
 
 export interface LearnerBase {
@@ -74,13 +94,22 @@ export function learnerQuestion(def: Def, order: OptionOrder, base: LearnerBase)
   switch (def.type) {
     case 'multiple_choice':
     case 'multiple_select':
-      return { ...base, type: def.type, options: ordered(def.config.options, (o) => o.id, order.options).map(view) } as LearnerQuestion;
+      return {
+        ...base,
+        type: def.type,
+        options: ordered(def.config.options, (o) => o.id, order.options).map(view),
+      } as LearnerQuestion;
     case 'true_false':
       return { ...base, type: 'true_false' };
     case 'short_answer':
       return { ...base, type: 'short_answer', maxLength: def.config.maxLength };
     case 'long_answer':
-      return { ...base, type: 'long_answer', minWords: def.config.minWords, maxWords: def.config.maxWords };
+      return {
+        ...base,
+        type: 'long_answer',
+        minWords: def.config.minWords,
+        maxWords: def.config.maxWords,
+      };
     case 'scenario': {
       const sub = def.config.subQuestion;
       return {
@@ -89,19 +118,30 @@ export function learnerQuestion(def: Def, order: OptionOrder, base: LearnerBase)
         scenario: def.config.scenario,
         subQuestion:
           sub.kind === 'multiple_choice'
-            ? { kind: 'multiple_choice', prompt: sub.prompt, options: ordered(sub.options, (o) => o.id, order.options).map(view) }
+            ? {
+                kind: 'multiple_choice',
+                prompt: sub.prompt,
+                options: ordered(sub.options, (o) => o.id, order.options).map(view),
+              }
             : { kind: 'open_response', prompt: sub.prompt, maxLength: sub.maxLength },
       };
     }
     case 'ordering':
-      return { ...base, type: 'ordering', items: ordered(def.config.items, (i) => i.id, order.items).map(view) };
+      return {
+        ...base,
+        type: 'ordering',
+        items: ordered(def.config.items, (i) => i.id, order.items).map(view),
+      };
     case 'matching': {
       const pairs = def.config.pairs;
       return {
         ...base,
         type: 'matching',
         prompts: pairs.map((p) => ({ id: p.leftId, text: p.left })),
-        choices: ordered(pairs, (p) => p.rightId, order.choices).map((p) => ({ id: p.rightId, text: p.right })),
+        choices: ordered(pairs, (p) => p.rightId, order.choices).map((p) => ({
+          id: p.rightId,
+          text: p.right,
+        })),
       };
     }
   }
@@ -136,16 +176,23 @@ export function isAnswered(response: Response | null): boolean {
  * Partially completed answers (e.g. some matches) are valid so autosave can store work in progress.
  */
 export function validateResponse(def: Def, response: Response): string | null {
-  if (response.type !== def.type) return 'This answer does not fit the question type. Reload the question and try again.';
-  const unknownOption = 'One of the selected options does not belong to this question. Reload the question and try again.';
+  if (response.type !== def.type)
+    return 'This answer does not fit the question type. Reload the question and try again.';
+  const unknownOption =
+    'One of the selected options does not belong to this question. Reload the question and try again.';
   switch (response.type) {
     case 'multiple_choice': {
-      const ids = new Set((def as Extract<Def, { type: 'multiple_choice' }>).config.options.map((o) => o.id));
+      const ids = new Set(
+        (def as Extract<Def, { type: 'multiple_choice' }>).config.options.map((o) => o.id),
+      );
       return ids.has(response.optionId) ? null : unknownOption;
     }
     case 'multiple_select': {
-      const ids = new Set((def as Extract<Def, { type: 'multiple_select' }>).config.options.map((o) => o.id));
-      if (new Set(response.optionIds).size !== response.optionIds.length) return 'Each option can be selected only once.';
+      const ids = new Set(
+        (def as Extract<Def, { type: 'multiple_select' }>).config.options.map((o) => o.id),
+      );
+      if (new Set(response.optionIds).size !== response.optionIds.length)
+        return 'Each option can be selected only once.';
       return response.optionIds.every((id) => ids.has(id)) ? null : unknownOption;
     }
     case 'true_false':
@@ -156,7 +203,9 @@ export function validateResponse(def: Def, response: Response): string | null {
     }
     case 'long_answer': {
       const max = (def as Extract<Def, { type: 'long_answer' }>).config.maxWords;
-      return max !== null && wordCount(response.text) > max ? `Keep your answer to ${max} words or fewer.` : null;
+      return max !== null && wordCount(response.text) > max
+        ? `Keep your answer to ${max} words or fewer.`
+        : null;
     }
     case 'scenario': {
       const sub = (def as Extract<Def, { type: 'scenario' }>).config.subQuestion;
@@ -165,12 +214,17 @@ export function validateResponse(def: Def, response: Response): string | null {
         return sub.options.some((o) => o.id === response.optionId) ? null : unknownOption;
       }
       if (response.text === undefined) return 'Write your response to this scenario.';
-      return response.text.length > sub.maxLength ? `Keep your response to ${sub.maxLength} characters or fewer.` : null;
+      return response.text.length > sub.maxLength
+        ? `Keep your response to ${sub.maxLength} characters or fewer.`
+        : null;
     }
     case 'ordering': {
       const ids = (def as Extract<Def, { type: 'ordering' }>).config.items.map((i) => i.id);
       const given = response.order;
-      const valid = given.length === ids.length && new Set(given).size === given.length && given.every((id) => ids.includes(id));
+      const valid =
+        given.length === ids.length &&
+        new Set(given).size === given.length &&
+        given.every((id) => ids.includes(id));
       return valid ? null : 'Place every item exactly once.';
     }
     case 'matching': {
@@ -180,12 +234,17 @@ export function validateResponse(def: Def, response: Response): string | null {
       const entries = Object.entries(response.matches);
       if (!entries.every(([l, r]) => left.has(l) && right.has(r))) return unknownOption;
       const used = entries.map(([, r]) => r);
-      return new Set(used).size === used.length ? null : 'Each answer on the right can be used only once.';
+      return new Set(used).size === used.length
+        ? null
+        : 'Each answer on the right can be used only once.';
     }
   }
 }
 
-export function normalizeShortAnswer(text: string, config: { caseSensitive: boolean; normalizeWhitespace: boolean }): string {
+export function normalizeShortAnswer(
+  text: string,
+  config: { caseSensitive: boolean; normalizeWhitespace: boolean },
+): string {
   let value = text.normalize('NFKC');
   value = config.normalizeWhitespace ? value.trim().replace(/\s+/g, ' ') : value;
   // Trailing sentence punctuation never changes the meaning of a short answer.
@@ -200,7 +259,8 @@ function ratioGrade(ratio: number, points: number): Grade {
 
 /** Grade one answer. Unanswered questions score zero and never need review. */
 export function gradeResponse(def: Def, response: Response | null, points: number): Grade {
-  if (!isAnswered(response) || !response || response.type !== def.type) return { kind: 'auto', correct: false, awarded: 0 };
+  if (!isAnswered(response) || !response || response.type !== def.type)
+    return { kind: 'auto', correct: false, awarded: 0 };
   switch (def.type) {
     case 'multiple_choice': {
       const r = response as Extract<Response, { type: 'multiple_choice' }>;
@@ -225,7 +285,9 @@ export function gradeResponse(def: Def, response: Response | null, points: numbe
       if (def.config.grading === 'manual') return { kind: 'review' };
       const r = response as Extract<Response, { type: 'short_answer' }>;
       const given = normalizeShortAnswer(r.text, def.config);
-      const match = def.config.acceptedAnswers.some((a) => normalizeShortAnswer(a, def.config) === given);
+      const match = def.config.acceptedAnswers.some(
+        (a) => normalizeShortAnswer(a, def.config) === given,
+      );
       return ratioGrade(match ? 1 : 0, points);
     }
     case 'long_answer':
@@ -240,14 +302,16 @@ export function gradeResponse(def: Def, response: Response | null, points: numbe
       const r = response as Extract<Response, { type: 'ordering' }>;
       const expected = def.config.items.map((i) => i.id);
       const inPlace = expected.filter((id, i) => r.order[i] === id).length;
-      if (def.config.scoring === 'all_or_nothing') return ratioGrade(inPlace === expected.length ? 1 : 0, points);
+      if (def.config.scoring === 'all_or_nothing')
+        return ratioGrade(inPlace === expected.length ? 1 : 0, points);
       return ratioGrade(inPlace / expected.length, points);
     }
     case 'matching': {
       const r = response as Extract<Response, { type: 'matching' }>;
       const pairs = def.config.pairs;
       const right = pairs.filter((p) => r.matches[p.leftId] === p.rightId).length;
-      if (def.config.scoring === 'all_or_nothing') return ratioGrade(right === pairs.length ? 1 : 0, points);
+      if (def.config.scoring === 'all_or_nothing')
+        return ratioGrade(right === pairs.length ? 1 : 0, points);
       return ratioGrade(right / pairs.length, points);
     }
   }
@@ -263,7 +327,10 @@ export function correctAnswer(def: Def): CorrectAnswer {
     case 'multiple_choice':
       return { type: 'multiple_choice', optionId: def.config.options.find((o) => o.correct)!.id };
     case 'multiple_select':
-      return { type: 'multiple_select', optionIds: def.config.options.filter((o) => o.correct).map((o) => o.id) };
+      return {
+        type: 'multiple_select',
+        optionIds: def.config.options.filter((o) => o.correct).map((o) => o.id),
+      };
     case 'true_false':
       return { type: 'true_false', value: def.config.correctAnswer };
     case 'short_answer':
@@ -279,7 +346,10 @@ export function correctAnswer(def: Def): CorrectAnswer {
     case 'ordering':
       return { type: 'ordering', order: def.config.items.map((i) => i.id) };
     case 'matching':
-      return { type: 'matching', matches: Object.fromEntries(def.config.pairs.map((p) => [p.leftId, p.rightId])) };
+      return {
+        type: 'matching',
+        matches: Object.fromEntries(def.config.pairs.map((p) => [p.leftId, p.rightId])),
+      };
   }
 }
 

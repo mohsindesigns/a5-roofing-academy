@@ -45,15 +45,28 @@ export class ProcessingWorker implements OnApplicationBootstrap {
       MEDIA_PROCESS_QUEUE,
       async (job) => {
         const attempts = job.opts.attempts ?? 1;
-        return this.processor.process(job.data.assetId, { finalAttempt: job.attemptsMade + 1 >= attempts });
+        return this.processor.process(job.data.assetId, {
+          finalAttempt: job.attemptsMade + 1 >= attempts,
+        });
       },
       { concurrency: this.config.media.processing.concurrency },
     );
-    this.queues.worker(MEDIA_MAINTENANCE_QUEUE, async () => ({ requeued: await this.requeueStranded() }), { concurrency: 1 });
+    this.queues.worker(
+      MEDIA_MAINTENANCE_QUEUE,
+      async () => ({ requeued: await this.requeueStranded() }),
+      { concurrency: 1 },
+    );
     await this.queues
       .queue(MEDIA_MAINTENANCE_QUEUE)
-      .upsertJobScheduler('requeue-stranded-uploads', { every: 5 * 60_000 }, { name: 'requeue-stranded-uploads', data: {} });
-    this.logger.info({ concurrency: this.config.media.processing.concurrency }, 'media processing worker started');
+      .upsertJobScheduler(
+        'requeue-stranded-uploads',
+        { every: 5 * 60_000 },
+        { name: 'requeue-stranded-uploads', data: {} },
+      );
+    this.logger.info(
+      { concurrency: this.config.media.processing.concurrency },
+      'media processing worker started',
+    );
   }
 
   async requeueStranded(): Promise<number> {
@@ -66,7 +79,8 @@ export class ProcessingWorker implements OnApplicationBootstrap {
       .limit(500)
       .execute();
     for (const row of rows) await this.queue.enqueue(row.id);
-    if (rows.length) this.logger.info({ count: rows.length }, 're-enqueued uploads waiting for processing');
+    if (rows.length)
+      this.logger.info({ count: rows.length }, 're-enqueued uploads waiting for processing');
     return rows.length;
   }
 }

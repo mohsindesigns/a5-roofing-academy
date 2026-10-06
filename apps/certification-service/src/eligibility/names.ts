@@ -53,14 +53,21 @@ export function referencedIds(rules: readonly Rule[]): ReferencedIds {
 
 /** Programs whose assessment map a rule needs (program_assessments_score leaves). */
 export function assessmentProgramIds(rule: Rule): string[] {
-  return [...new Set(leaves(rule).flatMap((l) => (l.type === 'program_assessments_score' ? [l.programId] : [])))];
+  return [
+    ...new Set(
+      leaves(rule).flatMap((l) => (l.type === 'program_assessments_score' ? [l.programId] : [])),
+    ),
+  ];
 }
 
 /**
  * Display names for rule descriptions, resolved from local projections (program catalog,
  * program assessment maps, AI results, milestones and certification definitions).
  */
-export async function loadRuleNames(db: DbOrTrx, rules: readonly Rule[]): Promise<RuleLabelResolver> {
+export async function loadRuleNames(
+  db: DbOrTrx,
+  rules: readonly Rule[],
+): Promise<RuleLabelResolver> {
   const ids = referencedIds(rules);
   const [programs, assessments, scenarios, certifications, lessons] = await Promise.all([
     ids.programs.size || ids.phases.size
@@ -88,7 +95,11 @@ export async function loadRuleNames(db: DbOrTrx, rules: readonly Rule[]): Promis
           .execute()
       : Promise.resolve([]),
     ids.certifications.size
-      ? db.selectFrom('certification_definitions').select(['id', 'name']).where('id', 'in', [...ids.certifications]).execute()
+      ? db
+          .selectFrom('certification_definitions')
+          .select(['id', 'name'])
+          .where('id', 'in', [...ids.certifications])
+          .execute()
       : Promise.resolve([]),
     ids.lessons.size
       ? db
@@ -101,7 +112,9 @@ export async function loadRuleNames(db: DbOrTrx, rules: readonly Rule[]): Promis
       : Promise.resolve([]),
   ]);
   const programNames = new Map(programs.map((p) => [p.program_id, p.title]));
-  const phaseNames = new Map(programs.flatMap((p) => p.phases.map((ph) => [ph.phaseId, ph.title] as const)));
+  const phaseNames = new Map(
+    programs.flatMap((p) => p.phases.map((ph) => [ph.phaseId, ph.title] as const)),
+  );
   const assessmentNames = new Map(assessments.map((a) => [a.assessment_id, a.title]));
   const scenarioNames = new Map(scenarios.map((s) => [s.scenario_id, s.scenario_title]));
   const certificationNames = new Map(certifications.map((c) => [c.id, c.name]));

@@ -50,7 +50,11 @@ export class NotificationStreamService implements BeforeApplicationShutdown {
   async open(principal: Principal, req: Request, res: Response): Promise<void> {
     const userId = principal.userId;
     if (this.count(userId) >= this.config.sse.maxConnectionsPerUser) {
-      throw new AppError(429, 'TOO_MANY_STREAMS', 'Too many open notification streams. Close other Academy tabs and try again.');
+      throw new AppError(
+        429,
+        'TOO_MANY_STREAMS',
+        'Too many open notification streams. Close other Academy tabs and try again.',
+      );
     }
 
     res.status(200);
@@ -63,7 +67,14 @@ export class NotificationStreamService implements BeforeApplicationShutdown {
     req.socket.setKeepAlive(true);
     res.flushHeaders();
 
-    const conn: Connection = { id: uuidv7(), userId, res, heartbeat: null, unsubscribe: null, closed: false };
+    const conn: Connection = {
+      id: uuidv7(),
+      userId,
+      res,
+      heartbeat: null,
+      unsubscribe: null,
+      closed: false,
+    };
     this.connections.add(conn);
     res.on('close', () => this.close(conn));
 
@@ -87,12 +98,16 @@ export class NotificationStreamService implements BeforeApplicationShutdown {
       this.write(conn, `retry: 5000\n\n`);
       const lastEventId = req.header('last-event-id');
       if (lastEventId && UUID.test(lastEventId)) {
-        for (const n of await this.repo.listAfter(userId, lastEventId, REPLAY_LIMIT)) this.writeNotification(conn, n);
+        for (const n of await this.repo.listAfter(userId, lastEventId, REPLAY_LIMIT))
+          this.writeNotification(conn, n);
       }
       this.writeUnread(conn, await this.repo.unreadCount(userId));
       ready = true;
       for (const message of pending.splice(0)) this.forward(conn, message);
-      conn.heartbeat = setInterval(() => this.write(conn, `: heartbeat ${new Date().toISOString()}\n\n`), this.config.sse.heartbeatMs);
+      conn.heartbeat = setInterval(
+        () => this.write(conn, `: heartbeat ${new Date().toISOString()}\n\n`),
+        this.config.sse.heartbeatMs,
+      );
       conn.heartbeat.unref();
     } catch (err) {
       this.logger.warn({ err, userId }, 'notification stream setup failed');
@@ -121,7 +136,10 @@ export class NotificationStreamService implements BeforeApplicationShutdown {
   private write(conn: Connection, chunk: string): void {
     if (conn.closed || conn.res.writableEnded) return;
     if (conn.res.writableLength > MAX_BUFFERED_BYTES) {
-      this.logger.warn({ userId: conn.userId }, 'notification stream client is not reading; closing the stream');
+      this.logger.warn(
+        { userId: conn.userId },
+        'notification stream client is not reading; closing the stream',
+      );
       this.close(conn);
       return;
     }
@@ -133,7 +151,11 @@ export class NotificationStreamService implements BeforeApplicationShutdown {
     conn.closed = true;
     if (conn.heartbeat) clearInterval(conn.heartbeat);
     this.connections.delete(conn);
-    conn.unsubscribe?.().catch((err: unknown) => this.logger.warn({ err }, 'failed to unsubscribe notification stream'));
+    conn
+      .unsubscribe?.()
+      .catch((err: unknown) =>
+        this.logger.warn({ err }, 'failed to unsubscribe notification stream'),
+      );
     if (!conn.res.writableEnded) conn.res.end();
   }
 

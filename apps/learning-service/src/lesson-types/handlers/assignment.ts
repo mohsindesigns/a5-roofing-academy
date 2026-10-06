@@ -7,7 +7,11 @@ export const assignmentLesson = defineLessonType<learning.AssignmentLessonConfig
   configSchema: learning.assignmentLessonConfigSchema,
   completion: 'submission',
   learnerCompletion() {
-    return { allowed: false, reason: 'Submit your response; the lesson completes when your trainer or manager approves it.' };
+    return {
+      allowed: false,
+      reason:
+        'Submit your response; the lesson completes when your trainer or manager approves it.',
+    };
   },
   completionHint(config) {
     const words = config.minWords > 0 ? ` of at least ${config.minWords} words` : '';

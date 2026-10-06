@@ -11,7 +11,10 @@ if (process.env.NODE_ENV === 'production') {
   process.stderr.write('Refusing to seed demo data in production\n');
   process.exit(1);
 }
-const database = createDatabase<NotificationDatabase>({ url, applicationName: 'notification-seed' });
+const database = createDatabase<NotificationDatabase>({
+  url,
+  applicationName: 'notification-seed',
+});
 try {
   await seedNotification(database.db, {
     appUrl: process.env.PUBLIC_APP_URL,

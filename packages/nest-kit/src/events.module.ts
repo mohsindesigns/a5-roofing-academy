@@ -61,7 +61,10 @@ export class EventBus {
     return buildEvent(def, payload, {
       id: uuidv7(),
       producer: this.config.serviceName,
-      organizationId: options.organizationId !== undefined ? options.organizationId : (ctx?.organizationId ?? null),
+      organizationId:
+        options.organizationId !== undefined
+          ? options.organizationId
+          : (ctx?.organizationId ?? null),
       actor:
         options.actor ??
         (ctx?.userId ? { type: 'user', id: ctx.userId } : { type: 'system', id: null }),
@@ -94,7 +97,10 @@ export class EventBus {
         userAgent: record.userAgent ?? ctx?.userAgent ?? null,
         requestId: record.requestId ?? ctx?.requestId ?? null,
       },
-      { subject: record.resourceId ? { type: record.resourceType, id: record.resourceId } : null, ...options },
+      {
+        subject: record.resourceId ? { type: record.resourceType, id: record.resourceId } : null,
+        ...options,
+      },
     );
   }
 
@@ -126,8 +132,14 @@ interface OnEventMeta {
  * Subscribe a provider method to a domain event. The consumer group is the service name, so each
  * service receives every event once; handlers must be idempotent (use `processOnce`).
  */
-export function OnEvent(def: AnyDefinition, options: { fromAllProducers?: boolean } = {}): MethodDecorator {
-  const meta: OnEventMeta = { type: def.type, producers: options.fromAllProducers ? 'all' : [def.producer] };
+export function OnEvent(
+  def: AnyDefinition,
+  options: { fromAllProducers?: boolean } = {},
+): MethodDecorator {
+  const meta: OnEventMeta = {
+    type: def.type,
+    producers: options.fromAllProducers ? 'all' : [def.producer],
+  };
   return SetMetadata(ON_EVENT, meta);
 }
 
@@ -182,7 +194,10 @@ class EventsLifecycle implements OnApplicationBootstrap, BeforeApplicationShutdo
     });
     for (const h of handlers) this.consumer.on(h.meta.type, h.handler);
     await this.consumer.start();
-    this.logger.info({ streams: [...streams], handlers: handlers.map((h) => h.meta.type) }, 'event consumer started');
+    this.logger.info(
+      { streams: [...streams], handlers: handlers.map((h) => h.meta.type) },
+      'event consumer started',
+    );
   }
 
   async beforeApplicationShutdown() {
@@ -190,8 +205,14 @@ class EventsLifecycle implements OnApplicationBootstrap, BeforeApplicationShutdo
     await this.relay?.stop();
   }
 
-  private discoverHandlers(): Array<{ meta: OnEventMeta; handler: (e: EventEnvelope, d: DeliveryInfo) => Promise<void> }> {
-    const found: Array<{ meta: OnEventMeta; handler: (e: EventEnvelope, d: DeliveryInfo) => Promise<void> }> = [];
+  private discoverHandlers(): Array<{
+    meta: OnEventMeta;
+    handler: (e: EventEnvelope, d: DeliveryInfo) => Promise<void>;
+  }> {
+    const found: Array<{
+      meta: OnEventMeta;
+      handler: (e: EventEnvelope, d: DeliveryInfo) => Promise<void>;
+    }> = [];
     for (const wrapper of this.discovery.getProviders()) {
       const instance = wrapper.instance as Record<string, unknown> | undefined;
       if (!instance || typeof instance !== 'object') continue;
@@ -213,11 +234,7 @@ export class EventsModule {
     return {
       module: EventsModule,
       imports: [DiscoveryModule],
-      providers: [
-        { provide: 'A5_EVENTS_OPTIONS', useValue: options },
-        EventBus,
-        EventsLifecycle,
-      ],
+      providers: [{ provide: 'A5_EVENTS_OPTIONS', useValue: options }, EventBus, EventsLifecycle],
       exports: [EventBus],
     };
   }

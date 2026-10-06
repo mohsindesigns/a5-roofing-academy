@@ -7,7 +7,11 @@ export const InjectStorage = () => Inject(OBJECT_STORAGE);
 
 export function createObjectStorage(config: CertificationConfig['storage']): ObjectStorage {
   if (config.driver === 'local') {
-    return new LocalDiskStorage({ root: config.localRoot, publicBaseUrl: config.filesBaseUrl, signingSecret: config.signingSecret });
+    return new LocalDiskStorage({
+      root: config.localRoot,
+      publicBaseUrl: config.filesBaseUrl,
+      signingSecret: config.signingSecret,
+    });
   }
   return new S3Storage({
     bucket: config.s3.bucket,
@@ -22,11 +26,14 @@ export function createObjectStorage(config: CertificationConfig['storage']): Obj
 
 /** Generated object keys. User file names are never part of a key. */
 export const storageKeys = {
-  asset: (organizationId: string, assetId: string, ext: string) => `certification/${organizationId}/assets/${assetId}.${ext}`,
-  certificatePrefix: (organizationId: string, certificateId: string) => `certification/${organizationId}/certificates/${certificateId}/`,
+  asset: (organizationId: string, assetId: string, ext: string) =>
+    `certification/${organizationId}/assets/${assetId}.${ext}`,
+  certificatePrefix: (organizationId: string, certificateId: string) =>
+    `certification/${organizationId}/certificates/${certificateId}/`,
   certificateFile: (organizationId: string, certificateId: string, name: string) =>
     `certification/${organizationId}/certificates/${certificateId}/${name}`,
-  preview: (organizationId: string, hash: string) => `certification/${organizationId}/previews/${hash}.pdf`,
+  preview: (organizationId: string, hash: string) =>
+    `certification/${organizationId}/previews/${hash}.pdf`,
 };
 
 export function extensionFor(contentType: string): string {

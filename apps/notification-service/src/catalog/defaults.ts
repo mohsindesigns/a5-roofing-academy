@@ -5,7 +5,9 @@ import { json, type Channel, type Db, type DbOrTrx } from '../database/index.js'
 import { NOTIFICATION_TYPE_DEFS, type NotificationTypeDef } from './notification-types.js';
 
 /** Default template rows of a type (one per supported channel). */
-export function defaultTemplates(def: NotificationTypeDef): Array<{ channel: Channel; subject: string; body: string }> {
+export function defaultTemplates(
+  def: NotificationTypeDef,
+): Array<{ channel: Channel; subject: string; body: string }> {
   return def.channels.flatMap((channel) => {
     const content = def.defaults[channel];
     return content ? [{ channel, subject: content.subject, body: content.body }] : [];
@@ -16,7 +18,10 @@ export function defaultTemplates(def: NotificationTypeDef): Array<{ channel: Cha
  * Create the shipped templates and rules for an organization. Existing rows (including
  * administrator edits) are left untouched; types added in a later release are filled in.
  */
-export async function provisionDefaults(db: DbOrTrx, organizationId: string): Promise<{ templates: number; rules: number }> {
+export async function provisionDefaults(
+  db: DbOrTrx,
+  organizationId: string,
+): Promise<{ templates: number; rules: number }> {
   const templates = NOTIFICATION_TYPE_DEFS.flatMap((def) =>
     defaultTemplates(def).map((t) => ({
       id: uuidv7(),
@@ -51,7 +56,10 @@ export async function provisionDefaults(db: DbOrTrx, organizationId: string): Pr
     .values(rules)
     .onConflict((oc) => oc.columns(['organization_id', 'key']).doNothing())
     .executeTakeFirst();
-  return { templates: Number(t.numInsertedOrUpdatedRows ?? 0n), rules: Number(r.numInsertedOrUpdatedRows ?? 0n) };
+  return {
+    templates: Number(t.numInsertedOrUpdatedRows ?? 0n),
+    rules: Number(r.numInsertedOrUpdatedRows ?? 0n),
+  };
 }
 
 /** Provisions defaults once per organization per process. */

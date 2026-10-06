@@ -76,7 +76,12 @@ export const queryBoolean = z
 export function queryList<T extends z.ZodType<unknown, string>>(item: T) {
   return z
     .string()
-    .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean))
+    .transform((v) =>
+      v
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    )
     .pipe(z.array(item))
     .optional();
 }

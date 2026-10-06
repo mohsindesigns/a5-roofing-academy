@@ -19,7 +19,9 @@ export class HealthRegistry {
     this.shuttingDown = true;
   }
 
-  async run(timeoutMs = 2_000): Promise<{ ok: boolean; checks: Record<string, { ok: boolean; error?: string; ms: number }> }> {
+  async run(
+    timeoutMs = 2_000,
+  ): Promise<{ ok: boolean; checks: Record<string, { ok: boolean; error?: string; ms: number }> }> {
     const results: Record<string, { ok: boolean; error?: string; ms: number }> = {};
     await Promise.all(
       [...this.checks].map(async ([name, check]) => {
@@ -56,6 +58,8 @@ export class HealthController {
   @Get('ready')
   async ready(@Res() res: Response) {
     const result = await this.registry.run();
-    res.status(result.ok ? 200 : 503).json({ status: result.ok ? 'ok' : 'unavailable', checks: result.checks });
+    res
+      .status(result.ok ? 200 : 503)
+      .json({ status: result.ok ? 'ok' : 'unavailable', checks: result.checks });
   }
 }

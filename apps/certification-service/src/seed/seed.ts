@@ -18,9 +18,16 @@ if (process.env.NODE_ENV === 'production') {
 
 const config = loadCertificationConfig();
 const logger = createLogger({ service: 'certification-seed', level: 'warn' });
-const database = createDatabase<CertificationDatabase>({ url: config.databaseUrl!, applicationName: 'certification-seed' });
+const database = createDatabase<CertificationDatabase>({
+  url: config.databaseUrl!,
+  applicationName: 'certification-seed',
+});
 const redis = createRedis(config.redisUrl);
-const queues = new QueueFactory({ redisUrl: config.redisUrl, prefix: `${config.redisNamespace}:bull`, logger });
+const queues = new QueueFactory({
+  redisUrl: config.redisUrl,
+  prefix: `${config.redisNamespace}:bull`,
+  logger,
+});
 try {
   const events = new EventBus(config);
   const storage = createObjectStorage(config.storage);
@@ -31,10 +38,22 @@ try {
     { getUser: async () => null } as never,
     logger,
   );
-  const issuance = new IssuanceService(database.db, storage, new DistributedLock(redis, new RedisNamespace(config.redisNamespace)), queues, events, recipients, config, logger);
+  const issuance = new IssuanceService(
+    database.db,
+    storage,
+    new DistributedLock(redis, new RedisNamespace(config.redisNamespace)),
+    queues,
+    events,
+    recipients,
+    config,
+    logger,
+  );
   const eligibility = new EligibilityService(database.db, events, issuance, logger);
   const lifecycle = new LifecycleService(database.db, events, eligibility);
-  await seedCertification({ db: database.db, storage, config, issuance, eligibility, lifecycle }, { log: (line) => process.stdout.write(`${line}\n`) });
+  await seedCertification(
+    { db: database.db, storage, config, issuance, eligibility, lifecycle },
+    { log: (line) => process.stdout.write(`${line}\n`) },
+  );
 } catch (err) {
   process.stderr.write(`${(err as Error).stack ?? String(err)}\n`);
   process.exitCode = 1;

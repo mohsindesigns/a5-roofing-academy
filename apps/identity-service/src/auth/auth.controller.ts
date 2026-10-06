@@ -54,7 +54,12 @@ export class AuthController {
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = readRefreshCookie(req);
     if (!token) throw new UnauthenticatedError('UNAUTHENTICATED', 'Sign in to continue.');
-    if (!csrfValid(req)) throw new AppError(403, 'CSRF_FAILED', 'Your session could not be verified. Reload the page and sign in again.');
+    if (!csrfValid(req))
+      throw new AppError(
+        403,
+        'CSRF_FAILED',
+        'Your session could not be verified. Reload the page and sign in again.',
+      );
     try {
       const issued = await this.auth.refresh(token);
       setSessionCookies(res, this.config, issued.refreshToken, issued.refreshExpiresAt);
@@ -104,7 +109,9 @@ export class AuthController {
   @Post('password/reset')
   @HttpCode(200)
   @ZResponse(okSchema)
-  async reset(@ZBody(identity.resetPasswordRequestSchema) body: { token: string; password: string }) {
+  async reset(
+    @ZBody(identity.resetPasswordRequestSchema) body: { token: string; password: string },
+  ) {
     await this.auth.resetPassword(body.token, body.password);
     return { ok: true as const };
   }

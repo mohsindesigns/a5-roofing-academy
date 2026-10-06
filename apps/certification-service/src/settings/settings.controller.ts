@@ -2,7 +2,14 @@ import { Get, Put } from '@nestjs/common';
 import { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { certification } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequireAnyPermission, RequirePermissions, ZBody, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequireAnyPermission,
+  RequirePermissions,
+  ZBody,
+  ZResponse,
+} from '@a5/nest-kit';
 import { SettingsService } from './settings.service.js';
 
 @ApiController('certification-settings')
@@ -21,7 +28,8 @@ export class SettingsController {
   @ZResponse(certification.certificationSettingsSchema)
   update(
     @CurrentPrincipal() p: Principal,
-    @ZBody(certification.updateCertificationSettingsRequestSchema) body: z.infer<typeof certification.updateCertificationSettingsRequestSchema>,
+    @ZBody(certification.updateCertificationSettingsRequestSchema)
+    body: z.infer<typeof certification.updateCertificationSettingsRequestSchema>,
   ) {
     return this.settings.update(p, body);
   }

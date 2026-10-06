@@ -8,24 +8,84 @@ import { matching, mc, ms, ordering, tf, type Draft } from './drafts.js';
  */
 
 export const CATEGORIES = [
-  { key: 'company-standards', name: 'Company Standards', description: 'How A5 Roofing works: the customer journey, documentation and the standards every representative is held to.' },
-  { key: 'roofing-systems', name: 'Roofing Systems', description: 'Components, materials, measurements and ventilation of residential roof systems.' },
-  { key: 'storm-damage', name: 'Storm Damage', description: 'Recognising, separating and documenting hail and wind damage.' },
-  { key: 'insurance-process', name: 'Insurance Process', description: 'How homeowner claims, deductibles, depreciation, supplements and payments work.' },
-  { key: 'sales-conversation', name: 'Sales Conversation', description: 'Opening at the door, discovery questions and guiding the homeowner to a decision.' },
-  { key: 'objection-handling', name: 'Objection Handling', description: 'The A5 Objection Framework applied to the concerns homeowners raise most often.' },
-  { key: 'compliance', name: 'Compliance', description: 'Legal and ethical limits: what a representative must never promise, offer or do.' },
+  {
+    key: 'company-standards',
+    name: 'Company Standards',
+    description:
+      'How A5 Roofing works: the customer journey, documentation and the standards every representative is held to.',
+  },
+  {
+    key: 'roofing-systems',
+    name: 'Roofing Systems',
+    description: 'Components, materials, measurements and ventilation of residential roof systems.',
+  },
+  {
+    key: 'storm-damage',
+    name: 'Storm Damage',
+    description: 'Recognising, separating and documenting hail and wind damage.',
+  },
+  {
+    key: 'insurance-process',
+    name: 'Insurance Process',
+    description: 'How homeowner claims, deductibles, depreciation, supplements and payments work.',
+  },
+  {
+    key: 'sales-conversation',
+    name: 'Sales Conversation',
+    description:
+      'Opening at the door, discovery questions and guiding the homeowner to a decision.',
+  },
+  {
+    key: 'objection-handling',
+    name: 'Objection Handling',
+    description: 'The A5 Objection Framework applied to the concerns homeowners raise most often.',
+  },
+  {
+    key: 'compliance',
+    name: 'Compliance',
+    description: 'Legal and ethical limits: what a representative must never promise, offer or do.',
+  },
 ] as const;
 export type CategoryKey = (typeof CATEGORIES)[number]['key'];
 
 export const COMPETENCIES = [
-  { key: 'product-knowledge', name: 'Roofing product knowledge', description: 'Explains roof components, materials and ventilation accurately and in plain language.' },
-  { key: 'damage-assessment', name: 'Damage assessment & documentation', description: 'Identifies storm damage correctly and documents it so an adjuster can verify it.' },
-  { key: 'claims-guidance', name: 'Insurance claim guidance', description: 'Explains the claim process and payments without overstepping the contractor role.' },
-  { key: 'discovery-rapport', name: 'Discovery & rapport', description: 'Earns the conversation and uncovers what matters to the homeowner.' },
-  { key: 'objection-handling', name: 'Objection handling', description: 'Responds to concerns with the A5 Objection Framework instead of pressure.' },
-  { key: 'ethics-compliance', name: 'Ethics & compliance', description: 'Stays within the law and the A5 Sales Code of Conduct.' },
-  { key: 'a5-process', name: 'A5 process & standards', description: 'Follows the A5 customer journey and documentation standards.' },
+  {
+    key: 'product-knowledge',
+    name: 'Roofing product knowledge',
+    description:
+      'Explains roof components, materials and ventilation accurately and in plain language.',
+  },
+  {
+    key: 'damage-assessment',
+    name: 'Damage assessment & documentation',
+    description: 'Identifies storm damage correctly and documents it so an adjuster can verify it.',
+  },
+  {
+    key: 'claims-guidance',
+    name: 'Insurance claim guidance',
+    description:
+      'Explains the claim process and payments without overstepping the contractor role.',
+  },
+  {
+    key: 'discovery-rapport',
+    name: 'Discovery & rapport',
+    description: 'Earns the conversation and uncovers what matters to the homeowner.',
+  },
+  {
+    key: 'objection-handling',
+    name: 'Objection handling',
+    description: 'Responds to concerns with the A5 Objection Framework instead of pressure.',
+  },
+  {
+    key: 'ethics-compliance',
+    name: 'Ethics & compliance',
+    description: 'Stays within the law and the A5 Sales Code of Conduct.',
+  },
+  {
+    key: 'a5-process',
+    name: 'A5 process & standards',
+    description: 'Follows the A5 customer journey and documentation standards.',
+  },
 ] as const;
 export type CompetencyKey = (typeof COMPETENCIES)[number]['key'];
 
@@ -57,11 +117,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['a5-process'],
     difficulty: 'easy',
     tags: [W1, 'inspection', 'photo-report'],
-    prompt: 'After an inspection you walk the homeowner through the A5 photo report. What is the purpose of that report?',
+    prompt:
+      'After an inspection you walk the homeowner through the A5 photo report. What is the purpose of that report?',
     explanation:
       'The photo report is how A5 earns trust: the homeowner sees exactly what we saw, slope by slope, before deciding anything. It documents conditions. It does not decide coverage (only the insurer does), it does not replace the adjuster, and it is not a price quote.',
     draft: mc(
-      ['To show the homeowner what was found on their roof, with dated photos, before any decision is made', true],
+      [
+        'To show the homeowner what was found on their roof, with dated photos, before any decision is made',
+        true,
+      ],
       ['To prove to the insurance company that the claim has to be paid'],
       ['To replace the adjuster’s inspection so the claim moves faster'],
       ['To give the homeowner the final price of a replacement'],
@@ -73,7 +137,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['a5-process'],
     difficulty: 'medium',
     tags: [W1, 'customer-journey'],
-    prompt: 'Put the stages of the A5 customer journey in order, from first contact to the end of the project.',
+    prompt:
+      'Put the stages of the A5 customer journey in order, from first contact to the end of the project.',
     explanation:
       'Every A5 customer moves through the same stages: the first conversation earns permission for a free inspection; the photo report review lets the homeowner decide with evidence; when a claim is filed we attend the adjuster meeting; then build day; and the project ends with a final walkthrough and warranty registration.',
     draft: ordering([
@@ -91,7 +156,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['ethics-compliance', 'a5-process'],
     difficulty: 'easy',
     tags: [W1, 'inspection', 'code-of-conduct'],
-    prompt: 'If a homeowner is not home, it is acceptable to put a ladder up and check the roof for damage as long as you leave a door hanger.',
+    prompt:
+      'If a homeowner is not home, it is acceptable to put a ladder up and check the roof for damage as long as you leave a door hanger.',
     explanation:
       'False. Never go onto a property or roof without the homeowner’s explicit permission. It is trespassing, it is a safety risk, and it destroys the trust the rest of the process depends on. Leave a door hanger and come back.',
     draft: tf(false),
@@ -124,8 +190,14 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'Knowing who does what lets you set honest expectations: you inspect and guide the homeowner, the claims coordinator handles paperwork and supplements with the insurer, the project manager runs build day, and customer care closes out warranties and follow-up.',
     draft: matching([
-      ['Sales representative', 'Inspects the roof, documents findings and guides the homeowner through each step'],
-      ['Claims coordinator', 'Tracks claim paperwork, supplements and correspondence with the insurer'],
+      [
+        'Sales representative',
+        'Inspects the roof, documents findings and guides the homeowner through each step',
+      ],
+      [
+        'Claims coordinator',
+        'Tracks claim paperwork, supplements and correspondence with the insurer',
+      ],
       ['Project manager', 'Schedules the crew and supervises the installation on build day'],
       ['Customer care', 'Registers the warranty and handles follow-up after the build'],
     ]),
@@ -136,9 +208,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['a5-process'],
     difficulty: 'easy',
     tags: [W1, 'photo-report'],
-    prompt: 'A5 standard: within how many hours of an inspection must the homeowner receive their photo report? Enter a number.',
-    explanation: 'A5 sends every homeowner their photo report within 24 hours of the inspection, whether or not damage was found. Fast, consistent follow-through is part of how we earn trust.',
-    draft: { type: 'short_answer', accepted: ['24', '24 hours', 'twenty-four', 'twenty four', 'twenty-four hours'], maxLength: 40 },
+    prompt:
+      'A5 standard: within how many hours of an inspection must the homeowner receive their photo report? Enter a number.',
+    explanation:
+      'A5 sends every homeowner their photo report within 24 hours of the inspection, whether or not damage was found. Fast, consistent follow-through is part of how we earn trust.',
+    draft: {
+      type: 'short_answer',
+      accepted: ['24', '24 hours', 'twenty-four', 'twenty four', 'twenty-four hours'],
+      maxLength: 40,
+    },
     commonMistake: '48',
   },
   {
@@ -164,7 +242,8 @@ export const QUESTIONS: SeedQuestion[] = [
     written: {
       strong:
         'It is completely free and you are not committing to anything. If you are okay with it, I will go up and look at every slope, the flashing and vents, and check the gutters and downspouts for hail dents, taking dated photos as I go. You will have a photo report within 24 hours so you can see what I saw. I ask first because it is your property and getting on a roof is a safety issue. I will not guess at what insurance will do; that is their call.',
-      strongFeedback: 'Clear and honest. You covered the free inspection, what you check, the 24-hour report and why you ask permission, without predicting coverage.',
+      strongFeedback:
+        'Clear and honest. You covered the free inspection, what you check, the 24-hour report and why you ask permission, without predicting coverage.',
       weak: 'I just go up and take a look around for damage and then we can talk about getting you a new roof paid for by insurance.',
       weakFeedback:
         'Too vague, and it implies insurance will pay. Explain that the inspection is free with no obligation, what you check, the 24-hour photo report, and that you ask permission first.',
@@ -178,11 +257,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['ethics-compliance', 'claims-guidance'],
     difficulty: 'easy',
     tags: [W1, 'never-promise'],
-    prompt: 'A homeowner asks: "Can you guarantee my insurance will pay for a new roof?" What is the correct response?',
+    prompt:
+      'A homeowner asks: "Can you guarantee my insurance will pay for a new roof?" What is the correct response?',
     explanation:
       'Only the insurance company decides coverage. Promising approval misrepresents your role and sets the homeowner up for disappointment. What you can promise is what you control: thorough documentation and being there when the adjuster inspects.',
     draft: mc(
-      ['"I can’t guarantee that; only your insurance company decides coverage. What I can do is document everything and be there when the adjuster inspects."', true],
+      [
+        '"I can’t guarantee that; only your insurance company decides coverage. What I can do is document everything and be there when the adjuster inspects."',
+        true,
+      ],
       ['"Yes. With this much hail damage they always pay."'],
       ['"If they don’t pay, A5 will cover the difference."'],
       ['"I know the adjusters around here, so I’ll make sure it gets approved."'],
@@ -194,7 +277,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['ethics-compliance'],
     difficulty: 'medium',
     tags: ['never-promise', 'deductible'],
-    prompt: 'Which of the following must an A5 representative never promise or offer? Select all that apply.',
+    prompt:
+      'Which of the following must an A5 representative never promise or offer? Select all that apply.',
     explanation:
       'Paying, waiving or rebating a deductible is illegal for contractors in Texas. Promising claim approval misrepresents who decides coverage. Negotiating the claim on the homeowner’s behalf is acting as a public adjuster, which a contractor working on the property may not do. Offering a free inspection and attending the adjuster meeting at the homeowner’s request are normal parts of the A5 process.',
     draft: ms(
@@ -212,7 +296,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['ethics-compliance', 'claims-guidance'],
     difficulty: 'medium',
     tags: [W1, 'deductible', 'texas-law'],
-    prompt: 'Texas law allows a roofing contractor to waive or rebate a homeowner’s insurance deductible as long as it is disclosed in writing.',
+    prompt:
+      'Texas law allows a roofing contractor to waive or rebate a homeowner’s insurance deductible as long as it is disclosed in writing.',
     explanation:
       'False. Texas Insurance Code Chapter 707 prohibits contractors from paying, waiving, rebating or promising to absorb an insured’s deductible, however it is disclosed or advertised. Doing so can expose the homeowner’s claim to a fraud investigation and the contractor to penalties.',
     draft: tf(false),
@@ -223,11 +308,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['ethics-compliance', 'objection-handling'],
     difficulty: 'medium',
     tags: ['deductible', 'texas-law'],
-    prompt: 'A homeowner says their neighbor’s roofer offered to "take care of" the deductible. How should you respond?',
+    prompt:
+      'A homeowner says their neighbor’s roofer offered to "take care of" the deductible. How should you respond?',
     explanation:
       'Stay calm and factual: covering a deductible is illegal for contractors in Texas and puts the homeowner’s claim at risk. Then turn to what you can do, which is to make the real out-of-pocket cost clear up front so there are no surprises.',
     draft: mc(
-      ['Explain that A5 can’t do that because covering a deductible is illegal in Texas and can put their claim at risk, then show them their real out-of-pocket cost up front', true],
+      [
+        'Explain that A5 can’t do that because covering a deductible is illegal in Texas and can put their claim at risk, then show them their real out-of-pocket cost up front',
+        true,
+      ],
       ['Offer to match the neighbor’s deal so you don’t lose the job'],
       ['Tell them it’s fine as long as it isn’t written in the contract'],
       ['Suggest asking the insurer to raise the estimate so it covers the deductible'],
@@ -250,7 +339,10 @@ export const QUESTIONS: SeedQuestion[] = [
         kind: 'multiple_choice',
         prompt: 'What do you do?',
         options: [
-          ['Explain that she needs to file and manage the claim herself, offer to attend the adjuster’s inspection and share your photo report, and make sure she understands each document before she signs it', true],
+          [
+            'Explain that she needs to file and manage the claim herself, offer to attend the adjuster’s inspection and share your photo report, and make sure she understands each document before she signs it',
+            true,
+          ],
           ['Call the insurer as her representative and negotiate the settlement for her'],
           ['Sign the claim form for her using her policy number so she doesn’t lose time'],
           ['Tell her to wait for the next storm so more damage can be included in one claim'],
@@ -264,7 +356,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['ethics-compliance'],
     difficulty: 'medium',
     tags: ['never-promise', 'written-response'],
-    prompt: 'Name one thing a representative must never say about the outcome of an insurance claim, and explain in one sentence why.',
+    prompt:
+      'Name one thing a representative must never say about the outcome of an insurance claim, and explain in one sentence why.',
     explanation:
       'Examples: "Your insurance will pay for a new roof", "You won’t pay anything out of pocket", "Your premium won’t go up". Each one promises something only the insurer (or the homeowner’s policy and agent) controls, so it misleads the homeowner.',
     draft: {
@@ -276,10 +369,12 @@ export const QUESTIONS: SeedQuestion[] = [
         'Full credit when the learner names a claim-outcome promise (approval, a new roof paid for, no out-of-pocket cost, premiums unaffected, deductible covered) AND explains that the insurer or policy decides it, so promising it misleads the homeowner.',
     },
     written: {
-      strong: 'Never say "your insurance will pay for a new roof", because only the insurance company decides coverage and promising it misleads the homeowner.',
+      strong:
+        'Never say "your insurance will pay for a new roof", because only the insurance company decides coverage and promising it misleads the homeowner.',
       strongFeedback: 'Exactly right: a clear example and the reason behind it.',
       weak: 'Don’t talk about insurance at all.',
-      weakFeedback: 'We do talk about insurance; we just never promise outcomes. Name a specific promise (for example claim approval) and why it is off limits.',
+      weakFeedback:
+        'We do talk about insurance; we just never promise outcomes. Name a specific promise (for example claim approval) and why it is off limits.',
     },
   },
   {
@@ -310,7 +405,10 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'Underlayment (synthetic or felt) is a secondary water-resistant barrier over the roof deck. If wind-driven rain or a damaged shingle lets water past the shingles, the underlayment protects the decking. It does not insulate, fasten the shingles or ventilate the attic.',
     draft: mc(
-      ['It is a secondary water-resistant barrier that protects the deck if water gets past the shingles', true],
+      [
+        'It is a secondary water-resistant barrier that protects the deck if water gets past the shingles',
+        true,
+      ],
       ['It insulates the attic and lowers cooling costs'],
       ['It holds the shingles to the deck'],
       ['It lets warm air escape from the attic'],
@@ -326,7 +424,10 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'Being able to name and explain each component is what makes your photo report credible. Drip edge protects the deck edge and guides water into the gutter; ridge vents exhaust warm, moist air; ice and water shield seals valleys and penetrations; step flashing seals roof-to-wall joints; the starter strip seals the eave edge under the first course.',
     draft: matching([
-      ['Drip edge', 'Guides water off the roof edge into the gutter and protects the edge of the deck'],
+      [
+        'Drip edge',
+        'Guides water off the roof edge into the gutter and protects the edge of the deck',
+      ],
       ['Ridge vent', 'Lets warm, moist air escape at the peak of the roof'],
       ['Ice and water shield', 'Self-adhering membrane that seals valleys, eaves and penetrations'],
       ['Step flashing', 'Overlapping metal pieces that seal where a roof slope meets a sidewall'],
@@ -339,9 +440,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['product-knowledge'],
     difficulty: 'easy',
     tags: [W2, 'measurement'],
-    prompt: 'Roofs are measured and priced in "squares". How many square feet are in one roofing square? Enter a number.',
-    explanation: 'One roofing square is 100 square feet of roof surface. A 2,400 sq ft roof is 24 squares, before waste is added for hips, valleys and starter.',
-    draft: { type: 'short_answer', accepted: ['100', '100 sq ft', '100 square feet', 'one hundred', 'one hundred square feet'], maxLength: 40 },
+    prompt:
+      'Roofs are measured and priced in "squares". How many square feet are in one roofing square? Enter a number.',
+    explanation:
+      'One roofing square is 100 square feet of roof surface. A 2,400 sq ft roof is 24 squares, before waste is added for hips, valleys and starter.',
+    draft: {
+      type: 'short_answer',
+      accepted: ['100', '100 sq ft', '100 square feet', 'one hundred', 'one hundred square feet'],
+      maxLength: 40,
+    },
     commonMistake: '10',
   },
   {
@@ -350,7 +457,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['product-knowledge'],
     difficulty: 'easy',
     tags: ['shingles'],
-    prompt: 'Architectural (dimensional) shingles are made in a single flat layer, while three-tab shingles are laminated from two layers.',
+    prompt:
+      'Architectural (dimensional) shingles are made in a single flat layer, while three-tab shingles are laminated from two layers.',
     explanation:
       'False; it is the other way around. Three-tab shingles are a single flat layer with cut-outs. Architectural shingles laminate two or more layers, which gives them their dimensional look, more weight and usually higher wind ratings and longer warranties.',
     draft: tf(false),
@@ -365,7 +473,10 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'Balanced ventilation (intake at the soffits, exhaust near the ridge) moves heat and moisture out of the attic. Without it, shingles bake from below and age faster, and moisture condenses on the decking and rots it. More exhaust is not automatically better: exhaust without matching intake, or mixing exhaust types, can short-circuit the airflow.',
     draft: mc(
-      ['Balanced intake and exhaust remove heat and moisture that would otherwise age the shingles faster and rot the decking', true],
+      [
+        'Balanced intake and exhaust remove heat and moisture that would otherwise age the shingles faster and rot the decking',
+        true,
+      ],
       ['Ventilation keeps hail from damaging the shingles'],
       ['It only matters in cold climates, not in Texas'],
       ['Adding more exhaust vents always extends roof life, whatever the intake'],
@@ -395,9 +506,16 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['product-knowledge'],
     difficulty: 'medium',
     tags: ['components'],
-    prompt: 'Put these layers of a typical asphalt shingle roof in order, starting from the attic side.',
-    explanation: 'From the inside out: rafters or trusses carry the roof; the deck (plywood or OSB sheathing) is fastened to them; underlayment covers the deck; shingles are the outer layer.',
-    draft: ordering(['Rafters or trusses', 'Roof deck (plywood or OSB sheathing)', 'Underlayment', 'Asphalt shingles']),
+    prompt:
+      'Put these layers of a typical asphalt shingle roof in order, starting from the attic side.',
+    explanation:
+      'From the inside out: rafters or trusses carry the roof; the deck (plywood or OSB sheathing) is fastened to them; underlayment covers the deck; shingles are the outer layer.',
+    draft: ordering([
+      'Rafters or trusses',
+      'Roof deck (plywood or OSB sheathing)',
+      'Underlayment',
+      'Asphalt shingles',
+    ]),
   },
   {
     key: 'rs-pitch',
@@ -421,11 +539,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['product-knowledge'],
     difficulty: 'hard',
     tags: ['installation'],
-    prompt: 'Why does A5 always tear the old roof off down to the deck instead of laying new shingles over the existing layer?',
+    prompt:
+      'Why does A5 always tear the old roof off down to the deck instead of laying new shingles over the existing layer?',
     explanation:
       'A full tear-off lets the crew inspect and replace damaged decking, install new underlayment, drip edge and flashing correctly, and keep the manufacturer’s warranty valid. Overlays add weight and trap heat. Building codes can allow a second layer in some cases, so "it is illegal" is not the reason.',
     draft: mc(
-      ['It lets the crew find and replace damaged decking, install underlayment and flashing correctly and keep the manufacturer warranty valid', true],
+      [
+        'It lets the crew find and replace damaged decking, install underlayment and flashing correctly and keep the manufacturer warranty valid',
+        true,
+      ],
       ['Building codes in Texas prohibit overlays in every case'],
       ['Overlays always cost more than a tear-off'],
       ['Insurance companies never pay for overlays'],
@@ -439,7 +561,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['damage-assessment'],
     difficulty: 'easy',
     tags: [W2, 'hail'],
-    prompt: 'During an inspection you find dark, roughly circular spots where granules are missing, and the shingle feels soft when you press it. What does this most likely indicate?',
+    prompt:
+      'During an inspection you find dark, roughly circular spots where granules are missing, and the shingle feels soft when you press it. What does this most likely indicate?',
     explanation:
       'That is a hail bruise: the impact displaced the granules and fractured the mat underneath, so it feels soft, like a bruised apple. Normal aging wears evenly, algae shows as streaks, and blisters are raised bubbles rather than soft impact marks.',
     draft: mc(
@@ -455,11 +578,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['damage-assessment', 'product-knowledge'],
     difficulty: 'medium',
     tags: [W2, 'granule-loss'],
-    prompt: 'After a storm you find shingle granules in the gutters and at the downspout outlets. What do granules actually do for an asphalt shingle?',
+    prompt:
+      'After a storm you find shingle granules in the gutters and at the downspout outlets. What do granules actually do for an asphalt shingle?',
     explanation:
       'Granules shield the asphalt from UV light and add fire resistance and color. Once they are gone the exposed asphalt dries out, cracks and ages quickly. That is why granule loss matters: it shortens the roof’s life even before it leaks.',
     draft: mc(
-      ['They shield the asphalt from UV light and add fire resistance; without them the asphalt dries out and ages quickly', true],
+      [
+        'They shield the asphalt from UV light and add fire resistance; without them the asphalt dries out and ages quickly',
+        true,
+      ],
       ['They are decorative and do not affect performance'],
       ['They bond the shingle to the roof deck'],
       ['They make the underlayment waterproof'],
@@ -475,7 +602,10 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'Hail leaves random, concentrated impact marks with exposed mat and a soft or fractured shingle underneath, and usually matching dents in soft metals on the same side of the house. Even loss across every slope of an older roof is wear. Loss along the drip edge or under branches has a mechanical cause.',
     draft: mc(
-      ['Random, concentrated spots of exposed mat with a soft or fractured shingle underneath, matching dents in soft metals on the same side', true],
+      [
+        'Random, concentrated spots of exposed mat with a soft or fractured shingle underneath, matching dents in soft metals on the same side',
+        true,
+      ],
       ['Even, gradual loss across every slope of a 20-year-old roof'],
       ['Loss only along the drip edge where the gutters overflow'],
       ['Loss under tree branches that rub against the roof'],
@@ -487,7 +617,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['damage-assessment'],
     difficulty: 'medium',
     tags: [W2, 'wind'],
-    prompt: 'Wind damage typically shows up as creased, lifted or missing shingles, often on the windward side and along edges and ridges.',
+    prompt:
+      'Wind damage typically shows up as creased, lifted or missing shingles, often on the windward side and along edges and ridges.',
     explanation:
       'True. Wind gets under the shingle edge, breaks the seal strip and lifts the tab, leaving a crease line, or tears the tab off. Edges, rakes and ridges on the side facing the storm see the highest uplift.',
     draft: tf(true),
@@ -498,7 +629,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['damage-assessment'],
     difficulty: 'medium',
     tags: [W2, 'collateral'],
-    prompt: 'Collateral damage helps confirm hail size and direction. Which of these should you check for hail dents? Select all that apply.',
+    prompt:
+      'Collateral damage helps confirm hail size and direction. Which of these should you check for hail dents? Select all that apply.',
     explanation:
       'Soft metals and thin fins dent easily and keep a record of the storm: gutters and downspouts, box vents and ridge vent caps, and air-conditioner condenser fins. Granules are not metal, and brick mortar does not dent.',
     draft: ms(
@@ -533,9 +665,21 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['damage-assessment'],
     difficulty: 'medium',
     tags: ['hail', 'documentation'],
-    prompt: 'Adjusters commonly evaluate hail damage by marking a 10-by-10-foot section of each slope and counting the hits inside it. What is that section called?',
-    explanation: 'It is a test square: one roofing square (100 sq ft) marked on each slope so hits can be counted consistently. Carriers use the count per test square when deciding what to approve.',
-    draft: { type: 'short_answer', accepted: ['test square', 'a test square', 'test squares', '10x10 test square', '10 by 10 test square'], maxLength: 60 },
+    prompt:
+      'Adjusters commonly evaluate hail damage by marking a 10-by-10-foot section of each slope and counting the hits inside it. What is that section called?',
+    explanation:
+      'It is a test square: one roofing square (100 sq ft) marked on each slope so hits can be counted consistently. Carriers use the count per test square when deciding what to approve.',
+    draft: {
+      type: 'short_answer',
+      accepted: [
+        'test square',
+        'a test square',
+        'test squares',
+        '10x10 test square',
+        '10 by 10 test square',
+      ],
+      maxLength: 60,
+    },
     commonMistake: 'hail grid',
   },
   {
@@ -572,7 +716,10 @@ export const QUESTIONS: SeedQuestion[] = [
         kind: 'multiple_choice',
         prompt: 'What is the best response?',
         options: [
-          ['Walk him through what you found on each slope with the photos, and explain that the adjuster decides what is covered; some carriers approve individual slopes, others a full replacement', true],
+          [
+            'Walk him through what you found on each slope with the photos, and explain that the adjuster decides what is covered; some carriers approve individual slopes, others a full replacement',
+            true,
+          ],
           ['"Yes, definitely. The insurance company will replace the whole roof."'],
           ['"Only two slopes are damaged, so it is not worth filing a claim."'],
           ['"Let’s wait a year and see whether it starts leaking."'],
@@ -592,7 +739,10 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'The deductible is the share of a covered loss the homeowner pays; the insurer pays the covered amount above it. It is not a fee to the adjuster, it is not refunded at the end, and by law the contractor may not pay or waive it.',
     draft: mc(
-      ['It is the part of the covered loss the homeowner pays; the insurer pays the covered amount above it', true],
+      [
+        'It is the part of the covered loss the homeowner pays; the insurer pays the covered amount above it',
+        true,
+      ],
       ['It is a fee the homeowner pays the adjuster for the inspection'],
       ['It is refunded to the homeowner when the job is finished'],
       ['The contractor pays it when the homeowner cannot'],
@@ -608,7 +758,10 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'The insurer first pays the actual cash value (replacement cost minus depreciation, less the deductible). The depreciation it held back is "recoverable": it is released after the work is completed and the final invoice is submitted. On an actual cash value policy the depreciation is not recoverable.',
     draft: mc(
-      ['Depreciation the insurer holds back from the first check and releases once the work is completed and the final invoice is submitted', true],
+      [
+        'Depreciation the insurer holds back from the first check and releases once the work is completed and the final invoice is submitted',
+        true,
+      ],
       ['Money the homeowner loses permanently because the roof is old'],
       ['A discount the contractor gives for paying in cash'],
       ['The deductible, which the insurer returns at the end of the job'],
@@ -621,8 +774,13 @@ export const QUESTIONS: SeedQuestion[] = [
     difficulty: 'easy',
     tags: ['depreciation'],
     prompt: 'What do the letters RCV stand for on an insurance estimate?',
-    explanation: 'RCV is replacement cost value: what it costs to replace the damaged items with new materials of like kind and quality, before depreciation is subtracted.',
-    draft: { type: 'short_answer', accepted: ['replacement cost value', 'replacement cost', 'replacement cost valuation'], maxLength: 80 },
+    explanation:
+      'RCV is replacement cost value: what it costs to replace the damaged items with new materials of like kind and quality, before depreciation is subtracted.',
+    draft: {
+      type: 'short_answer',
+      accepted: ['replacement cost value', 'replacement cost', 'replacement cost valuation'],
+      maxLength: 80,
+    },
     commonMistake: 'roof coverage value',
   },
   {
@@ -693,7 +851,10 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'The lender has a financial interest in the property and is listed on the policy as a loss payee, so it must endorse the check. Mortgage companies often hold the funds and release them in stages, which affects project timing. That is why we ask about the mortgage early.',
     draft: mc(
-      ['The lender has a financial interest in the home and is listed on the policy, so it must endorse the check', true],
+      [
+        'The lender has a financial interest in the home and is listed on the policy, so it must endorse the check',
+        true,
+      ],
       ['The mortgage company pays the deductible'],
       ['The roofing contractor asks the insurer to add it'],
       ['A claim automatically raises the mortgage rate'],
@@ -722,7 +883,8 @@ export const QUESTIONS: SeedQuestion[] = [
     written: {
       strong:
         'The insurance company pays in two steps. The first check is the actual cash value, which is the full replacement cost minus depreciation for the roof’s age, and then minus your deductible. Because you have a replacement cost policy, the depreciation they held back is recoverable: once the new roof is installed we send them the final invoice and they release the rest. Your deductible is your share of the claim, and we are not allowed to cover it.',
-      strongFeedback: 'Accurate and easy to follow: ACV, deductible, recoverable depreciation and the final invoice are all explained in plain language.',
+      strongFeedback:
+        'Accurate and easy to follow: ACV, deductible, recoverable depreciation and the final invoice are all explained in plain language.',
       weak: 'They always hold some money back but you will get it all at the end, so don’t worry about it.',
       weakFeedback:
         'This promises a payout and skips the explanation. Walk through actual cash value, the deductible and how recoverable depreciation is released after the final invoice.',
@@ -734,13 +896,17 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['claims-guidance'],
     difficulty: 'hard',
     tags: ['depreciation'],
-    prompt: 'Which items are typically needed to release recoverable depreciation? Select all that apply.',
+    prompt:
+      'Which items are typically needed to release recoverable depreciation? Select all that apply.',
     explanation:
       'Insurers release recoverable depreciation when they can see the work was done: the contractor’s final invoice and proof of completion such as completion photos or a certificate of completion. A second roofer’s report and the mortgage statement are not part of it, and a receipt showing the contractor paid the deductible would be evidence of an illegal practice.',
     draft: ms(
       'all_or_nothing',
       ['The contractor’s final invoice', true],
-      ['Proof the work is completed, such as completion photos or a certificate of completion', true],
+      [
+        'Proof the work is completed, such as completion photos or a certificate of completion',
+        true,
+      ],
       ['An inspection report from a second roofing company'],
       ['The homeowner’s mortgage statement'],
       ['A receipt showing the contractor paid the deductible'],
@@ -758,7 +924,10 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'The opening has one job: earn the next few minutes. Introduce yourself and A5, give an honest, specific reason for stopping by (for example, last week’s hail in the neighborhood), and ask permission to continue. Pitching products, pushing a signature or promising insurance money loses trust immediately.',
     draft: mc(
-      ['Introduce yourself and A5, give an honest reason for stopping by and earn permission to continue the conversation', true],
+      [
+        'Introduce yourself and A5, give an honest reason for stopping by and earn permission to continue the conversation',
+        true,
+      ],
       ['Get an inspection agreement signed before the homeowner starts asking questions'],
       ['Explain every roofing product A5 installs'],
       ['Mention that their insurance will pay for a new roof'],
@@ -788,7 +957,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['discovery-rapport'],
     difficulty: 'easy',
     tags: [W3, 'discovery'],
-    prompt: 'Talking more than the homeowner during discovery is a sign the conversation is going well.',
+    prompt:
+      'Talking more than the homeowner during discovery is a sign the conversation is going well.',
     explanation:
       'False. In discovery the homeowner should do most of the talking. Ask open questions, listen, and follow up on what they say. If you are talking more, you are pitching, and you are not learning what matters to them.',
     draft: tf(false),
@@ -817,11 +987,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['discovery-rapport'],
     difficulty: 'medium',
     tags: [W3, 'discovery'],
-    prompt: 'During discovery a homeowner mentions they plan to sell the house next spring. What is the best follow-up?',
+    prompt:
+      'During discovery a homeowner mentions they plan to sell the house next spring. What is the best follow-up?',
     explanation:
       'A comment like this is a motivation you should explore, not skip. Ask how the roof’s condition might affect the sale and what matters most to them, then tailor the inspection review around it. Claiming a new roof "always pays for itself" is a promise you cannot back up.',
     draft: mc(
-      ['Ask how the roof’s condition might affect the sale and what matters most to them, then tailor what you show around that', true],
+      [
+        'Ask how the roof’s condition might affect the sale and what matters most to them, then tailor what you show around that',
+        true,
+      ],
       ['Tell them a new roof always pays for itself when the house sells'],
       ['Skip the inspection, since they are moving anyway'],
       ['Offer the cheapest option straight away'],
@@ -833,7 +1007,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['discovery-rapport'],
     difficulty: 'easy',
     tags: ['closing'],
-    prompt: 'Which question best confirms the homeowner’s understanding before you move to next steps?',
+    prompt:
+      'Which question best confirms the homeowner’s understanding before you move to next steps?',
     explanation:
       'Inviting questions ("what questions do you have…") checks understanding without pressure and surfaces concerns early. Leading questions and asking for a signature first do the opposite, and "Does that make sense?" followed by moving on rarely gets an honest answer.',
     draft: mc(
@@ -850,7 +1025,8 @@ export const QUESTIONS: SeedQuestion[] = [
     difficulty: 'medium',
     points: 3,
     tags: ['discovery', 'written-response'],
-    prompt: 'Write three discovery questions you would ask a homeowner after a hailstorm. For each one, explain what you are trying to learn.',
+    prompt:
+      'Write three discovery questions you would ask a homeowner after a hailstorm. For each one, explain what you are trying to learn.',
     explanation:
       'Good discovery questions are open-ended and purposeful: what the homeowner has noticed (damage and urgency), their history with the roof and insurance (age, past claims, previous contractors) and their plans and priorities (how long they will stay, budget, what a good experience looks like).',
     draft: {
@@ -867,7 +1043,8 @@ export const QUESTIONS: SeedQuestion[] = [
         'First: "What have you noticed around the house since Tuesday’s storm?" to find out what damage they have seen and how worried they are. Second: "How old is the roof, and has anyone worked on it before?" to learn its history and whether there were past claims or repairs. Third: "If you do need work, what would make it a good experience for you?" so I understand their priorities, like timing, cost or the warranty.',
       strongFeedback: 'Three open questions, each with a clear purpose. Strong discovery.',
       weak: 'Do you want a new roof? Do you have insurance? Can I get on the roof?',
-      weakFeedback: 'These are all yes/no questions without a purpose. Rewrite them as open questions and say what each one helps you learn.',
+      weakFeedback:
+        'These are all yes/no questions without a purpose. Rewrite them as open questions and say what each one helps you learn.',
     },
   },
   {
@@ -897,9 +1074,11 @@ export const QUESTIONS: SeedQuestion[] = [
     written: {
       strong:
         'No problem, I will keep it short. I’m with A5 Roofing, and we have been helping neighbors on this street check their roofs after Tuesday’s hail. I don’t want to hold you up, so could I come back Saturday for a free inspection? I’ll leave my card so you know who I am.',
-      strongFeedback: 'Respectful of her time, specific about the hail, and an easy next step. Well done.',
+      strongFeedback:
+        'Respectful of her time, specific about the hail, and an easy next step. Well done.',
       weak: 'This will only take a minute. Your roof probably has hail damage and insurance will pay for a new one, so let me go up there now.',
-      weakFeedback: 'This pressures her and promises an insurance outcome. Acknowledge her time, mention the storm honestly and offer to come back.',
+      weakFeedback:
+        'This pressures her and promises an insurance outcome. Acknowledge her time, mention the storm honestly and offer to come back.',
     },
   },
 
@@ -927,11 +1106,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['objection-handling'],
     difficulty: 'medium',
     tags: [W3, 'estimates'],
-    prompt: 'A homeowner says: "I want to get three estimates." Which response best follows the A5 Objection Framework?',
+    prompt:
+      'A homeowner says: "I want to get three estimates." Which response best follows the A5 Objection Framework?',
     explanation:
       'Comparing estimates is reasonable. Acknowledge it, ask what they will compare, and make the comparison easy with an itemized scope. Running down competitors, discount pressure or giving up without a next step all break the framework.',
     draft: mc(
-      ['"That makes sense; it’s a big decision. What will you be comparing between the estimates?" then offer an itemized scope that makes comparing easy', true],
+      [
+        '"That makes sense; it’s a big decision. What will you be comparing between the estimates?" then offer an itemized scope that makes comparing easy',
+        true,
+      ],
       ['"Other roofers will just cut corners; you don’t need other estimates."'],
       ['"If you sign today I can give you a discount."'],
       ['"Okay, here’s my card," and leave'],
@@ -947,7 +1130,10 @@ export const QUESTIONS: SeedQuestion[] = [
     explanation:
       'It is a shared decision, so treat it as one: agree, ask what questions their spouse is likely to have, and offer a time to walk both of them through the photos. "Sign now and cancel later" and false deadlines are pressure tactics.',
     draft: mc(
-      ['Agree it’s a joint decision, ask what questions their spouse is likely to have, and offer a time to walk both of them through the photos', true],
+      [
+        'Agree it’s a joint decision, ask what questions their spouse is likely to have, and offer a time to walk both of them through the photos',
+        true,
+      ],
       ['Ask them to sign now and cancel later if their spouse disagrees'],
       ['Say the price is only good today'],
       ['Leave without scheduling anything'],
@@ -959,7 +1145,8 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['objection-handling'],
     difficulty: 'easy',
     tags: [W3, 'framework'],
-    prompt: 'When a homeowner raises an objection, the first step in the A5 framework is to respond immediately with facts that prove them wrong.',
+    prompt:
+      'When a homeowner raises an objection, the first step in the A5 framework is to respond immediately with facts that prove them wrong.',
     explanation:
       'False. The first step is to listen fully, then acknowledge the concern. Jumping to facts before you understand the real concern feels like an argument, and the homeowner stops listening.',
     draft: tf(false),
@@ -970,11 +1157,15 @@ export const QUESTIONS: SeedQuestion[] = [
     competencies: ['objection-handling'],
     difficulty: 'hard',
     tags: ['price'],
-    prompt: 'A homeowner says: "Another roofer is cheaper." Which clarifying question best uncovers the real concern?',
+    prompt:
+      'A homeowner says: "Another roofer is cheaper." Which clarifying question best uncovers the real concern?',
     explanation:
       'Price differences usually come from scope: tear-off versus overlay, underlayment, flashing, ventilation, warranty. Asking what was included turns a price objection into a comparison of value. Attacking the competitor or instantly matching the price does not address the concern.',
     draft: mc(
-      ['"When you compared the two, what did theirs include: tear-off, underlayment, flashing, ventilation and warranty?"', true],
+      [
+        '"When you compared the two, what did theirs include: tear-off, underlayment, flashing, ventilation and warranty?"',
+        true,
+      ],
       ['"Did they tell you they’re not even a real roofing company?"'],
       ['"How much cheaper? I’ll beat it."'],
       ['"Do you really want the cheapest roof on your house?"'],
@@ -992,7 +1183,10 @@ export const QUESTIONS: SeedQuestion[] = [
     draft: matching([
       ['"I don’t have time."', 'Not yet convinced the conversation is worth their time'],
       ['"I want three estimates."', 'Wants confidence they are getting fair value'],
-      ['"I need to talk to my spouse."', 'It is a shared decision and they want their partner’s input'],
+      [
+        '"I need to talk to my spouse."',
+        'It is a shared decision and they want their partner’s input',
+      ],
       ['"I don’t want to file a claim."', 'Worried about premiums, the policy or the hassle'],
       ['"My roof looks fine."', 'Cannot see damage from the ground, so sees no need'],
     ]),
@@ -1014,7 +1208,10 @@ export const QUESTIONS: SeedQuestion[] = [
         kind: 'multiple_choice',
         prompt: 'Which response best follows the A5 Objection Framework?',
         options: [
-          ['Acknowledge the worry, ask what he has heard, explain that how a weather claim affects his rates depends on his insurer and policy so his agent can answer that, and leave the photo report so they can decide', true],
+          [
+            'Acknowledge the worry, ask what he has heard, explain that how a weather claim affects his rates depends on his insurer and policy so his agent can answer that, and leave the photo report so they can decide',
+            true,
+          ],
           ['Tell him his premium definitely will not go up after a hail claim'],
           ['Offer to repair the roof for the cost of the deductible so he doesn’t need to file'],
           ['Tell him he is legally required to file a claim for storm damage'],

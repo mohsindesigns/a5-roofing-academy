@@ -18,17 +18,40 @@ export async function generateCertificatePdf(
   db: DbOrTrx,
   storage: ObjectStorage,
   certificateId: string,
-  onReady?: (trx: DbOrTrx, info: { organizationId: string; definitionId: string; definitionName: string; userId: string; certificateNumber: string }) => Promise<void>,
+  onReady?: (
+    trx: DbOrTrx,
+    info: {
+      organizationId: string;
+      definitionId: string;
+      definitionName: string;
+      userId: string;
+      certificateNumber: string;
+    },
+  ) => Promise<void>,
   now: Date = new Date(),
 ): Promise<PdfOutcome> {
   const row = await db
     .selectFrom('issued_certificates as c')
     .innerJoin('certificate_snapshots as s', 's.certificate_id', 'c.id')
-    .select(['c.id', 'c.organization_id', 'c.definition_id', 'c.user_id', 'c.certificate_number', 'c.pdf_status', 'c.pdf_storage_key', 's.data'])
+    .select([
+      'c.id',
+      'c.organization_id',
+      'c.definition_id',
+      'c.user_id',
+      'c.certificate_number',
+      'c.pdf_status',
+      'c.pdf_storage_key',
+      's.data',
+    ])
     .where('c.id', '=', certificateId)
     .executeTakeFirst();
   if (!row) return 'missing';
-  if (row.pdf_status === 'ready' && row.pdf_storage_key && (await storage.headObject(row.pdf_storage_key))) return 'already_ready';
+  if (
+    row.pdf_status === 'ready' &&
+    row.pdf_storage_key &&
+    (await storage.headObject(row.pdf_storage_key))
+  )
+    return 'already_ready';
 
   const pdf = await renderSnapshotPdf(storage, row.data);
   const key = storageKeys.certificateFile(row.organization_id, row.id, 'certificate.pdf');
@@ -38,7 +61,14 @@ export async function generateCertificatePdf(
   const apply = async (trx: DbOrTrx) => {
     const updated = await trx
       .updateTable('issued_certificates')
-      .set({ pdf_status: 'ready', pdf_storage_key: key, pdf_sha256: sha256, pdf_byte_size: pdf.length, pdf_generated_at: now, pdf_error: null })
+      .set({
+        pdf_status: 'ready',
+        pdf_storage_key: key,
+        pdf_sha256: sha256,
+        pdf_byte_size: pdf.length,
+        pdf_generated_at: now,
+        pdf_error: null,
+      })
       .where('id', '=', row.id)
       .where('pdf_status', '<>', 'ready')
       .executeTakeFirst();
@@ -76,8 +106,18 @@ export class PdfService {
       await this.events.emit(
         trx as Db,
         certificationEvents.generated,
-        { certificateId, definitionId: info.definitionId, definitionName: info.definitionName, userId: info.userId, certificateNumber: info.certificateNumber },
-        { organizationId: info.organizationId, subject: { type: 'certificate', id: certificateId }, actor: { type: 'system', id: null } },
+        {
+          certificateId,
+          definitionId: info.definitionId,
+          definitionName: info.definitionName,
+          userId: info.userId,
+          certificateNumber: info.certificateNumber,
+        },
+        {
+          organizationId: info.organizationId,
+          subject: { type: 'certificate', id: certificateId },
+          actor: { type: 'system', id: null },
+        },
       );
     });
   }
@@ -98,7 +138,12 @@ export class PdfService {
         .returning(['organization_id'])
         .executeTakeFirst();
       if (row && final) {
-        await recordCertificateEvent(trx, { organizationId: row.organization_id, certificateId, type: 'pdf_failed', data: { error: message } });
+        await recordCertificateEvent(trx, {
+          organizationId: row.organization_id,
+          certificateId,
+          type: 'pdf_failed',
+          data: { error: message },
+        });
       }
     });
   }

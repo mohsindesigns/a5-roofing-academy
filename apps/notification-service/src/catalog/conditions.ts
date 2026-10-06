@@ -48,7 +48,12 @@ function matchesOne(actual: unknown, condition: Conditions[string]): boolean {
 }
 
 /** True when every condition holds for the payload. An empty object always matches. */
-export function matchesConditions(payload: unknown, conditions: Conditions | null | undefined): boolean {
+export function matchesConditions(
+  payload: unknown,
+  conditions: Conditions | null | undefined,
+): boolean {
   if (!conditions) return true;
-  return Object.entries(conditions).every(([path, condition]) => matchesOne(readPath(payload, path), condition));
+  return Object.entries(conditions).every(([path, condition]) =>
+    matchesOne(readPath(payload, path), condition),
+  );
 }

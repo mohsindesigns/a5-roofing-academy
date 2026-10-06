@@ -3,4 +3,17 @@ export * from './errors.js';
 export * from './migrations.js';
 export * from './outbox.js';
 export * from './pagination.js';
-export { sql, type Kysely, type Transaction, type Selectable, type Insertable, type Updateable, type Generated, type ColumnType, type Expression, type SqlBool, type ExpressionBuilder, type SelectQueryBuilder } from 'kysely';
+export {
+  sql,
+  type Kysely,
+  type Transaction,
+  type Selectable,
+  type Insertable,
+  type Updateable,
+  type Generated,
+  type ColumnType,
+  type Expression,
+  type SqlBool,
+  type ExpressionBuilder,
+  type SelectQueryBuilder,
+} from 'kysely';

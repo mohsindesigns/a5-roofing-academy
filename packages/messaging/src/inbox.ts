@@ -12,7 +12,12 @@ export async function processOnce<DB extends InboxSchema>(
   fn: (trx: Transaction<DB>) => Promise<void>,
 ): Promise<boolean> {
   return db.transaction().execute(async (trx) => {
-    const claimed = await claimInbox(trx as unknown as Transaction<InboxSchema>, event.id, handler, event.type);
+    const claimed = await claimInbox(
+      trx as unknown as Transaction<InboxSchema>,
+      event.id,
+      handler,
+      event.type,
+    );
     if (!claimed) return false;
     await fn(trx);
     return true;

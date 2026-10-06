@@ -38,21 +38,28 @@ const analyticsEnv = z.object({
 export function loadAnalyticsConfig(source?: Record<string, string | undefined>) {
   const config = loadServiceConfig('analytics-service', 4080, analyticsEnv, { source });
   const e = config.env;
-  if (e.STORAGE_DRIVER === 'local' && (!e.STORAGE_SIGNING_SECRET || e.STORAGE_SIGNING_SECRET.length < 32)) {
+  if (
+    e.STORAGE_DRIVER === 'local' &&
+    (!e.STORAGE_SIGNING_SECRET || e.STORAGE_SIGNING_SECRET.length < 32)
+  ) {
     throw new Error(
       'Invalid configuration:\n  - STORAGE_SIGNING_SECRET: required (at least 32 characters) for the local storage driver. Run `pnpm keys:generate`.',
     );
   }
   assertProductionSafe(config.nodeEnv, [[e.STORAGE_DRIVER === 's3', 'STORAGE_DRIVER must be s3']]);
   const positive = (value: number, name: string) => {
-    if (value <= 0) throw new Error(`Invalid configuration:\n  - ${name}: must be greater than zero`);
+    if (value <= 0)
+      throw new Error(`Invalid configuration:\n  - ${name}: must be greater than zero`);
     return value;
   };
   return {
     ...config,
     analytics: {
       timezone: e.REPORTING_TIMEZONE,
-      dashboardCacheTtlSeconds: positive(e.DASHBOARD_CACHE_TTL_SECONDS, 'DASHBOARD_CACHE_TTL_SECONDS'),
+      dashboardCacheTtlSeconds: positive(
+        e.DASHBOARD_CACHE_TTL_SECONDS,
+        'DASHBOARD_CACHE_TTL_SECONDS',
+      ),
       rollupIntervalMinutes: positive(e.ROLLUP_INTERVAL_MINUTES, 'ROLLUP_INTERVAL_MINUTES'),
       rollupFullRefreshDays: positive(e.ROLLUP_FULL_REFRESH_DAYS, 'ROLLUP_FULL_REFRESH_DAYS'),
     },
@@ -65,7 +72,9 @@ export function loadAnalyticsConfig(source?: Record<string, string | undefined>)
       driver: e.STORAGE_DRIVER,
       localRoot: e.STORAGE_LOCAL_ROOT,
       signingSecret: e.STORAGE_SIGNING_SECRET ?? '',
-      publicBaseUrl: (e.REPORT_FILES_PUBLIC_URL ?? `${config.publicAppUrl}/api/v1/reports/files`).replace(/\/$/, ''),
+      publicBaseUrl: (
+        e.REPORT_FILES_PUBLIC_URL ?? `${config.publicAppUrl}/api/v1/reports/files`
+      ).replace(/\/$/, ''),
       s3: {
         bucket: e.S3_BUCKET,
         region: e.S3_REGION,

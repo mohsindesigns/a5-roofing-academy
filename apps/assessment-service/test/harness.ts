@@ -5,10 +5,35 @@ import { signLessonGrant, type PrincipalData } from '@a5/auth';
 import type { assessment } from '@a5/contracts';
 import { createDatabase, migrateToLatest, type Database } from '@a5/database';
 import { createRedis, RedisNamespace, type Redis } from '@a5/messaging';
-import { TEST_INTERNAL_SECRET, closeApp, createTestApp, principalHeaders, testLogger } from '@a5/nest-kit/testing';
-import { getDefaultRole, widestScope, type PermissionKey, type PermissionMap, type SystemRoleKey } from '@a5/permissions';
-import { PEOPLE, PROGRAM, TEAMS, TRAINER_ASSIGNMENTS, allLessons, directoryUsers, type PersonKey } from '@a5/seed-data';
-import { TEST_REDIS_URL, createTestDatabase, testRedisNamespace, type TestDatabase } from '@a5/testing';
+import {
+  TEST_INTERNAL_SECRET,
+  closeApp,
+  createTestApp,
+  principalHeaders,
+  testLogger,
+} from '@a5/nest-kit/testing';
+import {
+  getDefaultRole,
+  widestScope,
+  type PermissionKey,
+  type PermissionMap,
+  type SystemRoleKey,
+} from '@a5/permissions';
+import {
+  PEOPLE,
+  PROGRAM,
+  TEAMS,
+  TRAINER_ASSIGNMENTS,
+  allLessons,
+  directoryUsers,
+  type PersonKey,
+} from '@a5/seed-data';
+import {
+  TEST_REDIS_URL,
+  createTestDatabase,
+  testRedisNamespace,
+  type TestDatabase,
+} from '@a5/testing';
 import { AppModule } from '../src/app.module.js';
 import { Clock } from '../src/common/clock.js';
 import { loadAssessmentConfig, type AssessmentConfig } from '../src/config.js';
@@ -52,9 +77,19 @@ export interface AssessmentHarness {
   /** Principal headers for a seeded person with the permissions their roles grant. */
   as(person: PersonKey, patch?: Partial<PrincipalData>): Promise<Record<string, string>>;
   /** Principal headers for an ad-hoc user. */
-  asUser(input: { userId: string; permissions: PermissionKey[]; scope?: 'own' | 'managed' | 'organization' | 'platform'; organizationId?: string }): Promise<Record<string, string>>;
+  asUser(input: {
+    userId: string;
+    permissions: PermissionKey[];
+    scope?: 'own' | 'managed' | 'organization' | 'platform';
+    organizationId?: string;
+  }): Promise<Record<string, string>>;
   /** Lesson grant for an assessment lesson, signed like learning-service does. */
-  grantFor(person: PersonKey, assessmentId: string, lessonKey?: string, overrides?: Partial<Parameters<typeof signLessonGrant>[0]>): Promise<string>;
+  grantFor(
+    person: PersonKey,
+    assessmentId: string,
+    lessonKey?: string,
+    overrides?: Partial<Parameters<typeof signLessonGrant>[0]>,
+  ): Promise<string>;
   close(): Promise<void>;
 }
 
@@ -71,7 +106,8 @@ export function principalDataFor(person: PersonKey): PrincipalData {
   }
   const managedTeams = TEAMS.filter((t) => (t.managers as readonly PersonKey[]).includes(person));
   const managedUserIds = new Set<string>();
-  for (const team of managedTeams) for (const member of team.members) managedUserIds.add(PEOPLE[member].id);
+  for (const team of managedTeams)
+    for (const member of team.members) managedUserIds.add(PEOPLE[member].id);
   for (const assignment of TRAINER_ASSIGNMENTS.filter((a) => a.trainer === person)) {
     for (const trainee of assignment.trainees) managedUserIds.add(PEOPLE[trainee].id);
   }
@@ -87,7 +123,10 @@ export function principalDataFor(person: PersonKey): PrincipalData {
   };
 }
 
-export async function createAssessmentHarness(name: string, options: HarnessOptions = {}): Promise<AssessmentHarness> {
+export async function createAssessmentHarness(
+  name: string,
+  options: HarnessOptions = {},
+): Promise<AssessmentHarness> {
   const tdb: TestDatabase = await createTestDatabase(`assessment_${name}`);
   const namespace = testRedisNamespace(`assessment-${name}`);
   const config = loadAssessmentConfig({
@@ -185,7 +224,11 @@ export const sampleQuestions = {
     },
     ...extra,
   }),
-  multipleSelect: (label: string, scoring: 'all_or_nothing' | 'partial', extra: Record<string, unknown> = {}) => ({
+  multipleSelect: (
+    label: string,
+    scoring: 'all_or_nothing' | 'partial',
+    extra: Record<string, unknown> = {},
+  ) => ({
     type: 'multiple_select',
     prompt: `${label}: which of these are hail indicators?`,
     explanation: 'Soft metals dent and shingles bruise; algae is biological growth.',
@@ -218,7 +261,13 @@ export const sampleQuestions = {
     explanation: 'One roofing square covers 100 square feet.',
     points: 1,
     difficulty: 'easy',
-    config: { grading: 'auto', acceptedAnswers: ['100', 'one hundred'], caseSensitive: false, normalizeWhitespace: true, maxLength: 60 },
+    config: {
+      grading: 'auto',
+      acceptedAnswers: ['100', 'one hundred'],
+      caseSensitive: false,
+      normalizeWhitespace: true,
+      maxLength: 60,
+    },
     ...extra,
   }),
   longAnswer: (label: string, extra: Record<string, unknown> = {}) => ({
@@ -227,7 +276,12 @@ export const sampleQuestions = {
     explanation: 'Recoverable depreciation is released after the work is completed and invoiced.',
     points: 4,
     difficulty: 'hard',
-    config: { rubric: 'Look for: ACV, depreciation held back, release after final invoice.', sampleAnswer: 'The insurer holds some money back until the roof is done.', minWords: null, maxWords: 300 },
+    config: {
+      rubric: 'Look for: ACV, depreciation held back, release after final invoice.',
+      sampleAnswer: 'The insurer holds some money back until the roof is done.',
+      minWords: null,
+      maxWords: 300,
+    },
     ...extra,
   }),
   scenarioChoice: (label: string, extra: Record<string, unknown> = {}) => ({
@@ -295,8 +349,18 @@ export const sampleQuestions = {
       pairs: [
         { leftId: 'l1', left: 'ACV', rightId: 'r1', right: 'Replacement cost minus depreciation' },
         { leftId: 'l2', left: 'RCV', rightId: 'r2', right: 'Full cost to replace' },
-        { leftId: 'l3', left: 'Deductible', rightId: 'r3', right: 'Homeowner share of a covered loss' },
-        { leftId: 'l4', left: 'Supplement', rightId: 'r4', right: 'Request for items the estimate missed' },
+        {
+          leftId: 'l3',
+          left: 'Deductible',
+          rightId: 'r3',
+          right: 'Homeowner share of a covered loss',
+        },
+        {
+          leftId: 'l4',
+          left: 'Supplement',
+          rightId: 'r4',
+          right: 'Request for items the estimate missed',
+        },
       ],
     },
     ...extra,
@@ -310,15 +374,27 @@ export interface Author {
 
 /** Create a bank through the API. */
 export async function createBank(a: Author, title: string): Promise<assessment.QuestionBankDetail> {
-  const res = await a.http.post('/api/v1/question-banks').set(a.headers).send({ title, description: `${title} (test)` });
-  if (res.status !== 201) throw new Error(`createBank failed: ${res.status} ${JSON.stringify(res.body)}`);
+  const res = await a.http
+    .post('/api/v1/question-banks')
+    .set(a.headers)
+    .send({ title, description: `${title} (test)` });
+  if (res.status !== 201)
+    throw new Error(`createBank failed: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body;
 }
 
 /** Create a question through the API. */
-export async function createQuestion(a: Author, bankId: string, body: Record<string, unknown>): Promise<assessment.QuestionDetail> {
-  const res = await a.http.post('/api/v1/questions').set(a.headers).send({ bankId, ...body });
-  if (res.status !== 201) throw new Error(`createQuestion failed: ${res.status} ${JSON.stringify(res.body)}`);
+export async function createQuestion(
+  a: Author,
+  bankId: string,
+  body: Record<string, unknown>,
+): Promise<assessment.QuestionDetail> {
+  const res = await a.http
+    .post('/api/v1/questions')
+    .set(a.headers)
+    .send({ bankId, ...body });
+  if (res.status !== 201)
+    throw new Error(`createQuestion failed: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body;
 }
 
@@ -336,20 +412,29 @@ export async function createAssessment(
   const created = await a.http
     .post('/api/v1/assessments')
     .set(a.headers)
-    .send({ title: input.title, kind: input.kind ?? 'quiz', config: { allowStandalone: true, ...input.config } });
-  if (created.status !== 201) throw new Error(`createAssessment failed: ${created.status} ${JSON.stringify(created.body)}`);
+    .send({
+      title: input.title,
+      kind: input.kind ?? 'quiz',
+      config: { allowStandalone: true, ...input.config },
+    });
+  if (created.status !== 201)
+    throw new Error(`createAssessment failed: ${created.status} ${JSON.stringify(created.body)}`);
   let detail = created.body as assessment.AssessmentDetail;
   if (input.items.length) {
     const items = await a.http
       .put(`/api/v1/assessments/${created.body.id}/items`)
       .set(a.headers)
       .send({ items: input.items.map((item, index) => ({ position: index + 1, ...item })) });
-    if (items.status !== 200) throw new Error(`setItems failed: ${items.status} ${JSON.stringify(items.body)}`);
+    if (items.status !== 200)
+      throw new Error(`setItems failed: ${items.status} ${JSON.stringify(items.body)}`);
     detail = items.body;
   }
   if (input.publish === false) return detail;
-  const published = await a.http.post(`/api/v1/assessments/${created.body.id}/publish`).set(a.headers);
-  if (published.status !== 200) throw new Error(`publish failed: ${published.status} ${JSON.stringify(published.body)}`);
+  const published = await a.http
+    .post(`/api/v1/assessments/${created.body.id}/publish`)
+    .set(a.headers);
+  if (published.status !== 200)
+    throw new Error(`publish failed: ${published.status} ${JSON.stringify(published.body)}`);
   return published.body;
 }
 
@@ -359,21 +444,33 @@ export function correctResponse(def: assessment.QuestionDefinition): assessment.
     case 'multiple_choice':
       return { type: 'multiple_choice', optionId: def.config.options.find((o) => o.correct)!.id };
     case 'multiple_select':
-      return { type: 'multiple_select', optionIds: def.config.options.filter((o) => o.correct).map((o) => o.id) };
+      return {
+        type: 'multiple_select',
+        optionIds: def.config.options.filter((o) => o.correct).map((o) => o.id),
+      };
     case 'true_false':
       return { type: 'true_false', value: def.config.correctAnswer };
     case 'short_answer':
       return { type: 'short_answer', text: def.config.acceptedAnswers[0] ?? 'manual answer' };
     case 'long_answer':
-      return { type: 'long_answer', text: 'Recoverable depreciation is money the insurer holds back and releases after the final invoice.' };
+      return {
+        type: 'long_answer',
+        text: 'Recoverable depreciation is money the insurer holds back and releases after the final invoice.',
+      };
     case 'scenario':
       return def.config.subQuestion.kind === 'multiple_choice'
         ? { type: 'scenario', optionId: def.config.subQuestion.options.find((o) => o.correct)!.id }
-        : { type: 'scenario', text: 'I will be quick. Could I come back Saturday for a free inspection?' };
+        : {
+            type: 'scenario',
+            text: 'I will be quick. Could I come back Saturday for a free inspection?',
+          };
     case 'ordering':
       return { type: 'ordering', order: def.config.items.map((i) => i.id) };
     case 'matching':
-      return { type: 'matching', matches: Object.fromEntries(def.config.pairs.map((p) => [p.leftId, p.rightId])) };
+      return {
+        type: 'matching',
+        matches: Object.fromEntries(def.config.pairs.map((p) => [p.leftId, p.rightId])),
+      };
   }
 }
 
@@ -383,7 +480,10 @@ export function wrongResponse(def: assessment.QuestionDefinition): assessment.An
     case 'multiple_choice':
       return { type: 'multiple_choice', optionId: def.config.options.find((o) => !o.correct)!.id };
     case 'multiple_select':
-      return { type: 'multiple_select', optionIds: [def.config.options.find((o) => !o.correct)!.id] };
+      return {
+        type: 'multiple_select',
+        optionIds: [def.config.options.find((o) => !o.correct)!.id],
+      };
     case 'true_false':
       return { type: 'true_false', value: !def.config.correctAnswer };
     case 'short_answer':
@@ -398,7 +498,12 @@ export function wrongResponse(def: assessment.QuestionDefinition): assessment.An
       return { type: 'ordering', order: [...def.config.items.map((i) => i.id)].reverse() };
     case 'matching': {
       const pairs = def.config.pairs;
-      return { type: 'matching', matches: Object.fromEntries(pairs.map((p, i) => [p.leftId, pairs[(i + 1) % pairs.length]!.rightId])) };
+      return {
+        type: 'matching',
+        matches: Object.fromEntries(
+          pairs.map((p, i) => [p.leftId, pairs[(i + 1) % pairs.length]!.rightId]),
+        ),
+      };
     }
   }
 }
@@ -411,7 +516,10 @@ export function labelOf(prompt: string): string {
 }
 
 /** Question definition (type + config) from a sample request body. */
-export function definitionOf(body: { type: string; config: unknown }): assessment.QuestionDefinition {
+export function definitionOf(body: {
+  type: string;
+  config: unknown;
+}): assessment.QuestionDefinition {
   return { type: body.type, config: body.config } as assessment.QuestionDefinition;
 }
 
@@ -445,7 +553,14 @@ export async function answerAttempt(
     if (!def) throw new Error(`No definition for question "${label}"`);
     const m = mode(label);
     if (m === 'skip') continue;
-    const res = await saveAnswer(h, headers, attempt.id, q.id, m === 'right' ? correctResponse(def) : wrongResponse(def));
-    if (res.status !== 200) throw new Error(`save failed for ${label}: ${res.status} ${JSON.stringify(res.body)}`);
+    const res = await saveAnswer(
+      h,
+      headers,
+      attempt.id,
+      q.id,
+      m === 'right' ? correctResponse(def) : wrongResponse(def),
+    );
+    if (res.status !== 200)
+      throw new Error(`save failed for ${label}: ${res.status} ${JSON.stringify(res.body)}`);
   }
 }

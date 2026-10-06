@@ -4,7 +4,13 @@ import { uuidv7 } from '@a5/observability';
 import { PEOPLE, PROGRAM, seedId, type PersonKey } from '@a5/seed-data';
 import { waitFor } from '@a5/testing';
 import { NotificationStreamService } from '../src/realtime/stream.service.js';
-import { createNotificationHarness, notificationsOf, openStream, processed, type NotificationHarness } from './harness.js';
+import {
+  createNotificationHarness,
+  notificationsOf,
+  openStream,
+  processed,
+  type NotificationHarness,
+} from './harness.js';
 
 let worker: NotificationHarness;
 let api: NotificationHarness;
@@ -15,7 +21,12 @@ beforeAll(async () => {
   const env = { SSE_HEARTBEAT_MS: '150', SSE_MAX_CONNECTIONS_PER_USER: '3' };
   // Instance A consumes events and creates notifications; instance B only serves HTTP.
   worker = await createNotificationHarness('stream', { role: 'all', env });
-  api = await createNotificationHarness('stream-api', { role: 'api', env, database: { url: worker.databaseUrl }, namespace: worker.namespace });
+  api = await createNotificationHarness('stream-api', {
+    role: 'api',
+    env,
+    database: { url: worker.databaseUrl },
+    namespace: worker.namespace,
+  });
   workerUrl = await worker.listen();
   apiUrl = await api.listen();
 });
@@ -46,7 +57,10 @@ describe('notification stream (SSE)', () => {
   });
 
   it('sends the unread count, pushes new notifications, heartbeats and read updates', async () => {
-    const stream = await openStream(`${workerUrl}/api/v1/notifications/stream`, await worker.as('naomi'));
+    const stream = await openStream(
+      `${workerUrl}/api/v1/notifications/stream`,
+      await worker.as('naomi'),
+    );
     expect(stream.status).toBe(200);
     expect(stream.headers.get('content-type')).toContain('text/event-stream');
     expect(stream.headers.get('cache-control')).toBe('no-cache, no-transform');
@@ -57,34 +71,56 @@ describe('notification stream (SSE)', () => {
     await worker.publish(event);
     const pushed = await stream.next((m) => m.event === 'notification');
     const body = json(pushed.data);
-    expect(body).toMatchObject({ type: 'training.assigned', title: 'New training: Storm Season Refresher', category: 'training', readAt: null });
+    expect(body).toMatchObject({
+      type: 'training.assigned',
+      title: 'New training: Storm Season Refresher',
+      category: 'training',
+      readAt: null,
+    });
     expect(pushed.id).toBe(body.id);
     await stream.next((m) => m.event === 'unread' && json(m.data).count === 1);
 
     await stream.next((m) => Boolean(m.comment?.startsWith('heartbeat')), 2_000);
 
-    const read = await worker.http.post(`/api/v1/notifications/${body.id as string}/read`).set(await worker.as('naomi'));
+    const read = await worker.http
+      .post(`/api/v1/notifications/${body.id as string}/read`)
+      .set(await worker.as('naomi'));
     expect(read.status).toBe(200);
-    await stream.next((m) => m.event === 'unread' && json(m.data).count === 0 && stream.messages.indexOf(m) > stream.messages.indexOf(pushed) + 1);
+    await stream.next(
+      (m) =>
+        m.event === 'unread' &&
+        json(m.data).count === 0 &&
+        stream.messages.indexOf(m) > stream.messages.indexOf(pushed) + 1,
+    );
     await stream.close();
   });
 
   it('cleans up the stream and its Redis subscription when the client disconnects', async () => {
     const service = worker.app.get(NotificationStreamService);
     const channel = worker.ns.key('rt', 'user', PEOPLE.isaiah.id);
-    const stream = await openStream(`${workerUrl}/api/v1/notifications/stream`, await worker.as('isaiah'));
+    const stream = await openStream(
+      `${workerUrl}/api/v1/notifications/stream`,
+      await worker.as('isaiah'),
+    );
     await stream.next((m) => m.event === 'unread');
     expect(service.count(PEOPLE.isaiah.id)).toBe(1);
     expect(((await worker.redis.pubsub('NUMSUB', channel)) as [string, number])[1]).toBe(1);
 
     await stream.close();
-    await waitFor(() => service.count(PEOPLE.isaiah.id) === 0, { message: 'stream closed on the server' });
-    await waitFor(async () => ((await worker.redis.pubsub('NUMSUB', channel)) as [string, number])[1] === 0, { message: 'unsubscribed' });
+    await waitFor(() => service.count(PEOPLE.isaiah.id) === 0, {
+      message: 'stream closed on the server',
+    });
+    await waitFor(
+      async () => ((await worker.redis.pubsub('NUMSUB', channel)) as [string, number])[1] === 0,
+      { message: 'unsubscribed' },
+    );
   });
 
   it('limits concurrent streams per person', async () => {
     const headers = await worker.as('ethan');
-    const open = await Promise.all([1, 2, 3].map(() => openStream(`${workerUrl}/api/v1/notifications/stream`, headers)));
+    const open = await Promise.all(
+      [1, 2, 3].map(() => openStream(`${workerUrl}/api/v1/notifications/stream`, headers)),
+    );
     await Promise.all(open.map((s) => s.next((m) => m.event === 'unread')));
     const extra = await fetch(`${workerUrl}/api/v1/notifications/stream`, { headers });
     expect(extra.status).toBe(429);
@@ -102,7 +138,10 @@ describe('notification stream (SSE)', () => {
     await processed(worker, second.id);
     const [missed] = await notificationsOf(worker, 'sofia');
 
-    const stream = await openStream(`${workerUrl}/api/v1/notifications/stream`, { ...(await worker.as('sofia')), 'last-event-id': anchor!.id });
+    const stream = await openStream(`${workerUrl}/api/v1/notifications/stream`, {
+      ...(await worker.as('sofia')),
+      'last-event-id': anchor!.id,
+    });
     const replayed = await stream.next((m) => m.event === 'notification');
     expect(replayed.id).toBe(missed!.id);
     await stream.next((m) => m.event === 'unread' && json(m.data).count === 2);
@@ -111,7 +150,10 @@ describe('notification stream (SSE)', () => {
   });
 
   it('delivers to a stream held by another instance through Redis pub/sub', async () => {
-    const stream = await openStream(`${apiUrl}/api/v1/notifications/stream`, await api.as('jasmine'));
+    const stream = await openStream(
+      `${apiUrl}/api/v1/notifications/stream`,
+      await api.as('jasmine'),
+    );
     await stream.next((m) => m.event === 'unread');
     expect(api.app.get(NotificationStreamService).count(PEOPLE.jasmine.id)).toBe(1);
     expect(worker.app.get(NotificationStreamService).count(PEOPLE.jasmine.id)).toBe(0);
@@ -119,12 +161,19 @@ describe('notification stream (SSE)', () => {
     const event = enrolled('jasmine');
     await worker.publish(event);
     const pushed = await stream.next((m) => m.event === 'notification');
-    expect(json(pushed.data)).toMatchObject({ type: 'training.assigned', title: 'New training: Storm Season Refresher' });
+    expect(json(pushed.data)).toMatchObject({
+      type: 'training.assigned',
+      title: 'New training: Storm Season Refresher',
+    });
     await stream.close();
   });
 
   it('ends open streams on shutdown so the server can close', async () => {
-    const extra = await createNotificationHarness('stream-shutdown', { role: 'api', database: { url: worker.databaseUrl }, namespace: worker.namespace });
+    const extra = await createNotificationHarness('stream-shutdown', {
+      role: 'api',
+      database: { url: worker.databaseUrl },
+      namespace: worker.namespace,
+    });
     const url = await extra.listen();
     const stream = await openStream(`${url}/api/v1/notifications/stream`, await extra.as('darius'));
     await stream.next((m) => m.event === 'unread');

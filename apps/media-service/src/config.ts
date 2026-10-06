@@ -6,8 +6,10 @@ import { ConfigError, assertProductionSafe, env, loadEnv, z } from '@a5/config';
 import type { MediaKind } from '@a5/contracts/media';
 import { loadServiceConfig } from '@a5/nest-kit';
 
-const megabytes = (fallback: number) => z.coerce.number().int().min(1).max(1_048_576).default(fallback);
-const seconds = (fallback: number, min = 1, max = 7 * 24 * 3600) => z.coerce.number().int().min(min).max(max).default(fallback);
+const megabytes = (fallback: number) =>
+  z.coerce.number().int().min(1).max(1_048_576).default(fallback);
+const seconds = (fallback: number, min = 1, max = 7 * 24 * 3600) =>
+  z.coerce.number().int().min(min).max(max).default(fallback);
 
 /** Object storage settings (shared by the service and the seed CLI). */
 const storageEnv = z.object({
@@ -69,7 +71,8 @@ export type StorageConfig =
       forcePathStyle?: boolean;
     };
 
-export type ScannerConfig = { kind: 'clamav'; host: string; port: number; timeoutMs: number } | { kind: 'none' };
+export type ScannerConfig =
+  { kind: 'clamav'; host: string; port: number; timeoutMs: number } | { kind: 'none' };
 
 const MB = 1024 * 1024;
 
@@ -94,10 +97,17 @@ function publicApiBase(e: StorageEnv): string {
   return (e.PUBLIC_API_URL ?? e.PUBLIC_APP_URL).replace(/\/$/, '');
 }
 
-function storageConfig(e: StorageEnv, issues: string[], signingSecretFallback?: string): StorageConfig {
+function storageConfig(
+  e: StorageEnv,
+  issues: string[],
+  signingSecretFallback?: string,
+): StorageConfig {
   if (e.STORAGE_DRIVER === 'local') {
     const signingSecret = e.STORAGE_SIGNING_SECRET ?? signingSecretFallback;
-    if (!signingSecret) issues.push('STORAGE_SIGNING_SECRET is required when STORAGE_DRIVER=local (run `pnpm keys:generate`)');
+    if (!signingSecret)
+      issues.push(
+        'STORAGE_SIGNING_SECRET is required when STORAGE_DRIVER=local (run `pnpm keys:generate`)',
+      );
     return {
       driver: 'local',
       root: resolveStorageRoot(e.STORAGE_LOCAL_ROOT),
@@ -108,7 +118,9 @@ function storageConfig(e: StorageEnv, issues: string[], signingSecretFallback?: 
   if (!e.S3_BUCKET) issues.push('S3_BUCKET is required when STORAGE_DRIVER=s3');
   if (!e.S3_REGION) issues.push('S3_REGION is required when STORAGE_DRIVER=s3');
   if (Boolean(e.S3_ACCESS_KEY_ID) !== Boolean(e.S3_SECRET_ACCESS_KEY)) {
-    issues.push('S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set together (or both omitted to use the default AWS credential chain)');
+    issues.push(
+      'S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set together (or both omitted to use the default AWS credential chain)',
+    );
   }
   return {
     driver: 's3',
@@ -140,20 +152,30 @@ export function loadMediaConfig(source?: Record<string, string | undefined>) {
   const issues: string[] = [];
 
   const storage = storageConfig(e, issues);
-  if (e.CDN_BASE_URL && !e.CDN_SIGNING_SECRET) issues.push('CDN_SIGNING_SECRET is required when CDN_BASE_URL is set');
+  if (e.CDN_BASE_URL && !e.CDN_SIGNING_SECRET)
+    issues.push('CDN_SIGNING_SECRET is required when CDN_BASE_URL is set');
   const production = config.nodeEnv === 'production' || config.nodeEnv === 'staging';
   const scannerKind = e.MALWARE_SCANNER ?? (production ? 'clamav' : 'none');
-  if (scannerKind === 'clamav' && !e.CLAMAV_HOST) issues.push('CLAMAV_HOST is required when MALWARE_SCANNER=clamav');
+  if (scannerKind === 'clamav' && !e.CLAMAV_HOST)
+    issues.push('CLAMAV_HOST is required when MALWARE_SCANNER=clamav');
   if (issues.length) fail(issues);
 
   assertProductionSafe(config.nodeEnv, [
-    [storage.driver === 's3', 'STORAGE_DRIVER must be s3 (the local driver and its delivery routes are for development only)'],
+    [
+      storage.driver === 's3',
+      'STORAGE_DRIVER must be s3 (the local driver and its delivery routes are for development only)',
+    ],
     [scannerKind === 'clamav', 'MALWARE_SCANNER must be clamav'],
   ]);
 
   const scanner: ScannerConfig =
     scannerKind === 'clamav'
-      ? { kind: 'clamav', host: e.CLAMAV_HOST!, port: e.CLAMAV_PORT, timeoutMs: e.CLAMAV_TIMEOUT_MS }
+      ? {
+          kind: 'clamav',
+          host: e.CLAMAV_HOST!,
+          port: e.CLAMAV_PORT,
+          timeoutMs: e.CLAMAV_TIMEOUT_MS,
+        }
       : { kind: 'none' };
 
   const limits: Record<MediaKind, number> = {
@@ -168,7 +190,9 @@ export function loadMediaConfig(source?: Record<string, string | undefined>) {
     media: {
       publicApiBaseUrl: publicApiBase(e),
       storage,
-      cdn: e.CDN_BASE_URL ? { baseUrl: e.CDN_BASE_URL.replace(/\/$/, ''), signingSecret: e.CDN_SIGNING_SECRET! } : null,
+      cdn: e.CDN_BASE_URL
+        ? { baseUrl: e.CDN_BASE_URL.replace(/\/$/, ''), signingSecret: e.CDN_SIGNING_SECRET! }
+        : null,
       limits,
       uploadUrlTtlSeconds: e.MEDIA_UPLOAD_URL_TTL_SECONDS,
       signedUrlTtlSeconds: e.MEDIA_SIGNED_URL_TTL_SECONDS,
@@ -185,7 +209,8 @@ export function loadMediaConfig(source?: Record<string, string | undefined>) {
       },
       scanner,
       lessonGrantSecret: e.LESSON_GRANT_SECRET ?? config.internalAuthSecret,
-      playbackSecret: e.PLAYBACK_SIGNING_SECRET ?? deriveSecret(config.internalAuthSecret, 'playback'),
+      playbackSecret:
+        e.PLAYBACK_SIGNING_SECRET ?? deriveSecret(config.internalAuthSecret, 'playback'),
     },
   };
 }
@@ -198,10 +223,16 @@ export const MEDIA_CONFIG = Symbol('MEDIA_CONFIG');
  * Storage configuration for offline tools (seed). The seed writes objects directly and never signs
  * URLs, so the local driver does not need STORAGE_SIGNING_SECRET there.
  */
-export function loadStorageConfigForTools(source: Record<string, string | undefined> = process.env): StorageConfig {
+export function loadStorageConfigForTools(
+  source: Record<string, string | undefined> = process.env,
+): StorageConfig {
   const e = loadEnv(storageEnv, source);
   const issues: string[] = [];
-  const storage = storageConfig(e, issues, deriveSecret(`offline-${Date.now()}-${Math.random()}`, 'unused'));
+  const storage = storageConfig(
+    e,
+    issues,
+    deriveSecret(`offline-${Date.now()}-${Math.random()}`, 'unused'),
+  );
   if (issues.length) fail(issues);
   return storage;
 }

@@ -17,7 +17,9 @@ function writeAll(socket: Socket, data: Buffer | string): Promise<void> {
       reject(new MalwareScannerError('clamd closed the connection'));
       return;
     }
-    socket.write(data, (err) => (err ? reject(new MalwareScannerError(`clamd connection failed: ${err.message}`)) : resolve()));
+    socket.write(data, (err) =>
+      err ? reject(new MalwareScannerError(`clamd connection failed: ${err.message}`)) : resolve(),
+    );
   });
 }
 
@@ -36,8 +38,12 @@ export class ClamAvScanner implements MalwareScanner {
     return new Promise((resolve, reject) => {
       const socket = createConnection({ host: this.options.host, port: this.options.port });
       socket.setTimeout(this.options.timeoutMs);
-      socket.once('timeout', () => socket.destroy(new MalwareScannerError('clamd did not respond in time')));
-      socket.once('error', (err) => reject(new MalwareScannerError(`clamd is unreachable: ${err.message}`)));
+      socket.once('timeout', () =>
+        socket.destroy(new MalwareScannerError('clamd did not respond in time')),
+      );
+      socket.once('error', (err) =>
+        reject(new MalwareScannerError(`clamd is unreachable: ${err.message}`)),
+      );
       socket.once('connect', () => resolve(socket));
     });
   }
@@ -51,11 +57,16 @@ export class ClamAvScanner implements MalwareScanner {
       socket.on('data', (data: Buffer) => chunks.push(data));
       // Later errors must not become uncaught exceptions.
       socket.on('error', (err) => {
-        failure ??= err instanceof MalwareScannerError ? err : new MalwareScannerError(`clamd connection failed: ${err.message}`);
+        failure ??=
+          err instanceof MalwareScannerError
+            ? err
+            : new MalwareScannerError(`clamd connection failed: ${err.message}`);
       });
       socket.once('close', () => {
-        if (chunks.length) resolve(Buffer.concat(chunks).toString('utf8').replace(/\0/g, '').trim());
-        else reject(failure ?? new MalwareScannerError('clamd closed the connection without a reply'));
+        if (chunks.length)
+          resolve(Buffer.concat(chunks).toString('utf8').replace(/\0/g, '').trim());
+        else
+          reject(failure ?? new MalwareScannerError('clamd closed the connection without a reply'));
       });
     });
     // The outcome is read below; this only prevents an unhandled rejection while writing.
@@ -66,7 +77,9 @@ export class ClamAvScanner implements MalwareScanner {
       // clamd may answer and close early (e.g. size limit); its reply then explains why.
       if (!chunks.length) {
         socket.destroy();
-        throw err instanceof MalwareScannerError ? err : new MalwareScannerError(`clamd connection failed: ${(err as Error).message}`);
+        throw err instanceof MalwareScannerError
+          ? err
+          : new MalwareScannerError(`clamd connection failed: ${(err as Error).message}`);
       }
     }
     return reply;
@@ -76,7 +89,9 @@ export class ClamAvScanner implements MalwareScanner {
     const chunkSize = this.options.chunkSize ?? 64 * 1024;
     const reply = await this.exchange(async (socket) => {
       await writeAll(socket, 'zINSTREAM\0');
-      for await (const chunk of createReadStream(path, { highWaterMark: chunkSize }) as AsyncIterable<Buffer>) {
+      for await (const chunk of createReadStream(path, {
+        highWaterMark: chunkSize,
+      }) as AsyncIterable<Buffer>) {
         const header = Buffer.alloc(4);
         header.writeUInt32BE(chunk.length, 0);
         await writeAll(socket, Buffer.concat([header, chunk]));
@@ -90,7 +105,8 @@ export class ClamAvScanner implements MalwareScanner {
     const reply = await this.exchange(async (socket) => {
       await new Promise<void>((resolve) => socket.end('zPING\0', resolve));
     });
-    if (reply !== 'PONG') throw new MalwareScannerError(`Unexpected clamd reply to PING: ${reply || '(empty)'}`);
+    if (reply !== 'PONG')
+      throw new MalwareScannerError(`Unexpected clamd reply to PING: ${reply || '(empty)'}`);
   }
 }
 

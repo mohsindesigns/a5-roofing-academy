@@ -25,7 +25,11 @@ class AssessmentConfigModule {
 
 @Module({})
 export class AppModule {
-  static register(config: AssessmentConfig, logger: Logger, options: { clock?: Clock } = {}): DynamicModule {
+  static register(
+    config: AssessmentConfig,
+    logger: Logger,
+    options: { clock?: Clock } = {},
+  ): DynamicModule {
     return {
       module: AppModule,
       imports: [

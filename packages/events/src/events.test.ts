@@ -62,7 +62,20 @@ describe('build and parse', () => {
   });
 
   it('skips unknown versions instead of failing', () => {
-    const event = { ...buildEvent(certificationEvents.expired, { certificateId: UID, definitionId: UID, definitionName: 'x', userId: UID, expiredAt: new Date().toISOString() }, meta), version: 99 };
+    const event = {
+      ...buildEvent(
+        certificationEvents.expired,
+        {
+          certificateId: UID,
+          definitionId: UID,
+          definitionName: 'x',
+          userId: UID,
+          expiredAt: new Date().toISOString(),
+        },
+        meta,
+      ),
+      version: 99,
+    };
     expect(parseEnvelope(event)).toBeNull();
   });
 

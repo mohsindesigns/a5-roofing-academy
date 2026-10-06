@@ -29,23 +29,35 @@ export class TreeService {
 
   /** The program's current published tree, or null when it was never published. */
   async published(programId: string, db: DbOrTrx = this.db): Promise<ProgramTree | null> {
-    const program = await db.selectFrom('programs').select(['published_version']).where('id', '=', programId).executeTakeFirst();
+    const program = await db
+      .selectFrom('programs')
+      .select(['published_version'])
+      .where('id', '=', programId)
+      .executeTakeFirst();
     if (!program || program.published_version === 0) return null;
     return this.version(programId, program.published_version, db);
   }
 
   /** A specific published version (immutable, so safe to cache). */
-  async version(programId: string, version: number, db: DbOrTrx = this.db): Promise<ProgramTree | null> {
+  async version(
+    programId: string,
+    version: number,
+    db: DbOrTrx = this.db,
+  ): Promise<ProgramTree | null> {
     const key = await this.cache.versioned(this.namespace(programId), 'published', version);
-    const snapshot = await this.cache.getOrSet(key, this.config.learning.treeCacheSeconds, async () => {
-      const row = await db
-        .selectFrom('program_versions')
-        .select('snapshot')
-        .where('program_id', '=', programId)
-        .where('version', '=', version)
-        .executeTakeFirst();
-      return row?.snapshot ?? null;
-    });
+    const snapshot = await this.cache.getOrSet(
+      key,
+      this.config.learning.treeCacheSeconds,
+      async () => {
+        const row = await db
+          .selectFrom('program_versions')
+          .select('snapshot')
+          .where('program_id', '=', programId)
+          .where('version', '=', version)
+          .executeTakeFirst();
+        return row?.snapshot ?? null;
+      },
+    );
     return snapshot ? treeFromSnapshot(snapshot) : null;
   }
 

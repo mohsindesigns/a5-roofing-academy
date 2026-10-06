@@ -39,26 +39,44 @@ export const seedIds = {
   competency: (key: string) => seedId(`competency:${key}`),
   question: (key: string) => seedId(`question:${key}`),
   questionVersion: (key: string) => seedId(`question-version:${key}:1`),
-  item: (assessmentKey: string, position: number) => seedId(`assessment-item:${assessmentKey}:${position}`),
-  attempt: (person: string, assessmentKey: string, number: number) => seedId(`attempt:${person}:${assessmentKey}:${number}`),
+  item: (assessmentKey: string, position: number) =>
+    seedId(`assessment-item:${assessmentKey}:${position}`),
+  attempt: (person: string, assessmentKey: string, number: number) =>
+    seedId(`attempt:${person}:${assessmentKey}:${number}`),
 };
 
 /** Historical attempts are written without events: other services seed their own projections. */
 const silent: EventSink = { emit: async () => undefined };
 
 /** Days after enrollment a learner typically takes each assessment (end of the matching week). */
-const DAYS_AFTER_ENROLLMENT: Record<string, number> = { 'quiz-w1': 4, 'quiz-w2': 11, 'quiz-w3': 18, final: 25 };
+const DAYS_AFTER_ENROLLMENT: Record<string, number> = {
+  'quiz-w1': 4,
+  'quiz-w2': 11,
+  'quiz-w3': 18,
+  final: 25,
+};
 
 function hash(input: string): number {
   return seededRng(input).next();
 }
 
-function attemptTimes(journey: LearnerJourney, assessmentKey: string, index: number, timeLimitSeconds: number | null) {
+function attemptTimes(
+  journey: LearnerJourney,
+  assessmentKey: string,
+  index: number,
+  timeLimitSeconds: number | null,
+) {
   const enrolled = new Date(journey.enrolledAt).getTime();
   const key = `${journey.person}:${assessmentKey}:${index}`;
-  const dayOffset = (DAYS_AFTER_ENROLLMENT[assessmentKey] ?? 5) + index * (assessmentKey === 'final' ? 2 : 1);
+  const dayOffset =
+    (DAYS_AFTER_ENROLLMENT[assessmentKey] ?? 5) + index * (assessmentKey === 'final' ? 2 : 1);
   // Business hours in Central Time, expressed in UTC.
-  const start = new Date(enrolled + dayOffset * 86_400_000 + Math.floor(hash(`${key}:hour`) * 6) * 3_600_000 + Math.floor(hash(`${key}:minute`) * 60) * 60_000);
+  const start = new Date(
+    enrolled +
+      dayOffset * 86_400_000 +
+      Math.floor(hash(`${key}:hour`) * 6) * 3_600_000 +
+      Math.floor(hash(`${key}:minute`) * 60) * 60_000,
+  );
   const limit = timeLimitSeconds ?? 1_800;
   const durationMs = Math.round(limit * (0.3 + hash(`${key}:duration`) * 0.45)) * 1000;
   let startedAt = start;
@@ -173,7 +191,9 @@ async function seedAssessments(trx: Trx): Promise<void> {
     const def = ASSESSMENT_DEFINITIONS[seed.key];
     if (!def) throw new Error(`No seed definition for assessment "${seed.key}"`);
     if (def.config.passingPercent !== seed.passingPercent) {
-      throw new Error(`Seed definition of ${seed.key} disagrees with @a5/seed-data on the passing percentage`);
+      throw new Error(
+        `Seed definition of ${seed.key} disagrees with @a5/seed-data on the passing percentage`,
+      );
     }
     await trx
       .insertInto('assessments')
@@ -195,7 +215,14 @@ async function seedAssessments(trx: Trx): Promise<void> {
       .execute();
     const items = def.items.map((item, index) => {
       const position = index + 1;
-      const base = { id: seedIds.item(seed.key, position), assessment_id: seed.id, position, points: null, created_at: AUTHORED_AT, updated_at: AUTHORED_AT };
+      const base = {
+        id: seedIds.item(seed.key, position),
+        assessment_id: seed.id,
+        position,
+        points: null,
+        created_at: AUTHORED_AT,
+        updated_at: AUTHORED_AT,
+      };
       return item.kind === 'question'
         ? {
             ...base,
@@ -237,7 +264,14 @@ async function seedAttempts(trx: Trx, questionsById: Map<string, SeedQuestion>):
     for (const seed of ASSESSMENTS) {
       const scores = journey.attempts[seed.key] ?? [];
       for (const [index, targetPercent] of scores.entries()) {
-        await seedAttempt(trx, engine, questionsById, { journey, seed, learner, index, targetPercent, lessons });
+        await seedAttempt(trx, engine, questionsById, {
+          journey,
+          seed,
+          learner,
+          index,
+          targetPercent,
+          lessons,
+        });
         count++;
       }
     }
@@ -261,9 +295,22 @@ async function seedAttempt(
   const { journey, seed, learner, index, targetPercent } = ctx;
   const attemptId = seedIds.attempt(journey.person, seed.key, index + 1);
   const rng = seededRng(attemptId);
-  const assessmentRow = await trx.selectFrom('assessments').selectAll().where('id', '=', seed.id).executeTakeFirstOrThrow();
-  const items = await trx.selectFrom('assessment_items').selectAll().where('assessment_id', '=', seed.id).execute();
-  const { startedAt, submittedAt } = attemptTimes(journey, seed.key, index, assessmentRow.config.timeLimitSeconds);
+  const assessmentRow = await trx
+    .selectFrom('assessments')
+    .selectAll()
+    .where('id', '=', seed.id)
+    .executeTakeFirstOrThrow();
+  const items = await trx
+    .selectFrom('assessment_items')
+    .selectAll()
+    .where('assessment_id', '=', seed.id)
+    .execute();
+  const { startedAt, submittedAt } = attemptTimes(
+    journey,
+    seed.key,
+    index,
+    assessmentRow.config.timeLimitSeconds,
+  );
 
   const drawn = await drawQuestions(trx, ORGANIZATION.id, items, assessmentRow.config, rng);
   const lesson = ctx.lessons.find((l) => l.key === seed.lessonKey);
@@ -286,16 +333,28 @@ async function seedAttempt(
     .execute();
   const planned = rows.map((row, i) => ({
     points: row.points,
-    options: answerOptions(drawn[i]!.question.def, questionsById.get(row.question_id), row.points, rng),
+    options: answerOptions(
+      drawn[i]!.question.def,
+      questionsById.get(row.question_id),
+      row.points,
+      rng,
+    ),
   }));
-  const chosen = chooseAnswers(planned, { percent: targetPercent, passingPercent: assessmentRow.config.passingPercent }, rng);
+  const chosen = chooseAnswers(
+    planned,
+    { percent: targetPercent, passingPercent: assessmentRow.config.passingPercent },
+    rng,
+  );
 
   // Answers were autosaved while the learner worked through the attempt.
   const span = submittedAt.getTime() - startedAt.getTime();
   for (const [i, row] of rows.entries()) {
     await trx
       .updateTable('attempt_answers')
-      .set({ response: chosen[i]!.response, saved_at: new Date(startedAt.getTime() + Math.floor(span * ((i + 1) / (rows.length + 1)))) })
+      .set({
+        response: chosen[i]!.response,
+        saved_at: new Date(startedAt.getTime() + Math.floor(span * ((i + 1) / (rows.length + 1)))),
+      })
       .where('attempt_question_id', '=', row.id)
       .execute();
   }
@@ -305,10 +364,20 @@ async function seedAttempt(
   if (graded.status !== 'pending_review') return;
 
   // A trainer reviews the written answers a few hours after submission.
-  const reviewedAt = new Date(submittedAt.getTime() + (3 + Math.floor(hash(`${attemptId}:review`) * 20)) * 3_600_000);
+  const reviewedAt = new Date(
+    submittedAt.getTime() + (3 + Math.floor(hash(`${attemptId}:review`) * 20)) * 3_600_000,
+  );
   const reviewer = reviewerFor(journey.person);
   const grades = rows.flatMap((row, i) =>
-    chosen[i]!.reviewed ? [{ attemptQuestionId: row.id, awardedPoints: chosen[i]!.awarded, feedback: chosen[i]!.feedback ?? null }] : [],
+    chosen[i]!.reviewed
+      ? [
+          {
+            attemptQuestionId: row.id,
+            awardedPoints: chosen[i]!.awarded,
+            feedback: chosen[i]!.feedback ?? null,
+          },
+        ]
+      : [],
   );
   await engine.applyReviewerGrades(trx, attempt.id, grades, reviewer, reviewedAt);
   const final = await engine.finalizeReview(trx, attempt.id, reviewedAt);
@@ -320,10 +389,17 @@ async function seedAttempt(
  * listed in the shared learner journeys. Idempotent: does nothing once the bank exists. The
  * directory projection is refreshed every run (older revisions are ignored).
  */
-export async function seedAssessment(db: Db, options: SeedOptions = {}): Promise<{ created: boolean; questions: number; attempts: number }> {
+export async function seedAssessment(
+  db: Db,
+  options: SeedOptions = {},
+): Promise<{ created: boolean; questions: number; attempts: number }> {
   const log = options.log ?? (() => undefined);
   await seedDirectory(db);
-  const existing = await db.selectFrom('question_banks').select('id').where('id', '=', QUESTION_BANK.id).executeTakeFirst();
+  const existing = await db
+    .selectFrom('question_banks')
+    .select('id')
+    .where('id', '=', QUESTION_BANK.id)
+    .executeTakeFirst();
   if (existing) {
     log('assessment: question bank already seeded');
     return { created: false, questions: 0, attempts: 0 };
@@ -333,6 +409,8 @@ export async function seedAssessment(db: Db, options: SeedOptions = {}): Promise
     await seedAssessments(trx);
     return seedAttempts(trx, questions);
   });
-  log(`assessment: seeded ${QUESTIONS.length} questions, ${ASSESSMENTS.length} assessments and ${attempts} attempts`);
+  log(
+    `assessment: seeded ${QUESTIONS.length} questions, ${ASSESSMENTS.length} assessments and ${attempts} attempts`,
+  );
   return { created: true, questions: QUESTIONS.length, attempts };
 }

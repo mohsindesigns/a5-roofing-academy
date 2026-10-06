@@ -2,7 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { PrincipalData } from '@a5/auth';
 import { InjectDb, InjectRedis } from '@a5/nest-kit';
 import { RedisNamespace, type Redis } from '@a5/messaging';
-import { widestScope, type DataScope, type PermissionKey, type PermissionMap } from '@a5/permissions';
+import {
+  widestScope,
+  type DataScope,
+  type PermissionKey,
+  type PermissionMap,
+} from '@a5/permissions';
 import type { Db } from '../database/index.js';
 import { PRINCIPAL_CACHE_TTL_SECONDS, iamKeys } from '../common/iam-keys.js';
 
@@ -55,14 +60,20 @@ export class PrincipalResolver {
         .where('tm.user_id', '=', userId)
         .where('t.archived_at', 'is', null)
         .execute(),
-      this.db.selectFrom('user_relationships').select('user_id').where('supervisor_id', '=', userId).execute(),
+      this.db
+        .selectFrom('user_relationships')
+        .select('user_id')
+        .where('supervisor_id', '=', userId)
+        .execute(),
     ]);
 
     const permissions: PermissionMap = {};
     for (const g of grants) {
       const key = g.permission_key as PermissionKey;
       const existing = permissions[key];
-      permissions[key] = existing ? widestScope(existing, g.data_scope as DataScope) : (g.data_scope as DataScope);
+      permissions[key] = existing
+        ? widestScope(existing, g.data_scope as DataScope)
+        : (g.data_scope as DataScope);
     }
 
     return {
@@ -79,7 +90,11 @@ export class PrincipalResolver {
 
   /** Cached resolution used by the gateway. Session id is not cached (it varies per device). */
   async resolveCached(userId: string): Promise<PrincipalData | null> {
-    const user = await this.db.selectFrom('users').select('organization_id').where('id', '=', userId).executeTakeFirst();
+    const user = await this.db
+      .selectFrom('users')
+      .select('organization_id')
+      .where('id', '=', userId)
+      .executeTakeFirst();
     if (!user) return null;
     const [epochRaw, cachedRaw] = await this.redis.mget(
       iamKeys.epoch(this.ns, user.organization_id),
@@ -96,7 +111,12 @@ export class PrincipalResolver {
       return null;
     }
     const value: CachedPrincipal = { epoch, data };
-    await this.redis.set(iamKeys.principal(this.ns, userId), JSON.stringify(value), 'EX', PRINCIPAL_CACHE_TTL_SECONDS);
+    await this.redis.set(
+      iamKeys.principal(this.ns, userId),
+      JSON.stringify(value),
+      'EX',
+      PRINCIPAL_CACHE_TTL_SECONDS,
+    );
     return data;
   }
 }

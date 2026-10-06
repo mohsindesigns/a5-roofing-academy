@@ -42,6 +42,9 @@ export async function recordCertificateEvent(
     .execute();
 }
 
-export function personRef(id: string | null, name: string | null): { id: string; displayName: string } | null {
+export function personRef(
+  id: string | null,
+  name: string | null,
+): { id: string; displayName: string } | null {
   return id && name ? { id, displayName: name } : null;
 }

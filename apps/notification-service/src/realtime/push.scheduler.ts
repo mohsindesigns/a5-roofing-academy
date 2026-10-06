@@ -23,20 +23,32 @@ export class DelayedPushScheduler implements OnModuleInit {
 
   onModuleInit(): void {
     if (!runsWorkers(this.config)) return;
-    this.queues.worker<{ notificationId: string }>(PUSH_QUEUE, (job) => this.push(job.data.notificationId));
+    this.queues.worker<{ notificationId: string }>(PUSH_QUEUE, (job) =>
+      this.push(job.data.notificationId),
+    );
   }
 
   async schedule(notificationId: string, delayMs: number): Promise<void> {
     try {
-      await this.queues.add(PUSH_QUEUE, 'push', { notificationId }, { jobId: `push-${notificationId}`, delay: Math.max(0, delayMs), attempts: 3 });
+      await this.queues.add(
+        PUSH_QUEUE,
+        'push',
+        { notificationId },
+        { jobId: `push-${notificationId}`, delay: Math.max(0, delayMs), attempts: 3 },
+      );
     } catch (err) {
-      this.logger.warn({ err, notificationId }, 'could not schedule delayed push; the notification still appears in the inbox');
+      this.logger.warn(
+        { err, notificationId },
+        'could not schedule delayed push; the notification still appears in the inbox',
+      );
     }
   }
 
   async push(notificationId: string): Promise<void> {
     const row = await this.repo.findById(notificationId);
     if (!row || row.read_at) return;
-    await this.realtime.notificationsCreated([{ userId: row.user_id, notification: toNotificationDto(row) }]);
+    await this.realtime.notificationsCreated([
+      { userId: row.user_id, notification: toNotificationDto(row) },
+    ]);
   }
 }

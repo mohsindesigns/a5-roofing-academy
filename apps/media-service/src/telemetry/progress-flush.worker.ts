@@ -28,7 +28,11 @@ export class ProgressFlushWorker implements OnApplicationBootstrap {
     if (!runsWorkers(this.config)) return;
     this.queues.worker(PROGRESS_FLUSH_QUEUE, async () => this.flushDirty(), { concurrency: 1 });
     await this.queues
-      .queue(PROGRESS_FLUSH_QUEUE, { attempts: 1, removeOnComplete: { count: 100 }, removeOnFail: { count: 100 } })
+      .queue(PROGRESS_FLUSH_QUEUE, {
+        attempts: 1,
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 100 },
+      })
       .upsertJobScheduler(
         'flush-watch-progress',
         { every: this.config.media.progressFlushIntervalSeconds * 1000 },

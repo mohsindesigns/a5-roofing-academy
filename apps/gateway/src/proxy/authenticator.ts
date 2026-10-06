@@ -45,7 +45,9 @@ export class Authenticator implements OnModuleInit {
   }
 
   async onModuleInit() {
-    this.publicKey = (await importAccessKeys(undefined, this.config.gateway.publicKeyPem)).publicKey;
+    this.publicKey = (
+      await importAccessKeys(undefined, this.config.gateway.publicKeyPem)
+    ).publicKey;
   }
 
   async authenticate(authorization: string | undefined): Promise<PrincipalData> {
@@ -58,7 +60,10 @@ export class Authenticator implements OnModuleInit {
       if (err instanceof TokenError && err.code === 'expired') {
         throw new UnauthenticatedError('SESSION_EXPIRED', 'Your session expired. Sign in again.');
       }
-      throw new UnauthenticatedError('TOKEN_INVALID', 'Your sign-in could not be verified. Sign in again.');
+      throw new UnauthenticatedError(
+        'TOKEN_INVALID',
+        'Your sign-in could not be verified. Sign in again.',
+      );
     }
 
     let session: string | null | undefined;
@@ -71,7 +76,9 @@ export class Authenticator implements OnModuleInit {
         this.k.principal(claims.sub),
       );
     } catch {
-      throw new ServiceUnavailableError('Authentication is temporarily unavailable. Retry in a moment.');
+      throw new ServiceUnavailableError(
+        'Authentication is temporarily unavailable. Retry in a moment.',
+      );
     }
 
     if (session && cachedRaw) {
@@ -82,9 +89,13 @@ export class Authenticator implements OnModuleInit {
     }
 
     const resolved = await this.fetchPrincipal(claims.sub, session ? null : claims.sid);
-    if (!resolved.sessionActive) throw new UnauthenticatedError('SESSION_REVOKED', 'You were signed out. Sign in again.');
+    if (!resolved.sessionActive)
+      throw new UnauthenticatedError('SESSION_REVOKED', 'You were signed out. Sign in again.');
     if (!resolved.principal || resolved.principal.organizationId !== claims.org) {
-      throw new UnauthenticatedError('ACCOUNT_DISABLED', 'Your account is not active. Contact your administrator.');
+      throw new UnauthenticatedError(
+        'ACCOUNT_DISABLED',
+        'Your account is not active. Contact your administrator.',
+      );
     }
     return { ...resolved.principal, sessionId: claims.sid };
   }
@@ -109,7 +120,9 @@ export class Authenticator implements OnModuleInit {
       if (!res.ok) throw new Error(`identity responded ${res.status}`);
       return (await res.json()) as { principal: PrincipalData | null; sessionActive: boolean };
     } catch {
-      throw new ServiceUnavailableError('Sign-in could not be verified right now. Retry in a moment.');
+      throw new ServiceUnavailableError(
+        'Sign-in could not be verified right now. Retry in a moment.',
+      );
     }
   }
 }

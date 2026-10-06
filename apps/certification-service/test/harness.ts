@@ -5,7 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { PRINCIPAL_HEADER, SERVICE_TOKEN_HEADER, signPrincipalToken, verifyServiceToken, type PrincipalData } from '@a5/auth';
+import {
+  PRINCIPAL_HEADER,
+  SERVICE_TOKEN_HEADER,
+  signPrincipalToken,
+  verifyServiceToken,
+  type PrincipalData,
+} from '@a5/auth';
 import { createDatabase, migrateToLatest, type Database } from '@a5/database';
 import { buildEvent, type EventEnvelope } from '@a5/events';
 import { createRedis, type Redis } from '@a5/messaging';
@@ -14,7 +20,12 @@ import { uuidv7 } from '@a5/observability';
 import { DEFAULT_ROLES, widestScope, type DataScope, type PermissionMap } from '@a5/permissions';
 import { ORGANIZATION, PEOPLE, TEAMS, TRAINER_ASSIGNMENTS, type PersonKey } from '@a5/seed-data';
 import { LocalDiskStorage } from '@a5/storage';
-import { TEST_REDIS_URL, createTestDatabase, testRedisNamespace, type TestDatabase } from '@a5/testing';
+import {
+  TEST_REDIS_URL,
+  createTestDatabase,
+  testRedisNamespace,
+  type TestDatabase,
+} from '@a5/testing';
 import { AppModule } from '../src/app.module.js';
 import { loadCertificationConfig, type CertificationConfig } from '../src/config.js';
 import { migrations } from '../src/database/migrations/index.js';
@@ -45,13 +56,21 @@ export interface CertHarness {
   pdf: PdfService;
   verification: VerificationService;
   /** Identity stub: names it returns for `GET /internal/users?ids=`; `null` makes it unreachable. */
-  identity: { names: Map<string, { firstName: string; lastName: string }>; calls: string[]; down: boolean };
+  identity: {
+    names: Map<string, { firstName: string; lastName: string }>;
+    calls: string[];
+    down: boolean;
+  };
   /** Principal headers for a seeded person, computed like identity's principal resolver. */
   as(person: PersonKey): Promise<Record<string, string>>;
   /** Headers for an arbitrary principal. */
   principal(input: Partial<PrincipalData> & { userId: string }): Promise<Record<string, string>>;
   /** Publish a domain event to the consumer exactly as the stream consumer would. */
-  deliver(def: Parameters<typeof buildEvent>[0], payload: unknown, options?: { id?: string; occurredAt?: Date }): Promise<EventEnvelope>;
+  deliver(
+    def: Parameters<typeof buildEvent>[0],
+    payload: unknown,
+    options?: { id?: string; occurredAt?: Date },
+  ): Promise<EventEnvelope>;
   close(): Promise<void>;
 }
 
@@ -69,13 +88,18 @@ function permissionsOf(person: PersonKey): PermissionMap {
     const role = DEFAULT_ROLES.find((r) => r.key === roleKey)!;
     for (const key of role.permissions) {
       const existing = map[key];
-      map[key] = existing ? widestScope(existing, role.dataScope as DataScope) : (role.dataScope as DataScope);
+      map[key] = existing
+        ? widestScope(existing, role.dataScope as DataScope)
+        : (role.dataScope as DataScope);
     }
   }
   return map;
 }
 
-export async function createCertHarness(name: string, options: HarnessOptions = {}): Promise<CertHarness> {
+export async function createCertHarness(
+  name: string,
+  options: HarnessOptions = {},
+): Promise<CertHarness> {
   const tdb: TestDatabase = await createTestDatabase(`cert_${name}`);
   const storageRoot = await mkdtemp(join(tmpdir(), 'a5-cert-'));
   const namespace = testRedisNamespace(`cert-${name}`);
@@ -84,33 +108,36 @@ export async function createCertHarness(name: string, options: HarnessOptions = 
   const identity: CertHarness['identity'] = { names: new Map(), calls: [], down: false };
   const stub: Server = createServer((req, res) => {
     void (async () => {
-    const url = new URL(req.url ?? '/', 'http://stub');
-    const token = req.headers[SERVICE_TOKEN_HEADER];
-    const caller = typeof token === 'string' ? await verifyServiceToken(token, TEST_INTERNAL_SECRET).catch(() => null) : null;
-    if (identity.down || !caller || url.pathname !== '/internal/users') {
-      res.statusCode = identity.down ? 503 : 401;
-      res.end('{}');
-      return;
-    }
-    const ids = (url.searchParams.get('ids') ?? '').split(',').filter(Boolean);
-    identity.calls.push(...ids);
-    const items = ids.flatMap((id) => {
-      const override = identity.names.get(id);
-      const person = Object.values(PEOPLE).find((p) => p.id === id);
-      if (!override && !person) return [];
-      return [
-        {
-          id,
-          organizationId: ORGANIZATION.id,
-          firstName: override?.firstName ?? person!.firstName,
-          lastName: override?.lastName ?? person!.lastName,
-          employeeId: person?.employeeId ?? null,
-          status: 'active',
-        },
-      ];
-    });
-    res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify({ items }));
+      const url = new URL(req.url ?? '/', 'http://stub');
+      const token = req.headers[SERVICE_TOKEN_HEADER];
+      const caller =
+        typeof token === 'string'
+          ? await verifyServiceToken(token, TEST_INTERNAL_SECRET).catch(() => null)
+          : null;
+      if (identity.down || !caller || url.pathname !== '/internal/users') {
+        res.statusCode = identity.down ? 503 : 401;
+        res.end('{}');
+        return;
+      }
+      const ids = (url.searchParams.get('ids') ?? '').split(',').filter(Boolean);
+      identity.calls.push(...ids);
+      const items = ids.flatMap((id) => {
+        const override = identity.names.get(id);
+        const person = Object.values(PEOPLE).find((p) => p.id === id);
+        if (!override && !person) return [];
+        return [
+          {
+            id,
+            organizationId: ORGANIZATION.id,
+            firstName: override?.firstName ?? person!.firstName,
+            lastName: override?.lastName ?? person!.lastName,
+            employeeId: person?.employeeId ?? null,
+            status: 'active',
+          },
+        ];
+      });
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ items }));
     })();
   });
   await new Promise<void>((resolve) => stub.listen(0, '127.0.0.1', resolve));
@@ -133,7 +160,11 @@ export async function createCertHarness(name: string, options: HarnessOptions = 
     CERT_SWEEP_INTERVAL_MS: '3600000',
     ...options.env,
   });
-  const storage = new LocalDiskStorage({ root: storageRoot, publicBaseUrl: config.storage.filesBaseUrl, signingSecret: config.storage.signingSecret });
+  const storage = new LocalDiskStorage({
+    root: storageRoot,
+    publicBaseUrl: config.storage.filesBaseUrl,
+    signingSecret: config.storage.signingSecret,
+  });
 
   const database = createDatabase<CertificationDatabase>({ url: tdb.url, poolMax: 4 });
   await migrateToLatest(database.db as never, migrations);
@@ -141,12 +172,16 @@ export async function createCertHarness(name: string, options: HarnessOptions = 
   const app = await createTestApp(AppModule.register(config, testLogger(), { storage }), config);
   // A really listening server: supertest's per-request ephemeral listeners race under parallel requests.
   await app.listen(0, '127.0.0.1');
-  const get = <T>(cls: abstract new (...args: never[]) => T): T => app.get(cls as never, { strict: false });
+  const get = <T>(cls: abstract new (...args: never[]) => T): T =>
+    app.get(cls as never, { strict: false });
   const eligibility = get(EligibilityService);
   const issuance = get(IssuanceService);
   const lifecycle = get(LifecycleService);
   if (options.seed !== false) {
-    await seedCertification({ db: database.db, storage, config, issuance, eligibility, lifecycle }, {});
+    await seedCertification(
+      { db: database.db, storage, config, issuance, eligibility, lifecycle },
+      {},
+    );
   }
 
   const redis = createRedis(TEST_REDIS_URL);
@@ -169,8 +204,12 @@ export async function createCertHarness(name: string, options: HarnessOptions = 
     identity,
     async as(person) {
       const p = PEOPLE[person];
-      const managedTeamIds = TEAMS.filter((t) => (t.managers as readonly string[]).includes(person)).map((t) => t.id);
-      const managedUserIds = TRAINER_ASSIGNMENTS.filter((a) => a.trainer === person).flatMap((a) => a.trainees.map((t) => PEOPLE[t].id));
+      const managedTeamIds = TEAMS.filter((t) =>
+        (t.managers as readonly string[]).includes(person),
+      ).map((t) => t.id);
+      const managedUserIds = TRAINER_ASSIGNMENTS.filter((a) => a.trainer === person).flatMap((a) =>
+        a.trainees.map((t) => PEOPLE[t].id),
+      );
       return h.principal({
         userId: p.id,
         displayName: `${p.firstName} ${p.lastName}`,

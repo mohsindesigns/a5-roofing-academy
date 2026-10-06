@@ -21,7 +21,11 @@ import {
   type PersonKey,
 } from '@a5/seed-data';
 import { jsonOrNull, type Db } from '../database/index.js';
-import { ensurePartitions, ensureUpcomingPartitions, monthsBetween } from '../partitions/partitions.js';
+import {
+  ensurePartitions,
+  ensureUpcomingPartitions,
+  monthsBetween,
+} from '../partitions/partitions.js';
 
 export interface SeedOptions {
   /** Months after the last entry that also get partitions (default 3). */
@@ -67,11 +71,14 @@ export function seedUuidV7(at: Date, name: string): string {
 function timeOf(day: string, key: string): Date {
   const h = hashOf(`time:${key}`);
   const minutes = 14 * 60 + 5 + (((h[0]! << 8) | h[1]!) % (7 * 60 + 45));
-  return new Date(Date.parse(`${day}T00:00:00.000Z`) + minutes * 60_000 + (h[2]! % 60) * 1_000 + h[3]!);
+  return new Date(
+    Date.parse(`${day}T00:00:00.000Z`) + minutes * 60_000 + (h[2]! % 60) * 1_000 + h[3]!,
+  );
 }
 
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
-const shiftDays = (day: string, days: number) => isoDay(new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY));
+const shiftDays = (day: string, days: number) =>
+  isoDay(new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY));
 
 /** The last weekday before `day`. */
 function previousWorkday(day: string): string {
@@ -86,7 +93,11 @@ function previousWorkday(day: string): string {
 const name = (key: PersonKey) => `${PEOPLE[key].firstName} ${PEOPLE[key].lastName}`;
 const displayOf = (actor: PersonKey | 'system') => (actor === 'system' ? 'System' : name(actor));
 
-const OFFICE_IP: Record<string, string> = { DAL: '198.51.100.21', FTW: '198.51.100.41', AUS: '198.51.100.61' };
+const OFFICE_IP: Record<string, string> = {
+  DAL: '198.51.100.21',
+  FTW: '198.51.100.41',
+  AUS: '198.51.100.61',
+};
 const LOCATION_CODE = new Map<string, string>(LOCATIONS.map((l) => [l.id, l.code]));
 const AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
@@ -95,7 +106,10 @@ const AGENTS = [
 ];
 
 /** Office address of the actor's location (occasionally a home connection) and a stable browser. */
-function clientOf(actor: PersonKey | 'system', key: string): { ip: string | null; userAgent: string | null } {
+function clientOf(
+  actor: PersonKey | 'system',
+  key: string,
+): { ip: string | null; userAgent: string | null } {
   if (actor === 'system') return { ip: null, userAgent: null };
   const h = hashOf(`client:${actor}:${key.split(':')[0]}`);
   const office = OFFICE_IP[LOCATION_CODE.get(PEOPLE[actor].locationId) ?? 'DAL']!;
@@ -105,17 +119,29 @@ function clientOf(actor: PersonKey | 'system', key: string): { ip: string | null
   };
 }
 
-const managersOf = (person: PersonKey): PersonKey[] =>
-  [...new Set(TEAMS.filter((t) => (t.members as readonly string[]).includes(person)).flatMap((t) => t.managers))];
-const teamOf = (person: PersonKey) => TEAMS.find((t) => (t.members as readonly string[]).includes(person));
+const managersOf = (person: PersonKey): PersonKey[] => [
+  ...new Set(
+    TEAMS.filter((t) => (t.members as readonly string[]).includes(person)).flatMap(
+      (t) => t.managers,
+    ),
+  ),
+];
+const teamOf = (person: PersonKey) =>
+  TEAMS.find((t) => (t.members as readonly string[]).includes(person));
 
 /** Certificate numbers in issue order per year, matching the certification and notification seeds. */
 function certificateNumber(person: PersonKey, index: number): string {
-  const issued = JOURNEYS.flatMap((j) => (j.certificates ?? []).map((c, i) => ({ person: j.person, index: i, at: new Date(c.issuedAt) }))).sort(
-    (a, b) => a.at.getTime() - b.at.getTime(),
-  );
+  const issued = JOURNEYS.flatMap((j) =>
+    (j.certificates ?? []).map((c, i) => ({
+      person: j.person,
+      index: i,
+      at: new Date(c.issuedAt),
+    })),
+  ).sort((a, b) => a.at.getTime() - b.at.getTime());
   const self = issued.find((c) => c.person === person && c.index === index)!;
-  const sequence = issued.filter((c) => c.at.getUTCFullYear() === self.at.getUTCFullYear() && c.at <= self.at).length;
+  const sequence = issued.filter(
+    (c) => c.at.getUTCFullYear() === self.at.getUTCFullYear() && c.at <= self.at,
+  ).length;
   return `A5-${CERTIFICATION.code}-${self.at.getUTCFullYear()}-${String(sequence).padStart(6, '0')}`;
 }
 
@@ -128,7 +154,8 @@ export function auditHistory(): Entry[] {
   const add = (entry: Entry) => {
     e.push(entry);
   };
-  const lessonTitle = (key: string) => PHASES.flatMap((p) => p.modules.flatMap((m) => m.lessons)).find((l) => l.key === key)!;
+  const lessonTitle = (key: string) =>
+    PHASES.flatMap((p) => p.modules.flatMap((m) => m.lessons)).find((l) => l.key === key)!;
 
   // ------------------------------------------------------------ platform setup (identity)
   add({
@@ -140,7 +167,11 @@ export function auditHistory(): Entry[] {
     resourceType: 'organization',
     resourceId: ORGANIZATION.id,
     before: { name: 'A5 Roofing', timezone: 'America/New_York', supportEmail: null },
-    after: { name: ORGANIZATION.name, timezone: ORGANIZATION.timezone, supportEmail: `sales-enablement@${ORGANIZATION.emailDomain}` },
+    after: {
+      name: ORGANIZATION.name,
+      timezone: ORGANIZATION.timezone,
+      supportEmail: `sales-enablement@${ORGANIZATION.emailDomain}`,
+    },
   });
   add({
     key: 'org-security-1',
@@ -163,7 +194,11 @@ export function auditHistory(): Entry[] {
       action: 'team.created',
       resourceType: 'team',
       resourceId: team.id,
-      after: { name: team.name, managerIds: team.managers.map((m) => PEOPLE[m].id), locationId: team.locationId },
+      after: {
+        name: team.name,
+        managerIds: team.managers.map((m) => PEOPLE[m].id),
+        locationId: team.locationId,
+      },
     });
   }
   add({
@@ -278,7 +313,12 @@ export function auditHistory(): Entry[] {
       action: 'user.created',
       resourceType: 'user',
       resourceId: p.id,
-      after: { email: emailOf(p), name: name(person), roleIds: p.roles.map(roleId), teamIds: team ? [team.id] : [] },
+      after: {
+        email: emailOf(p),
+        name: name(person),
+        roleIds: p.roles.map(roleId),
+        teamIds: team ? [team.id] : [],
+      },
     });
     if (team) {
       add({
@@ -304,7 +344,10 @@ export function auditHistory(): Entry[] {
         resourceType: 'user',
         resourceId: p.id,
         before: { trainerIds: [] },
-        after: { trainerIds: [PEOPLE[trainer.trainer].id], managerIds: managersOf(person).map((m) => PEOPLE[m].id) },
+        after: {
+          trainerIds: [PEOPLE[trainer.trainer].id],
+          managerIds: managersOf(person).map((m) => PEOPLE[m].id),
+        },
         reason: `${PEOPLE[trainer.trainer].firstName} coaches this cohort`,
       });
     }
@@ -391,11 +434,36 @@ export function auditHistory(): Entry[] {
     after: { title: PROGRAM.title, category: PROGRAM.category, phaseLabel: PROGRAM.phaseLabel },
   });
   const publishes: Array<{ day: string; version: number; note: string; changes: string[] }> = [
-    { day: '2024-10-14', version: 1, note: 'First cohort', changes: ['Four weeks, 4 knowledge checks, 10 AI scenarios'] },
-    { day: '2025-02-18', version: 2, note: 'Insurance claims content reworked', changes: ['w2-claims', 'w2-adjusters'] },
-    { day: '2025-05-27', version: 3, note: 'Compliance article updated after legal review', changes: ['w4-compliance'] },
-    { day: '2026-01-13', version: 4, note: 'Discovery questions refreshed', changes: ['w3-discovery', 'w3-framework'] },
-    { day: '2026-06-30', version: 5, note: 'Ahead of the July cohort', changes: ['w3-practice-estimates', 'w4-practice-cheaper'] },
+    {
+      day: '2024-10-14',
+      version: 1,
+      note: 'First cohort',
+      changes: ['Four weeks, 4 knowledge checks, 10 AI scenarios'],
+    },
+    {
+      day: '2025-02-18',
+      version: 2,
+      note: 'Insurance claims content reworked',
+      changes: ['w2-claims', 'w2-adjusters'],
+    },
+    {
+      day: '2025-05-27',
+      version: 3,
+      note: 'Compliance article updated after legal review',
+      changes: ['w4-compliance'],
+    },
+    {
+      day: '2026-01-13',
+      version: 4,
+      note: 'Discovery questions refreshed',
+      changes: ['w3-discovery', 'w3-framework'],
+    },
+    {
+      day: '2026-06-30',
+      version: 5,
+      note: 'Ahead of the July cohort',
+      changes: ['w3-practice-estimates', 'w4-practice-cheaper'],
+    },
   ];
   for (const pub of publishes) {
     add({
@@ -407,15 +475,30 @@ export function auditHistory(): Entry[] {
       resourceType: 'program',
       resourceId: PROGRAM.id,
       before: { version: pub.version - 1 },
-      after: { version: pub.version, requiredLessons: PHASES.flatMap((p) => p.modules.flatMap((m) => m.lessons)).filter((l) => l.required).length },
+      after: {
+        version: pub.version,
+        requiredLessons: PHASES.flatMap((p) => p.modules.flatMap((m) => m.lessons)).filter(
+          (l) => l.required,
+        ).length,
+      },
       reason: pub.note,
       metadata: { changedLessons: pub.changes },
     });
   }
   for (const [day, key, from, to] of [
     ['2025-02-14', 'w2-claims', 'How a Claim Works', 'How a Homeowner Claim Works'],
-    ['2026-01-09', 'w3-discovery', 'Discovery Questions', 'Discovery Questions That Uncover Real Concerns'],
-    ['2026-06-26', 'w4-practice-cheaper', 'Practice: Price Objection', 'Practice: "Another roofer is cheaper"'],
+    [
+      '2026-01-09',
+      'w3-discovery',
+      'Discovery Questions',
+      'Discovery Questions That Uncover Real Concerns',
+    ],
+    [
+      '2026-06-26',
+      'w4-practice-cheaper',
+      'Practice: Price Objection',
+      'Practice: "Another roofer is cheaper"',
+    ],
   ] as const) {
     const l = lessonTitle(key);
     add({
@@ -443,7 +526,12 @@ export function auditHistory(): Entry[] {
       action: 'enrollment.created',
       resourceType: 'enrollment',
       resourceId: seedId(`enrollment:${j.person}`),
-      after: { userId: PEOPLE[j.person].id, programId: PROGRAM.id, source: 'manual', dueInDays: PROGRAM.durationDays },
+      after: {
+        userId: PEOPLE[j.person].id,
+        programId: PROGRAM.id,
+        source: 'manual',
+        dueInDays: PROGRAM.durationDays,
+      },
     });
   }
   add({
@@ -470,7 +558,11 @@ export function auditHistory(): Entry[] {
       resourceType: 'approval',
       resourceId: seedId(`approval:${j.person}:signoff`),
       before: { status: 'pending' },
-      after: { status: 'approved', lesson: 'Manager Field-Ready Sign-off', userId: PEOPLE[j.person].id },
+      after: {
+        status: 'approved',
+        lesson: 'Manager Field-Ready Sign-off',
+        userId: PEOPLE[j.person].id,
+      },
       reason: `Ride-along looked field ready; ${PEOPLE[j.person].firstName} handled objections well`,
     });
   }
@@ -500,7 +592,10 @@ export function auditHistory(): Entry[] {
     before: { scorePercent: 78, passed: false },
     after: { scorePercent: 80, passed: true },
     reason: 'Regraded open answer 4 against the rubric',
-    metadata: { assessmentId: ASSESSMENTS.find((a) => a.key === 'quiz-w2')!.id, userId: PEOPLE.sofia.id },
+    metadata: {
+      assessmentId: ASSESSMENTS.find((a) => a.key === 'quiz-w2')!.id,
+      userId: PEOPLE.sofia.id,
+    },
   });
   const cheaper = SCENARIOS.find((s) => s.key === 'cheaper')!;
   add({
@@ -639,7 +734,11 @@ export function auditHistory(): Entry[] {
           resourceType: 'certificate_approval',
           resourceId: seedId(`certificate-approval:${j.person}`),
           before: { status: 'pending' },
-          after: { status: 'approved', userId: PEOPLE[j.person].id, definitionId: CERTIFICATION.id },
+          after: {
+            status: 'approved',
+            userId: PEOPLE[j.person].id,
+            definitionId: CERTIFICATION.id,
+          },
           reason: 'All requirements met',
         });
       }
@@ -651,8 +750,21 @@ export function auditHistory(): Entry[] {
         action: index === 0 ? 'certificate.issued' : 'certificate.reissued',
         resourceType: 'certificate',
         resourceId: certId,
-        after: { certificateNumber: number, userId: PEOPLE[j.person].id, definitionId: CERTIFICATION.id, status: 'issued' },
-        ...(index === 0 ? {} : { before: { certificateId: seedId(`certificate:${j.person}:${index}`), status: 'issued' }, reason: j.certificates![index - 1]!.reissueReason ?? 'Corrected certificate details' }),
+        after: {
+          certificateNumber: number,
+          userId: PEOPLE[j.person].id,
+          definitionId: CERTIFICATION.id,
+          status: 'issued',
+        },
+        ...(index === 0
+          ? {}
+          : {
+              before: {
+                certificateId: seedId(`certificate:${j.person}:${index}`),
+                status: 'issued',
+              },
+              reason: j.certificates![index - 1]!.reissueReason ?? 'Corrected certificate details',
+            }),
         metadata: { mode: index === 0 ? 'approval' : 'reissue', certificateNumber: number },
       });
       if (index > 0) {
@@ -739,7 +851,9 @@ export function auditHistory(): Entry[] {
     });
   }
 
-  return e.filter((x) => x.day >= FIRST_DAY && x.day < isoDay(SEED_NOW)).sort((a, b) => a.day.localeCompare(b.day) || a.key.localeCompare(b.key));
+  return e
+    .filter((x) => x.day >= FIRST_DAY && x.day < isoDay(SEED_NOW))
+    .sort((a, b) => a.day.localeCompare(b.day) || a.key.localeCompare(b.key));
 }
 
 /**
@@ -747,7 +861,10 @@ export function auditHistory(): Entry[] {
  * timestamps are deterministic). Creates the monthly partitions the history needs first.
  * Idempotent: existing entries are skipped.
  */
-export async function seedAudit(db: Db, options: SeedOptions = {}): Promise<{ entries: number; partitions: string[] }> {
+export async function seedAudit(
+  db: Db,
+  options: SeedOptions = {},
+): Promise<{ entries: number; partitions: string[] }> {
   const log = options.log ?? (() => undefined);
   const history = auditHistory().map((entry) => {
     const occurredAt = timeOf(entry.day, entry.key);
@@ -759,7 +876,9 @@ export async function seedAudit(db: Db, options: SeedOptions = {}): Promise<{ en
   const last = history[history.length - 1]!.occurredAt;
 
   const partitions = await ensurePartitions(db as never, monthsBetween(first, last));
-  partitions.push(...(await ensureUpcomingPartitions(db as never, options.monthsAhead ?? 3, SEED_NOW)));
+  partitions.push(
+    ...(await ensureUpcomingPartitions(db as never, options.monthsAhead ?? 3, SEED_NOW)),
+  );
 
   let entries = 0;
   const batchSize = 100;
@@ -793,6 +912,8 @@ export async function seedAudit(db: Db, options: SeedOptions = {}): Promise<{ en
       .executeTakeFirst();
     entries += Number(result.numInsertedOrUpdatedRows ?? 0n);
   }
-  log(`audit: ${entries} entries seeded (${history.length - entries} already present), ${partitions.length} partitions created`);
+  log(
+    `audit: ${entries} entries seeded (${history.length - entries} already present), ${partitions.length} partitions created`,
+  );
   return { entries, partitions };
 }

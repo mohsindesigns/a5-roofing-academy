@@ -15,7 +15,10 @@ export class InboxController {
 
   @Get()
   @ZResponse(notification.notificationPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(notification.listNotificationsQuerySchema) q: notification.ListNotificationsQuery) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(notification.listNotificationsQuerySchema) q: notification.ListNotificationsQuery,
+  ) {
     return this.inbox.list(p, q);
   }
 

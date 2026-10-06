@@ -96,7 +96,13 @@ export class Principal {
 export type ScopeFilter =
   | { kind: 'none' }
   | { kind: 'own'; userId: string }
-  | { kind: 'managed'; organizationId: string; userId: string; teamIds: string[]; userIds: string[] }
+  | {
+      kind: 'managed';
+      organizationId: string;
+      userId: string;
+      teamIds: string[];
+      userIds: string[];
+    }
   | { kind: 'organization'; organizationId: string }
   | { kind: 'platform' };
 

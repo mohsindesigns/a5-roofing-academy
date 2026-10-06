@@ -35,7 +35,9 @@ export const TREND_METRICS: Record<analytics.TrendMetric, { metric: string; agg:
 const DEFAULT_TREND_DAYS = 84;
 
 function spanDays(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+  return (
+    Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1
+  );
 }
 
 /** Trend window: the filter range, or the last 12 weeks; interval chosen to keep charts readable. */
@@ -105,7 +107,8 @@ export class TrendReader {
       f.departmentId ? (['department', f.departmentId] as const) : null,
     ].filter((g) => g !== null);
     if (orgWide && !userLevel && agg !== 'distinct') {
-      if (single.length === 0) return sql<SqlBool>`r.dimension_type = 'organization' and r.dimension_id = ${q.org}`;
+      if (single.length === 0)
+        return sql<SqlBool>`r.dimension_type = 'organization' and r.dimension_id = ${q.org}`;
       if (single.length === 1) {
         const [type, id] = single[0]!;
         return sql<SqlBool>`r.dimension_type = ${type} and r.dimension_id = ${id}`;
@@ -121,7 +124,12 @@ export class TrendReader {
     )`;
   }
 
-  private async rows(q: QuerySql, metricCondition: RawBuilder<SqlBool>, agg: Agg, window: TrendWindow): Promise<BucketRow[]> {
+  private async rows(
+    q: QuerySql,
+    metricCondition: RawBuilder<SqlBool>,
+    agg: Agg,
+    window: TrendWindow,
+  ): Promise<BucketRow[]> {
     const result = await sql<BucketRow>`
       select r.metric,
              date_trunc(${window.interval}, r.date::timestamp)::date::text as bucket,
@@ -146,15 +154,25 @@ export class TrendReader {
       case 'sum':
         return { value: Number(row.sum_value), count: samples };
       case 'avg':
-        return { value: samples > 0 ? round1(Number(row.weighted) / samples) : null, count: samples };
+        return {
+          value: samples > 0 ? round1(Number(row.weighted) / samples) : null,
+          count: samples,
+        };
       case 'rate':
-        return { value: samples > 0 ? round1((Number(row.sum_value) / samples) * 100) : null, count: samples };
+        return {
+          value: samples > 0 ? round1((Number(row.sum_value) / samples) * 100) : null,
+          count: samples,
+        };
       case 'distinct':
         return { value: Number(row.distinct_dims), count: Number(row.distinct_dims) };
     }
   }
 
-  async trend(q: QuerySql, metric: analytics.TrendMetric, window: TrendWindow): Promise<analytics.Trend> {
+  async trend(
+    q: QuerySql,
+    metric: analytics.TrendMetric,
+    window: TrendWindow,
+  ): Promise<analytics.Trend> {
     const def = TREND_METRICS[metric];
     const rows = await this.rows(q, sql<SqlBool>`r.metric = ${def.metric}`, def.agg, window);
     const byBucket = new Map(rows.map((r) => [r.bucket, r]));
@@ -168,7 +186,12 @@ export class TrendReader {
 
   /** One weighted-average series per AI rubric category. */
   async categoryTrend(q: QuerySql, window: TrendWindow): Promise<CategoryTrend> {
-    const rows = await this.rows(q, sql<SqlBool>`starts_with(r.metric, 'ai_category_score:')`, 'avg', window);
+    const rows = await this.rows(
+      q,
+      sql<SqlBool>`starts_with(r.metric, 'ai_category_score:')`,
+      'avg',
+      window,
+    );
     const labels = await sql<{ category_key: string; category_label: string }>`
       select distinct on (category_key) category_key, category_label
       from fact_ai_category_scores

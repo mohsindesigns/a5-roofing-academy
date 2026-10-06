@@ -23,12 +23,26 @@ export class PublishService {
     this.core = new PublishCore(events, progress);
   }
 
-  async publish(p: Principal, programId: string, changeNote: string): Promise<{ version: learning.ProgramVersion; program: learning.ProgramDetail }> {
-    const version = await this.db.transaction().execute((trx) =>
-      this.core.publish(trx, { organizationId: p.organizationId, programId, changeNote, actor: { userId: p.userId, displayName: p.displayName } }),
-    );
+  async publish(
+    p: Principal,
+    programId: string,
+    changeNote: string,
+  ): Promise<{ version: learning.ProgramVersion; program: learning.ProgramDetail }> {
+    const version = await this.db
+      .transaction()
+      .execute((trx) =>
+        this.core.publish(trx, {
+          organizationId: p.organizationId,
+          programId,
+          changeNote,
+          actor: { userId: p.userId, displayName: p.displayName },
+        }),
+      );
     await this.trees.bump(programId);
     const versions = await this.programs.versions(p, programId);
-    return { version: versions.find((v) => v.version === version)!, program: await this.programs.get(p, programId) };
+    return {
+      version: versions.find((v) => v.version === version)!,
+      program: await this.programs.get(p, programId),
+    };
   }
 }

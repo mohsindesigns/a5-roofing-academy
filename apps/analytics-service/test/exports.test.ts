@@ -43,11 +43,14 @@ async function fetchFile(who: Record<string, string>, id: string): Promise<Buffe
   expect(link.status).toBe(200);
   const url = new URL(link.body.url);
   // The signed route is public: no principal header is sent.
-  const file = await h.http.get(url.pathname + url.search).buffer(true).parse((res, cb) => {
-    const chunks: Buffer[] = [];
-    res.on('data', (c: Buffer) => chunks.push(c));
-    res.on('end', () => cb(null, Buffer.concat(chunks)));
-  });
+  const file = await h.http
+    .get(url.pathname + url.search)
+    .buffer(true)
+    .parse((res, cb) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (c: Buffer) => chunks.push(c));
+      res.on('end', () => cb(null, Buffer.concat(chunks)));
+    });
   expect(file.status).toBe(200);
   return file.body as Buffer;
 }
@@ -110,13 +113,20 @@ describe('CSV export', () => {
     expect(job).toEqual({ rowCount: 16 });
 
     const done = (await h.http.get(`/api/v1/reports/exports/${id}`).set(admin)).body;
-    expect(done).toMatchObject({ status: 'completed', rowCount: 16, fileName: 'training-completion-2026-10-05.csv', error: null });
+    expect(done).toMatchObject({
+      status: 'completed',
+      rowCount: 16,
+      fileName: 'training-completion-2026-10-05.csv',
+      error: null,
+    });
     expect(done.fileSize).toBeGreaterThan(500);
     expect(Date.parse(done.expiresAt) - Date.parse(done.completedAt)).toBe(72 * 3_600_000);
 
     const link = await h.http.get(`/api/v1/reports/exports/${id}/download`).set(admin);
     expect(link.body.fileName).toBe('training-completion-2026-10-05.csv');
-    expect(link.body.url).toMatch(/^http:\/\/localhost:4000\/api\/v1\/reports\/files\/object\?key=reports%2F/);
+    expect(link.body.url).toMatch(
+      /^http:\/\/localhost:4000\/api\/v1\/reports\/files\/object\?key=reports%2F/,
+    );
     expect(Date.parse(link.body.expiresAt)).toBeGreaterThan(Date.now());
 
     const bytes = await fetchFile(admin, id);
@@ -144,9 +154,21 @@ describe('CSV export', () => {
     expect(rows.every((r) => r.length === rows[0]!.length)).toBe(true);
     // Sorted by employee name.
     const employees = rows.slice(1).map((r) => r[0]!);
-    expect(employees).toEqual([...employees].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())));
+    expect(employees).toEqual(
+      [...employees].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())),
+    );
     const ashlyn = rows.find((r) => r[0] === 'Ashlyn Pierce')!;
-    expect(ashlyn.slice(0, 9)).toEqual(['Ashlyn Pierce', 'A5-1207', 'Dallas Residential A', 'Dallas', 'A5 New Hire Sales Academy', 'completed', '100', '25', '25']);
+    expect(ashlyn.slice(0, 9)).toEqual([
+      'Ashlyn Pierce',
+      'A5-1207',
+      'Dallas Residential A',
+      'Dallas',
+      'A5 New Hire Sales Academy',
+      'completed',
+      '100',
+      '25',
+      '25',
+    ]);
     expect(ashlyn[9]).toBe('2025-03-03T14:00:00.000Z');
     expect(ashlyn[13]).toBe('No');
     const marcus = rows.find((r) => r[0] === 'Marcus Delgado')!;
@@ -157,16 +179,31 @@ describe('CSV export', () => {
 
   it('matches the report endpoint row for row, including filters and search', async () => {
     const filters = { teamId: TEAMS[0].id, from: '2026-08-01', to: '2026-10-05' };
-    const job = await render({ report: 'overdue-training', format: 'csv', filters, sort: '-daysOverdue' });
+    const job = await render({
+      report: 'overdue-training',
+      format: 'csv',
+      filters,
+      sort: '-daysOverdue',
+    });
     expect(job.filters).toEqual(filters);
     const rows = parseCsv((await fetchFile(admin, job.id)).toString('utf8').slice(1));
-    const api = await h.http.get(`/api/v1/reports/overdue-training?pageSize=100&sort=-daysOverdue&teamId=${filters.teamId}&from=${filters.from}&to=${filters.to}`).set(admin);
+    const api = await h.http
+      .get(
+        `/api/v1/reports/overdue-training?pageSize=100&sort=-daysOverdue&teamId=${filters.teamId}&from=${filters.from}&to=${filters.to}`,
+      )
+      .set(admin);
     expect(rows.length - 1).toBe(api.body.total);
-    expect(rows.slice(1).map((r) => r[0])).toEqual(api.body.items.map((r: { employee: string }) => r.employee));
-    expect(rows.slice(1).map((r) => Number(r[6]))).toEqual(api.body.items.map((r: { daysOverdue: number }) => r.daysOverdue));
+    expect(rows.slice(1).map((r) => r[0])).toEqual(
+      api.body.items.map((r: { employee: string }) => r.employee),
+    );
+    expect(rows.slice(1).map((r) => Number(r[6]))).toEqual(
+      api.body.items.map((r: { daysOverdue: number }) => r.daysOverdue),
+    );
 
     const searched = await render({ report: 'training-completion', format: 'csv', q: 'pierce' });
-    expect(parseCsv((await fetchFile(admin, searched.id)).toString('utf8').slice(1))).toHaveLength(2);
+    expect(parseCsv((await fetchFile(admin, searched.id)).toString('utf8').slice(1))).toHaveLength(
+      2,
+    );
   });
 
   it('exports only what the requester may see', async () => {
@@ -177,19 +214,38 @@ describe('CSV export', () => {
     expect(text).toContain('Marcus Delgado');
     expect(text).not.toMatch(/Naomi|Brianna|Sofia|Jasmine/);
 
-    const outside = await create({ report: 'training-completion', format: 'csv', filters: { teamId: TEAMS[2].id } }, danielle);
+    const outside = await create(
+      { report: 'training-completion', format: 'csv', filters: { teamId: TEAMS[2].id } },
+      danielle,
+    );
     expect(outside.status).toBe(403);
-    expect((await create({ report: 'training-completion', format: 'csv', filters: { userId: PEOPLE.naomi.id } }, danielle)).status).toBe(403);
+    expect(
+      (
+        await create(
+          { report: 'training-completion', format: 'csv', filters: { userId: PEOPLE.naomi.id } },
+          danielle,
+        )
+      ).status,
+    ).toBe(403);
   });
 
   it('keeps exports private to the person who requested them', async () => {
-    const mine = await create({ report: 'certification-status', format: 'csv' }, await h.as('danielle'));
+    const mine = await create(
+      { report: 'certification-status', format: 'csv' },
+      await h.as('danielle'),
+    );
     const other = await h.as('andre');
-    expect((await h.http.get(`/api/v1/reports/exports/${mine.body.id}`).set(other)).status).toBe(404);
-    expect((await h.http.get(`/api/v1/reports/exports/${mine.body.id}/download`).set(other)).status).toBe(404);
+    expect((await h.http.get(`/api/v1/reports/exports/${mine.body.id}`).set(other)).status).toBe(
+      404,
+    );
+    expect(
+      (await h.http.get(`/api/v1/reports/exports/${mine.body.id}/download`).set(other)).status,
+    ).toBe(404);
     const list = await h.http.get('/api/v1/reports/exports').set(other);
     expect(list.body.items.find((j: Created) => j.id === mine.body.id)).toBeUndefined();
-    const own = await h.http.get('/api/v1/reports/exports?pageSize=2&page=1').set(await h.as('danielle'));
+    const own = await h.http
+      .get('/api/v1/reports/exports?pageSize=2&page=1')
+      .set(await h.as('danielle'));
     expect(own.body.items.map((j: Created) => j.id)).toContain(mine.body.id);
     expect(own.body).toMatchObject({ page: 1, pageSize: 2 });
   });
@@ -208,9 +264,20 @@ describe('CSV export', () => {
     const sort = await create({ report: 'training-completion', format: 'csv', sort: 'password' });
     expect(sort.status).toBe(400);
     expect(sort.body.error.fields[0].path).toBe('sort');
-    expect((await create({ report: 'training-completion', format: 'csv', filters: { from: '2026-10-05', to: '2026-09-01' } })).status).toBe(400);
+    expect(
+      (
+        await create({
+          report: 'training-completion',
+          format: 'csv',
+          filters: { from: '2026-10-05', to: '2026-09-01' },
+        })
+      ).status,
+    ).toBe(400);
     expect((await h.http.get('/api/v1/reports/exports/not-a-uuid').set(admin)).status).toBe(400);
-    expect((await h.http.get('/api/v1/reports/exports/0190a3b2-0000-7000-8000-0000000000ff').set(admin)).status).toBe(404);
+    expect(
+      (await h.http.get('/api/v1/reports/exports/0190a3b2-0000-7000-8000-0000000000ff').set(admin))
+        .status,
+    ).toBe(404);
   });
 });
 
@@ -221,7 +288,10 @@ describe('signed download links', () => {
     const url = new URL(link.url);
 
     const tampered = new URL(url);
-    tampered.searchParams.set('key', tampered.searchParams.get('key')!.replace('training-completion', 'certification-status'));
+    tampered.searchParams.set(
+      'key',
+      tampered.searchParams.get('key')!.replace('training-completion', 'certification-status'),
+    );
     const bad = await h.http.get(tampered.pathname + tampered.search);
     expect(bad.status).toBe(403);
     expect(bad.body.error.code).toBe('LINK_INVALID');
@@ -251,7 +321,11 @@ describe('signed download links', () => {
 describe('other formats', () => {
   it('writes a valid Excel workbook with typed cells', async () => {
     const job = await render({ report: 'certification-status', format: 'xlsx', sort: 'issuedAt' });
-    expect(job).toMatchObject({ status: 'completed', rowCount: 4, fileName: 'certification-status-2026-10-05.xlsx' });
+    expect(job).toMatchObject({
+      status: 'completed',
+      rowCount: 4,
+      fileName: 'certification-status-2026-10-05.xlsx',
+    });
     const bytes = await fetchFile(admin, job.id);
     expect(bytes.subarray(0, 2).toString()).toBe('PK');
 
@@ -260,7 +334,18 @@ describe('other formats', () => {
     expect(workbook.worksheets.map((w) => w.name)).toEqual(['Certification status', 'About']);
     const sheet = workbook.getWorksheet('Certification status')!;
     expect(sheet.rowCount).toBe(5);
-    expect(sheet.getRow(1).values).toEqual([undefined, 'Employee', 'Employee ID', 'Team', 'Certification', 'Certificate number', 'Status', 'Issued', 'Expires', 'Days until expiry']);
+    expect(sheet.getRow(1).values).toEqual([
+      undefined,
+      'Employee',
+      'Employee ID',
+      'Team',
+      'Certification',
+      'Certificate number',
+      'Status',
+      'Issued',
+      'Expires',
+      'Days until expiry',
+    ]);
     const sofia = sheet.getRow(2);
     expect(sofia.getCell(1).value).toBe('Sofia Navarro');
     expect(sofia.getCell(6).value).toBe('issued');
@@ -274,7 +359,11 @@ describe('other formats', () => {
 
   it('writes a printable PDF', async () => {
     const job = await render({ report: 'overdue-training', format: 'pdf' });
-    expect(job).toMatchObject({ status: 'completed', rowCount: 6, fileName: 'overdue-training-2026-10-05.pdf' });
+    expect(job).toMatchObject({
+      status: 'completed',
+      rowCount: 6,
+      fileName: 'overdue-training-2026-10-05.pdf',
+    });
     const bytes = await fetchFile(admin, job.id);
     expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
     expect(bytes.subarray(-6).toString()).toContain('%%EOF');
@@ -297,7 +386,9 @@ describe('other formats', () => {
 
 describe('formula safety', () => {
   it('neutralizes text that spreadsheets would evaluate', () => {
-    expect(csvCell('=HYPERLINK("http://evil.example")', 'string')).toBe(`"'=HYPERLINK(""http://evil.example"")"`);
+    expect(csvCell('=HYPERLINK("http://evil.example")', 'string')).toBe(
+      `"'=HYPERLINK(""http://evil.example"")"`,
+    );
     expect(csvCell('+1 (214) 555-1000', 'string')).toBe("'+1 (214) 555-1000");
     expect(csvCell('@SUM(A1)', 'string')).toBe("'@SUM(A1)");
     expect(csvCell('Marcus, Jr.', 'string')).toBe('"Marcus, Jr."');
@@ -310,12 +401,18 @@ describe('formula safety', () => {
 describe('retention', () => {
   it('expires old files, deletes them from storage and refuses their downloads', async () => {
     const job = await render({ report: 'training-engagement', format: 'csv' });
-    const row = await h.db.selectFrom('report_jobs').select(['file_key']).where('id', '=', job.id).executeTakeFirstOrThrow();
+    const row = await h.db
+      .selectFrom('report_jobs')
+      .select(['file_key'])
+      .where('id', '=', job.id)
+      .executeTakeFirstOrThrow();
     expect(await storage.storage.headObject(row.file_key!)).not.toBeNull();
 
     // Within the retention window nothing happens.
     expect((await exportsService.maintenance(new Date())).expired).toBe(0);
-    expect((await h.http.get(`/api/v1/reports/exports/${job.id}`).set(admin)).body.status).toBe('completed');
+    expect((await h.http.get(`/api/v1/reports/exports/${job.id}`).set(admin)).body.status).toBe(
+      'completed',
+    );
 
     // 72 hours later the file is removed and the job is marked expired.
     const later = new Date(Date.now() + 73 * 3_600_000);
@@ -331,13 +428,23 @@ describe('retention', () => {
 
   it('refuses a download once the retention time passed even before the sweep ran', async () => {
     const job = await render({ report: 'training-engagement', format: 'csv' });
-    await h.db.updateTable('report_jobs').set({ expires_at: new Date(Date.now() - 1000) }).where('id', '=', job.id).execute();
-    expect((await h.http.get(`/api/v1/reports/exports/${job.id}/download`).set(admin)).status).toBe(410);
+    await h.db
+      .updateTable('report_jobs')
+      .set({ expires_at: new Date(Date.now() - 1000) })
+      .where('id', '=', job.id)
+      .execute();
+    expect((await h.http.get(`/api/v1/reports/exports/${job.id}/download`).set(admin)).status).toBe(
+      410,
+    );
   });
 
   it('fails stuck jobs and records a readable error on failure', async () => {
     const job = await create({ report: 'training-completion', format: 'csv' });
-    await h.db.updateTable('report_jobs').set({ status: 'running', started_at: new Date(Date.now() - 3 * 3_600_000) }).where('id', '=', job.body.id).execute();
+    await h.db
+      .updateTable('report_jobs')
+      .set({ status: 'running', started_at: new Date(Date.now() - 3 * 3_600_000) })
+      .where('id', '=', job.body.id)
+      .execute();
     const result = await exportsService.maintenance(new Date());
     expect(result.failed).toBeGreaterThanOrEqual(1);
     const failed = (await h.http.get(`/api/v1/reports/exports/${job.body.id}`).set(admin)).body;

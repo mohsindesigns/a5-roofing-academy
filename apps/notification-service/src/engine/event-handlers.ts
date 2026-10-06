@@ -144,7 +144,9 @@ export class ProgramLearnersProjection {
   @OnEvent(learningEvents.enrollmentWithdrawn)
   async onWithdrawn(event: EventEnvelope) {
     const p = event.payload as EventPayload<'enrollment.withdrawn'>;
-    await processOnce(this.db, 'program-learners', event, (trx) => this.apply(trx, event, p, new Date(event.occurredAt)));
+    await processOnce(this.db, 'program-learners', event, (trx) =>
+      this.apply(trx, event, p, new Date(event.occurredAt)),
+    );
   }
 
   private async apply(
@@ -171,7 +173,9 @@ export class ProgramLearnersProjection {
           .columns(['program_id', 'user_id'])
           .doUpdateSet((eb) => ({
             enrollment_id: eb.ref('excluded.enrollment_id'),
-            enrolled_at: withdrawnAt ? eb.ref('program_learners.enrolled_at') : eb.ref('excluded.enrolled_at'),
+            enrolled_at: withdrawnAt
+              ? eb.ref('program_learners.enrolled_at')
+              : eb.ref('excluded.enrolled_at'),
             withdrawn_at: eb.ref('excluded.withdrawn_at'),
             event_at: eb.ref('excluded.event_at'),
           }))

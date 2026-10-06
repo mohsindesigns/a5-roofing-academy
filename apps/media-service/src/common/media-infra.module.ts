@@ -13,7 +13,15 @@ import type { MalwareScanner } from '../scanning/malware-scanner.js';
 import { NoopScanner } from '../scanning/noop.scanner.js';
 import { createObjectStorage } from '../storage/storage.factory.js';
 import { HmacCdnUrlSigner, StorageUrlSigner, type UrlSigner } from '../storage/url-signer.js';
-import { CLOCK, MALWARE_SCANNER, OBJECT_STORAGE, TRANSCODER, URL_SIGNER, systemClock, type Clock } from './tokens.js';
+import {
+  CLOCK,
+  MALWARE_SCANNER,
+  OBJECT_STORAGE,
+  TRANSCODER,
+  URL_SIGNER,
+  systemClock,
+  type Clock,
+} from './tokens.js';
 
 /** Replaceable infrastructure (tests inject a controllable clock or fake scanner). */
 export interface MediaAppOverrides {
@@ -33,7 +41,8 @@ class MediaInfraLifecycle implements OnModuleInit {
 
   onModuleInit() {
     this.health.register('storage', () => this.storage.ping());
-    if (this.scanner.name !== 'none') this.health.register('malware-scanner', () => this.scanner.ping());
+    if (this.scanner.name !== 'none')
+      this.health.register('malware-scanner', () => this.scanner.ping());
   }
 }
 
@@ -47,12 +56,17 @@ export class MediaInfraModule {
       providers: [
         { provide: MEDIA_CONFIG, useValue: config },
         { provide: CLOCK, useValue: overrides.clock ?? systemClock },
-        { provide: OBJECT_STORAGE, useFactory: () => overrides.storage ?? createObjectStorage(settings.storage) },
+        {
+          provide: OBJECT_STORAGE,
+          useFactory: () => overrides.storage ?? createObjectStorage(settings.storage),
+        },
         {
           provide: URL_SIGNER,
           inject: [OBJECT_STORAGE, CLOCK],
           useFactory: (storage: ObjectStorage, clock: Clock): UrlSigner =>
-            settings.cdn ? new HmacCdnUrlSigner(settings.cdn.baseUrl, settings.cdn.signingSecret, clock) : new StorageUrlSigner(storage),
+            settings.cdn
+              ? new HmacCdnUrlSigner(settings.cdn.baseUrl, settings.cdn.signingSecret, clock)
+              : new StorageUrlSigner(storage),
         },
         {
           provide: MALWARE_SCANNER,
@@ -60,7 +74,9 @@ export class MediaInfraModule {
           useFactory: (logger: Logger): MalwareScanner => {
             if (overrides.scanner) return overrides.scanner;
             const s = settings.scanner;
-            return s.kind === 'clamav' ? new ClamAvScanner({ host: s.host, port: s.port, timeoutMs: s.timeoutMs }) : new NoopScanner(logger);
+            return s.kind === 'clamav'
+              ? new ClamAvScanner({ host: s.host, port: s.port, timeoutMs: s.timeoutMs })
+              : new NoopScanner(logger);
           },
         },
         {
@@ -76,13 +92,37 @@ export class MediaInfraModule {
         {
           provide: MediaProcessor,
           inject: [DATABASE, OBJECT_STORAGE, TRANSCODER, MALWARE_SCANNER, EventBus, LOGGER],
-          useFactory: (db: Db, storage: ObjectStorage, transcoder: Transcoder, scanner: MalwareScanner, events: EventBus, logger: Logger) =>
-            new MediaProcessor({ db, storage, transcoder, scanner, events, logger, workDir: settings.processing.workDir }),
+          useFactory: (
+            db: Db,
+            storage: ObjectStorage,
+            transcoder: Transcoder,
+            scanner: MalwareScanner,
+            events: EventBus,
+            logger: Logger,
+          ) =>
+            new MediaProcessor({
+              db,
+              storage,
+              transcoder,
+              scanner,
+              events,
+              logger,
+              workDir: settings.processing.workDir,
+            }),
         },
         MediaTokens,
         MediaInfraLifecycle,
       ],
-      exports: [MEDIA_CONFIG, CLOCK, OBJECT_STORAGE, URL_SIGNER, MALWARE_SCANNER, TRANSCODER, MediaProcessor, MediaTokens],
+      exports: [
+        MEDIA_CONFIG,
+        CLOCK,
+        OBJECT_STORAGE,
+        URL_SIGNER,
+        MALWARE_SCANNER,
+        TRANSCODER,
+        MediaProcessor,
+        MediaTokens,
+      ],
     };
   }
 }

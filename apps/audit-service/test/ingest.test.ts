@@ -75,47 +75,92 @@ describe('consumption from every producer stream', () => {
   it('reads the streams of every known producer', async () => {
     // The consumer group exists on all producer streams, including the gateway’s.
     for (const producer of PRODUCERS) {
-      const event = h.event(producer, { action: `probe.${producer}`, resourceType: 'probe', resourceId: null, actorDisplay: null }, { actor: { type: 'service', id: producer } });
+      const event = h.event(
+        producer,
+        {
+          action: `probe.${producer}`,
+          resourceType: 'probe',
+          resourceId: null,
+          actorDisplay: null,
+        },
+        { actor: { type: 'service', id: producer } },
+      );
       await h.publish(event);
       const row = await stored(h, event.id);
-      expect(row).toMatchObject({ service: producer, actor_type: 'service', actor_id: producer, resource_id: null, actor_display: null });
+      expect(row).toMatchObject({
+        service: producer,
+        actor_type: 'service',
+        actor_id: producer,
+        resource_id: null,
+        actor_display: null,
+      });
     }
   });
 
   it('keeps entries without an organization (platform-level actions)', async () => {
     const event = h.event(
       'identity-service',
-      { action: 'organization.created', resourceType: 'organization', resourceId: uuidv7(), actorDisplay: 'Priya Raman' },
+      {
+        action: 'organization.created',
+        resourceType: 'organization',
+        resourceId: uuidv7(),
+        actorDisplay: 'Priya Raman',
+      },
       { organizationId: null, actor: { type: 'system', id: null } },
     );
     await h.publish(event);
-    expect(await stored(h, event.id)).toMatchObject({ organization_id: null, actor_type: 'system', actor_id: null });
+    expect(await stored(h, event.id)).toMatchObject({
+      organization_id: null,
+      actor_type: 'system',
+      actor_id: null,
+    });
   });
 });
 
 describe('idempotency', () => {
   it('stores a redelivered event once', async () => {
-    const event = h.event('certification-service', { action: 'certificate.revoked', resourceType: 'certificate', resourceId: uuidv7(), actorDisplay: 'Shelby Hartman', reason: 'Issued in error' });
+    const event = h.event('certification-service', {
+      action: 'certificate.revoked',
+      resourceType: 'certificate',
+      resourceId: uuidv7(),
+      actorDisplay: 'Shelby Hartman',
+      reason: 'Issued in error',
+    });
     await h.publish(event);
     await stored(h, event.id);
     // The relay crashed after XADD and published again; the stream consumer sees it twice.
     await h.publish(event);
     await h.publish(event);
     await new Promise((r) => setTimeout(r, 400));
-    const rows = await h.db.selectFrom('audit_logs').select('id').where('id', '=', event.id).execute();
+    const rows = await h.db
+      .selectFrom('audit_logs')
+      .select('id')
+      .where('id', '=', event.id)
+      .execute();
     expect(rows).toHaveLength(1);
-    const inbox = await h.db.selectFrom('inbox_events').select('handler').where('event_id', '=', event.id).execute();
+    const inbox = await h.db
+      .selectFrom('inbox_events')
+      .select('handler')
+      .where('event_id', '=', event.id)
+      .execute();
     expect(inbox).toEqual([{ handler: 'audit.record' }]);
   });
 
   it('is a no-op when the handler runs again, even without the inbox row', async () => {
     const ingest = h.app.get(AuditIngest);
-    const event = h.event('learning-service', { action: 'enrollment.created', resourceType: 'enrollment', resourceId: uuidv7(), actorDisplay: 'Danielle Okafor' });
+    const event = h.event('learning-service', {
+      action: 'enrollment.created',
+      resourceType: 'enrollment',
+      resourceId: uuidv7(),
+      actorDisplay: 'Danielle Okafor',
+    });
     expect(await ingest.record(event)).toBe(true);
     expect(await ingest.record(event)).toBe(false);
     await h.db.deleteFrom('inbox_events').where('event_id', '=', event.id).execute();
     expect(await ingest.record(event)).toBe(false);
-    expect(await h.db.selectFrom('audit_logs').select('id').where('id', '=', event.id).execute()).toHaveLength(1);
+    expect(
+      await h.db.selectFrom('audit_logs').select('id').where('id', '=', event.id).execute(),
+    ).toHaveLength(1);
   });
 });
 
@@ -126,17 +171,32 @@ describe('what is stored', () => {
       resourceType: 'user',
       resourceId: PEOPLE.marcus.id,
       actorDisplay: 'Grant Holloway',
-      before: { email: 'marcus.delgado@a5roofing.example', passwordHash: '$argon2id$v=19$m=19456', profile: { refreshToken: 'rt_abc', phone: '(214) 555-2201' } },
-      after: { email: 'marcus.d@a5roofing.example', items: [{ apiKey: 'sk_live_123', label: 'CRM' }] },
+      before: {
+        email: 'marcus.delgado@a5roofing.example',
+        passwordHash: '$argon2id$v=19$m=19456',
+        profile: { refreshToken: 'rt_abc', phone: '(214) 555-2201' },
+      },
+      after: {
+        email: 'marcus.d@a5roofing.example',
+        items: [{ apiKey: 'sk_live_123', label: 'CRM' }],
+      },
       metadata: { authorization: 'Bearer abc.def.ghi', note: 'rotated' },
     });
     await h.publish(event);
     const row = await stored(h, event.id);
-    expect(row.before).toEqual({ email: 'marcus.delgado@a5roofing.example', passwordHash: '[redacted]', profile: { refreshToken: '[redacted]', phone: '(214) 555-2201' } });
-    expect(row.after).toEqual({ email: 'marcus.d@a5roofing.example', items: [{ apiKey: '[redacted]', label: 'CRM' }] });
+    expect(row.before).toEqual({
+      email: 'marcus.delgado@a5roofing.example',
+      passwordHash: '[redacted]',
+      profile: { refreshToken: '[redacted]', phone: '(214) 555-2201' },
+    });
+    expect(row.after).toEqual({
+      email: 'marcus.d@a5roofing.example',
+      items: [{ apiKey: '[redacted]', label: 'CRM' }],
+    });
     expect(row.metadata).toEqual({ authorization: '[redacted]', note: 'rotated' });
     const raw = JSON.stringify(row);
-    for (const secret of ['argon2id', 'rt_abc', 'sk_live_123', 'abc.def.ghi']) expect(raw).not.toContain(secret);
+    for (const secret of ['argon2id', 'rt_abc', 'sk_live_123', 'abc.def.ghi'])
+      expect(raw).not.toContain(secret);
   });
 
   it('replaces oversized snapshots with a marker and clips long text', async () => {
@@ -160,18 +220,48 @@ describe('what is stored', () => {
   });
 
   it('dead-letters events that violate the contract instead of storing them', async () => {
-    const bad = h.event('identity-service', { action: 'user.created', resourceType: 'user', resourceId: null, actorDisplay: null });
+    const bad = h.event('identity-service', {
+      action: 'user.created',
+      resourceType: 'user',
+      resourceId: null,
+      actorDisplay: null,
+    });
     const envelope = { ...bad, payload: { resourceType: 'user' } };
-    await h.redis.xadd(h.ns.stream('events:identity'), '*', 'id', bad.id, 'type', bad.type, 'envelope', JSON.stringify(envelope));
-    await waitFor(async () => (await h.redis.xlen(h.ns.key('dlq', 'audit-service'))) === 1, { message: 'dead letter', timeoutMs: 10_000 });
-    expect(await h.db.selectFrom('audit_logs').select('id').where('id', '=', bad.id).execute()).toHaveLength(0);
+    await h.redis.xadd(
+      h.ns.stream('events:identity'),
+      '*',
+      'id',
+      bad.id,
+      'type',
+      bad.type,
+      'envelope',
+      JSON.stringify(envelope),
+    );
+    await waitFor(async () => (await h.redis.xlen(h.ns.key('dlq', 'audit-service'))) === 1, {
+      message: 'dead letter',
+      timeoutMs: 10_000,
+    });
+    expect(
+      await h.db.selectFrom('audit_logs').select('id').where('id', '=', bad.id).execute(),
+    ).toHaveLength(0);
   });
 
   it('routes entries to the default partition when their month has no partition yet', async () => {
-    const event = h.event('identity-service', { action: 'user.created', resourceType: 'user', resourceId: uuidv7(), actorDisplay: 'Grant Holloway' }, { occurredAt: new Date('2019-03-04T16:00:00Z') });
+    const event = h.event(
+      'identity-service',
+      {
+        action: 'user.created',
+        resourceType: 'user',
+        resourceId: uuidv7(),
+        actorDisplay: 'Grant Holloway',
+      },
+      { occurredAt: new Date('2019-03-04T16:00:00Z') },
+    );
     await h.publish(event);
     await stored(h, event.id);
-    const inDefault = await sql<{ id: string }>`select id from audit_logs_default where id = ${event.id}`.execute(h.db);
+    const inDefault = await sql<{
+      id: string;
+    }>`select id from audit_logs_default where id = ${event.id}`.execute(h.db);
     expect(inDefault.rows).toHaveLength(1);
   });
 });

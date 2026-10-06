@@ -139,7 +139,11 @@ export function contiguousRanges(dates: string[]): Array<{ from: string; to: str
  * LOCKED, so parallel workers split the work); marks written while we rebuild create new rows and
  * are picked up by the next run. On failure the claimed days are flagged again.
  */
-export async function processDirtyDays(db: Db, timezone: string, limit = 2_000): Promise<{ days: number; rows: number }> {
+export async function processDirtyDays(
+  db: Db,
+  timezone: string,
+  limit = 2_000,
+): Promise<{ days: number; rows: number }> {
   const claimed = await sql<{ organization_id: string; date: string }>`
     delete from rollup_dirty_days d
     using (
@@ -152,7 +156,8 @@ export async function processDirtyDays(db: Db, timezone: string, limit = 2_000):
     returning d.organization_id, d.date::text as date
   `.execute(db);
   const byOrg = new Map<string, string[]>();
-  for (const r of claimed.rows) byOrg.set(r.organization_id, [...(byOrg.get(r.organization_id) ?? []), r.date]);
+  for (const r of claimed.rows)
+    byOrg.set(r.organization_id, [...(byOrg.get(r.organization_id) ?? []), r.date]);
   let rows = 0;
   try {
     for (const [org, dates] of byOrg) {
@@ -186,7 +191,12 @@ export async function analyticsOrganizations(db: Db): Promise<string[]> {
 
 /** Calendar date (YYYY-MM-DD) of an instant in a time zone. */
 export function localDate(at: Date, timezone: string): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(at);
 }
 
 export { addDays };

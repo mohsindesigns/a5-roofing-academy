@@ -6,12 +6,25 @@ import { InjectDb, NotFoundError } from '@a5/nest-kit';
 import type { ObjectStorage } from '@a5/storage';
 import { CERTIFICATION_CONFIG, type CertificationConfig } from '../config.js';
 import type { Db } from '../database/index.js';
-import { assertDesignAssets, assetsByIds, currentSignatures, currentStampImages, inEffect } from '../common/artwork-repo.js';
+import {
+  assertDesignAssets,
+  assetsByIds,
+  currentSignatures,
+  currentStampImages,
+  inEffect,
+} from '../common/artwork-repo.js';
 import { calendarDate, computeExpiry } from '../common/dates.js';
 import { canonicalJson } from '../common/json.js';
 import { loadSettings, organizationCode } from '../common/settings.js';
 import { InjectStorage, storageKeys } from '../common/storage.js';
-import { CSS_FONTS, cssFontWeight, elementFontFamily, elementText, pageSize, signatureSlotOf } from '../rendering/layout.js';
+import {
+  CSS_FONTS,
+  cssFontWeight,
+  elementFontFamily,
+  elementText,
+  pageSize,
+  signatureSlotOf,
+} from '../rendering/layout.js';
 import { renderCertificatePdf } from '../rendering/renderer.js';
 import { placeholderValues } from '../rendering/values.js';
 import { TemplatesService } from './templates.service.js';
@@ -33,7 +46,11 @@ export class PreviewService {
     @Inject(CERTIFICATION_CONFIG) private readonly config: CertificationConfig,
   ) {}
 
-  async preview(p: Principal, templateId: string, input: { design?: TemplateDesign; certificationId?: string }) {
+  async preview(
+    p: Principal,
+    templateId: string,
+    input: { design?: TemplateDesign; certificationId?: string },
+  ) {
     const template = await this.db
       .selectFrom('certificate_templates')
       .select(['id', 'name'])
@@ -41,12 +58,17 @@ export class PreviewService {
       .where('organization_id', '=', p.organizationId)
       .executeTakeFirst();
     if (!template) throw new NotFoundError('Certificate template');
-    const design = input.design ?? (await this.templates.currentVersion(this.db, templateId)).design;
+    const design =
+      input.design ?? (await this.templates.currentVersion(this.db, templateId)).design;
     await assertDesignAssets(this.db, p.organizationId, design);
     return this.render(p.organizationId, design, input.certificationId ?? null);
   }
 
-  private async render(organizationId: string, design: TemplateDesign, certificationId: string | null) {
+  private async render(
+    organizationId: string,
+    design: TemplateDesign,
+    certificationId: string | null,
+  ) {
     const warnings: string[] = [];
     const settings = await loadSettings(this.db, organizationId, this.config.publicAppUrl);
     const definition = certificationId
@@ -95,9 +117,15 @@ export class PreviewService {
         .where('active', '=', true)
         .orderBy('name')
         .execute();
-      slots = rows.filter((r) => inEffect(r, today)).slice(0, 2).map((r, i) => ({ slot: i + 1, id: r.id, name: r.name, title: r.title }));
+      slots = rows
+        .filter((r) => inEffect(r, today))
+        .slice(0, 2)
+        .map((r, i) => ({ slot: i + 1, id: r.id, name: r.name, title: r.title }));
     }
-    const signatures = await currentSignatures(this.db, slots.map((s) => s.id));
+    const signatures = await currentSignatures(
+      this.db,
+      slots.map((s) => s.id),
+    );
     let stampId = definition?.stamp_id ?? null;
     if (!stampId) {
       const stamp = await this.db
@@ -110,23 +138,31 @@ export class PreviewService {
         .executeTakeFirst();
       stampId = stamp?.id ?? null;
     }
-    const stampImage = stampId ? (await currentStampImages(this.db, [stampId])).get(stampId) ?? null : null;
+    const stampImage = stampId
+      ? ((await currentStampImages(this.db, [stampId])).get(stampId) ?? null)
+      : null;
     const assets = await assetsByIds(this.db, organizationId, certification.designAssetIds(design));
 
-    const usesSlot = (n: 1 | 2) => design.elements.some((el) => el.type === 'signature' && signatureSlotOf(el) === n);
+    const usesSlot = (n: 1 | 2) =>
+      design.elements.some((el) => el.type === 'signature' && signatureSlotOf(el) === n);
     for (const n of [1, 2] as const) {
       const slot = slots.find((s) => s.slot === n);
-      if (usesSlot(n) && !slot) warnings.push(`The design shows signatory ${n}, but no signatory is assigned.`);
-      else if (usesSlot(n) && slot && !signatures.get(slot.id)) warnings.push(`${slot.name} has no signature image yet.`);
+      if (usesSlot(n) && !slot)
+        warnings.push(`The design shows signatory ${n}, but no signatory is assigned.`);
+      else if (usesSlot(n) && slot && !signatures.get(slot.id))
+        warnings.push(`${slot.name} has no signature image yet.`);
     }
-    if (design.elements.some((el) => el.type === 'stamp') && !stampImage) warnings.push('The design shows a stamp, but no stamp image is available.');
+    if (design.elements.some((el) => el.type === 'stamp') && !stampImage)
+      warnings.push('The design shows a stamp, but no stamp image is available.');
 
     const customValues: Record<string, string> = {};
     for (const v of definition?.custom_variables ?? []) customValues[v.key] = v.value;
     for (const key of certification.customPlaceholdersOf(design)) {
       if (customValues[key] === undefined) {
         customValues[key] = `[${key}]`;
-        warnings.push(`{{${key}}} is not a built-in placeholder; define it as a custom variable on the certification.`);
+        warnings.push(
+          `{{${key}}} is not a built-in placeholder; define it as a custom variable on the certification.`,
+        );
       }
     }
 
@@ -148,7 +184,12 @@ export class PreviewService {
           issuedAt: now,
           seq: sequence,
         })
-      : certification.formatCertificateNumber(certification.DEFAULT_NUMBER_PATTERN, { org: 'ORG', code: 'CERT', issuedAt: now, seq: 1 });
+      : certification.formatCertificateNumber(certification.DEFAULT_NUMBER_PATTERN, {
+          org: 'ORG',
+          code: 'CERT',
+          issuedAt: now,
+          seq: 1,
+        });
     const verificationUrl = `${settings.effectiveVerificationBaseUrl}/verify/SAMPLE-PREVIEW`;
     const values = placeholderValues({
       certificateName: definition?.name ?? 'Certified Sales Professional',
@@ -176,11 +217,21 @@ export class PreviewService {
       load(imageKey(1)),
       load(imageKey(2)),
       load(stampImage?.asset.storage_key ?? null),
-      Promise.all([...assets.values()].map(async (a) => [a.id, await this.storage.getBytes(a.storage_key)] as const)),
+      Promise.all(
+        [...assets.values()].map(
+          async (a) => [a.id, await this.storage.getBytes(a.storage_key)] as const,
+        ),
+      ),
     ]);
 
     const hash = createHash('sha256')
-      .update(canonicalJson({ design, values, keys: [imageKey(1), imageKey(2), stampImage?.asset.storage_key, [...assets.keys()]] }))
+      .update(
+        canonicalJson({
+          design,
+          values,
+          keys: [imageKey(1), imageKey(2), stampImage?.asset.storage_key, [...assets.keys()]],
+        }),
+      )
       .digest('hex');
     const pdfKey = storageKeys.preview(organizationId, hash);
     if (!(await this.storage.headObject(pdfKey))) {
@@ -189,14 +240,24 @@ export class PreviewService {
         values,
         qrValue: verificationUrl,
         images: { signature1, signature2, stamp, assets: new Map(assetBuffers) },
-        info: { title: 'Certificate preview', author: values.organization_name ?? '', subject: 'Sample data', keywords: 'preview', creationDate: now },
+        info: {
+          title: 'Certificate preview',
+          author: values.organization_name ?? '',
+          subject: 'Sample data',
+          keywords: 'preview',
+          creationDate: now,
+        },
         footer: 'Preview with sample data - not a valid certificate',
         watermark: 'PREVIEW',
       });
-      await this.storage.putObject(pdfKey, pdf, { contentType: 'application/pdf', contentLength: pdf.length });
+      await this.storage.putObject(pdfKey, pdf, {
+        contentType: 'application/pdf',
+        contentLength: pdf.length,
+      });
     }
     const ttl = this.config.certification.previewUrlTtlSeconds;
-    const sign = (key: string | null | undefined) => (key ? this.storage.signedGetUrl(key, { expiresInSeconds: ttl }) : Promise.resolve(null));
+    const sign = (key: string | null | undefined) =>
+      key ? this.storage.signedGetUrl(key, { expiresInSeconds: ttl }) : Promise.resolve(null);
     const page = pageSize(design);
     const elements = await Promise.all(
       design.elements.map(async (el) => {
@@ -204,7 +265,8 @@ export class PreviewService {
         let imageUrl: string | null = null;
         if (el.type === 'signature') imageUrl = await sign(imageKey(signatureSlotOf(el)));
         else if (el.type === 'stamp') imageUrl = await sign(stampImage?.asset.storage_key);
-        else if ((el.type === 'image' || el.type === 'logo') && el.assetId) imageUrl = await sign(assets.get(el.assetId)?.storage_key);
+        else if ((el.type === 'image' || el.type === 'logo') && el.assetId)
+          imageUrl = await sign(assets.get(el.assetId)?.storage_key);
         return {
           id: el.id,
           type: el.type,
@@ -230,12 +292,24 @@ export class PreviewService {
       }),
     );
     return {
-      pdfUrl: await this.storage.signedGetUrl(pdfKey, { expiresInSeconds: ttl, downloadName: 'certificate-preview.pdf' }),
+      pdfUrl: await this.storage.signedGetUrl(pdfKey, {
+        expiresInSeconds: ttl,
+        downloadName: 'certificate-preview.pdf',
+      }),
       expiresAt: new Date(Date.now() + ttl * 1000).toISOString(),
-      page: { size: design.page.size, orientation: design.page.orientation, widthPt: page.width, heightPt: page.height },
+      page: {
+        size: design.page.size,
+        orientation: design.page.orientation,
+        widthPt: page.width,
+        heightPt: page.height,
+      },
       theme: {
         ...design.theme,
-        backgroundImageUrl: await sign(design.theme.backgroundImageAssetId ? assets.get(design.theme.backgroundImageAssetId)?.storage_key : null),
+        backgroundImageUrl: await sign(
+          design.theme.backgroundImageAssetId
+            ? assets.get(design.theme.backgroundImageAssetId)?.storage_key
+            : null,
+        ),
       },
       elements,
       sampleValues: values,

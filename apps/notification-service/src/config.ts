@@ -24,7 +24,10 @@ const notificationEnv = z.object({
   /** Key for sealing security email content until it is delivered. Defaults to a key derived from INTERNAL_AUTH_SECRET. */
   NOTIFICATION_SEAL_KEY: env.secret(32).optional(),
   /** Time zone used to format dates in notifications. */
-  NOTIFICATION_TIMEZONE: z.string().default('America/Chicago').refine(isTimeZone, 'must be an IANA time zone such as America/Chicago'),
+  NOTIFICATION_TIMEZONE: z
+    .string()
+    .default('America/Chicago')
+    .refine(isTimeZone, 'must be an IANA time zone such as America/Chicago'),
   /** Read notifications and delivery logs older than this are deleted. */
   NOTIFICATION_RETENTION_DAYS: env.int(730),
   SSE_HEARTBEAT_MS: env.int(25_000),
@@ -39,7 +42,9 @@ export function loadNotificationConfig(source?: Record<string, string | undefine
   if (transport === 'smtp' && !e.SMTP_URL) {
     throw new Error('Invalid configuration:\n  - SMTP_URL is required when EMAIL_TRANSPORT=smtp.');
   }
-  assertProductionSafe(config.nodeEnv, [[transport === 'smtp', 'EMAIL_TRANSPORT must be smtp (set SMTP_URL)']]);
+  assertProductionSafe(config.nodeEnv, [
+    [transport === 'smtp', 'EMAIL_TRANSPORT must be smtp (set SMTP_URL)'],
+  ]);
   return {
     ...config,
     email: {

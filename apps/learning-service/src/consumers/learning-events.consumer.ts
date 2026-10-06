@@ -16,7 +16,13 @@ import { inAudience } from '../common/audience.js';
 import type { Db, Trx } from '../database/index.js';
 import type { EnrollmentRow } from '../engine/dto.js';
 import { ProgressService } from '../engine/progress.service.js';
-import { lessonIndex, ruleReferences, treeRules, type IndexedLesson, type ProgramTree } from '../engine/tree.js';
+import {
+  lessonIndex,
+  ruleReferences,
+  treeRules,
+  type IndexedLesson,
+  type ProgramTree,
+} from '../engine/tree.js';
 import { TreeService } from '../engine/tree.service.js';
 import { EnrollmentsService } from '../enrollments/enrollments.service.js';
 import { effectiveMinWatchPercent } from '../lesson-types/handlers/video.js';
@@ -45,10 +51,24 @@ export class LearningEventsConsumer {
   ) {}
 
   /** The learner's enrollment (locked) and the published lesson an event refers to. */
-  private async target(trx: Trx, userId: string, lessonId: string, organizationId: string | null): Promise<Target | null> {
-    const lesson = await trx.selectFrom('lessons').select(['program_id', 'organization_id']).where('id', '=', lessonId).executeTakeFirst();
+  private async target(
+    trx: Trx,
+    userId: string,
+    lessonId: string,
+    organizationId: string | null,
+  ): Promise<Target | null> {
+    const lesson = await trx
+      .selectFrom('lessons')
+      .select(['program_id', 'organization_id'])
+      .where('id', '=', lessonId)
+      .executeTakeFirst();
     if (!lesson || (organizationId && lesson.organization_id !== organizationId)) return null;
-    const row = await trx.selectFrom('enrollments').select('id').where('program_id', '=', lesson.program_id).where('user_id', '=', userId).executeTakeFirst();
+    const row = await trx
+      .selectFrom('enrollments')
+      .select('id')
+      .where('program_id', '=', lesson.program_id)
+      .where('user_id', '=', userId)
+      .executeTakeFirst();
     if (!row) return null;
     const enrollment = await this.progress.lockEnrollment(trx, row.id);
     if (!enrollment || enrollment.status === 'withdrawn') return null;
@@ -61,7 +81,12 @@ export class LearningEventsConsumer {
    * New scores can unlock content (rules on assessment or AI scores): refresh the denormalised
    * progress of the learner's other enrollments whose rules depend on them.
    */
-  private async refreshDependents(trx: Trx, userId: string, except: string | null, ref: { assessmentId?: string; scenarioId?: string }): Promise<void> {
+  private async refreshDependents(
+    trx: Trx,
+    userId: string,
+    except: string | null,
+    ref: { assessmentId?: string; scenarioId?: string },
+  ): Promise<void> {
     const rows = await trx
       .selectFrom('enrollments')
       .select(['id', 'program_id'])
@@ -75,8 +100,13 @@ export class LearningEventsConsumer {
       if (!tree) continue;
       const refs = ruleReferences(treeRules(tree));
       const affected =
-        (ref.assessmentId && (refs.assessmentIds.includes(ref.assessmentId) || refs.ruleTypes.has('program_assessments_score'))) ||
-        (ref.scenarioId && (refs.scenarioIds.includes(ref.scenarioId) || refs.ruleTypes.has('ai_sessions_count') || refs.ruleTypes.has('ai_average_score')));
+        (ref.assessmentId &&
+          (refs.assessmentIds.includes(ref.assessmentId) ||
+            refs.ruleTypes.has('program_assessments_score'))) ||
+        (ref.scenarioId &&
+          (refs.scenarioIds.includes(ref.scenarioId) ||
+            refs.ruleTypes.has('ai_sessions_count') ||
+            refs.ruleTypes.has('ai_average_score')));
       if (!affected) continue;
       const enrollment = await this.progress.lockEnrollment(trx, row.id);
       if (enrollment) await this.progress.sync(trx, enrollment, tree);
@@ -99,20 +129,45 @@ export class LearningEventsConsumer {
     const payload = event.payload as EventPayload<'video.progressed'>;
     if (payload.contextType !== 'lesson') return;
     await processOnce(this.db, handler, event, async (trx) => {
-      const target = await this.target(trx, payload.userId, payload.contextId, event.organizationId);
+      const target = await this.target(
+        trx,
+        payload.userId,
+        payload.contextId,
+        event.organizationId,
+      );
       if (!target || target.info.lesson.type !== 'video') return;
       const config = target.info.lesson.config as learning.VideoLessonConfig;
       if (config.mediaAssetId !== payload.assetId) {
-        this.logger.info({ eventId: event.id, lessonId: payload.contextId }, 'ignoring watch progress for a video no longer used by the lesson');
+        this.logger.info(
+          { eventId: event.id, lessonId: payload.contextId },
+          'ignoring watch progress for a video no longer used by the lesson',
+        );
         return;
       }
       const at = new Date(event.occurredAt);
       const watched = clampPercent(payload.watchedPercent);
       const { enrollment, tree } = target;
-      if (config.completion === 'auto' && watched >= effectiveMinWatchPercent(config, tree.settings)) {
-        await this.progress.completeLesson(trx, { enrollment, tree, lessonId: payload.contextId, source: 'video', at, data: { watchedPercent: watched } });
+      if (
+        config.completion === 'auto' &&
+        watched >= effectiveMinWatchPercent(config, tree.settings)
+      ) {
+        await this.progress.completeLesson(trx, {
+          enrollment,
+          tree,
+          lessonId: payload.contextId,
+          source: 'video',
+          at,
+          data: { watchedPercent: watched },
+        });
       } else {
-        await this.progress.recordActivity(trx, { enrollment, tree, lessonId: payload.contextId, at, percent: watched, data: { watchedPercent: watched } });
+        await this.progress.recordActivity(trx, {
+          enrollment,
+          tree,
+          lessonId: payload.contextId,
+          at,
+          percent: watched,
+          data: { watchedPercent: watched },
+        });
       }
     });
   }
@@ -184,19 +239,42 @@ export class LearningEventsConsumer {
       if (e.context.lessonId) {
         const target = await this.target(trx, e.userId, e.context.lessonId, event.organizationId);
         const config = target?.info.lesson.config as learning.AssessmentLessonConfig | undefined;
-        if (target && (target.info.lesson.type === 'quiz' || target.info.lesson.type === 'final_assessment') && config?.assessmentId === e.assessmentId) {
+        if (
+          target &&
+          (target.info.lesson.type === 'quiz' || target.info.lesson.type === 'final_assessment') &&
+          config?.assessmentId === e.assessmentId
+        ) {
           const { enrollment, tree } = target;
-          const data = { attemptId: e.attemptId, lastScore: e.scorePercent, bestScore: e.scorePercent };
+          const data = {
+            attemptId: e.attemptId,
+            lastScore: e.scorePercent,
+            bestScore: e.scorePercent,
+          };
           if (e.passed) {
-            await this.progress.completeLesson(trx, { enrollment, tree, lessonId: e.context.lessonId, source: 'assessment', at: gradedAt, data });
+            await this.progress.completeLesson(trx, {
+              enrollment,
+              tree,
+              lessonId: e.context.lessonId,
+              source: 'assessment',
+              at: gradedAt,
+              data,
+            });
           } else {
-            await this.progress.recordActivity(trx, { enrollment, tree, lessonId: e.context.lessonId, at: gradedAt, data });
+            await this.progress.recordActivity(trx, {
+              enrollment,
+              tree,
+              lessonId: e.context.lessonId,
+              at: gradedAt,
+              data,
+            });
             await this.progress.sync(trx, enrollment, tree);
           }
           completedEnrollment = enrollment.id;
         }
       }
-      await this.refreshDependents(trx, e.userId, completedEnrollment, { assessmentId: e.assessmentId });
+      await this.refreshDependents(trx, e.userId, completedEnrollment, {
+        assessmentId: e.assessmentId,
+      });
     });
   }
 
@@ -262,13 +340,34 @@ export class LearningEventsConsumer {
       if (e.context.lessonId) {
         const target = await this.target(trx, e.userId, e.context.lessonId, event.organizationId);
         const config = target?.info.lesson.config as learning.AiSimulationLessonConfig | undefined;
-        if (target && (target.info.lesson.type === 'ai_simulation' || target.info.lesson.type === 'scenario') && config?.scenarioId === e.scenarioId) {
+        if (
+          target &&
+          (target.info.lesson.type === 'ai_simulation' || target.info.lesson.type === 'scenario') &&
+          config?.scenarioId === e.scenarioId
+        ) {
           const { enrollment, tree } = target;
-          const data = { sessionId: e.sessionId, lastScore: e.overallScore, bestScore: e.overallScore };
+          const data = {
+            sessionId: e.sessionId,
+            lastScore: e.overallScore,
+            bestScore: e.overallScore,
+          };
           if (e.overallScore >= config.minScore) {
-            await this.progress.completeLesson(trx, { enrollment, tree, lessonId: e.context.lessonId, source: 'ai_score', at: evaluatedAt, data });
+            await this.progress.completeLesson(trx, {
+              enrollment,
+              tree,
+              lessonId: e.context.lessonId,
+              source: 'ai_score',
+              at: evaluatedAt,
+              data,
+            });
           } else {
-            await this.progress.recordActivity(trx, { enrollment, tree, lessonId: e.context.lessonId, at: evaluatedAt, data });
+            await this.progress.recordActivity(trx, {
+              enrollment,
+              tree,
+              lessonId: e.context.lessonId,
+              at: evaluatedAt,
+              data,
+            });
             await this.progress.sync(trx, enrollment, tree);
           }
           touched = enrollment.id;
@@ -296,11 +395,24 @@ export class LearningEventsConsumer {
         .where('organization_id', '=', user.organizationId)
         .where('status', '=', 'published')
         .where(sql<boolean>`(settings->>'autoEnrollAudience')::boolean is true`)
-        .where((eb) => eb.or([eb('availability_ends_at', 'is', null), eb('availability_ends_at', '>', new Date())]))
-        .where('id', 'not in', trx.selectFrom('enrollments').select('program_id').where('user_id', '=', user.id))
+        .where((eb) =>
+          eb.or([
+            eb('availability_ends_at', 'is', null),
+            eb('availability_ends_at', '>', new Date()),
+          ]),
+        )
+        .where(
+          'id',
+          'not in',
+          trx.selectFrom('enrollments').select('program_id').where('user_id', '=', user.id),
+        )
         .execute();
       for (const program of programs) {
-        const audiences = await trx.selectFrom('program_audiences').select(['kind', 'ref']).where('program_id', '=', program.id).execute();
+        const audiences = await trx
+          .selectFrom('program_audiences')
+          .select(['kind', 'ref'])
+          .where('program_id', '=', program.id)
+          .execute();
         if (!inAudience(audiences, user)) continue;
         const tree = await this.trees.published(program.id, trx);
         if (!tree) continue;
@@ -312,7 +424,10 @@ export class LearningEventsConsumer {
           assignedBy: null,
           actorDisplay: 'Automatic enrollment',
         });
-        this.logger.info({ programId: program.id, userId: user.id }, 'auto-enrolled by program audience');
+        this.logger.info(
+          { programId: program.id, userId: user.id },
+          'auto-enrolled by program audience',
+        );
       }
     });
   }

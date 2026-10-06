@@ -3,7 +3,14 @@ import type { Principal } from '@a5/auth';
 import type { assessment } from '@a5/contracts';
 import { likePattern, paginate, sql, type Page } from '@a5/database';
 import { userScopeCondition } from '@a5/directory';
-import { ConflictError, EventBus, InjectDb, NotFoundError, PreconditionError, ValidationError } from '@a5/nest-kit';
+import {
+  ConflictError,
+  EventBus,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+  ValidationError,
+} from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import type { PermissionKey } from '@a5/permissions';
 import { Clock } from '../common/clock.js';
@@ -55,11 +62,24 @@ export class ReviewService {
     return db
       .selectFrom('attempts as t')
       .where('t.organization_id', '=', p.organizationId)
-      .where(userScopeCondition(p.scopeFilter(permission), { userColumn: 't.user_id', orgColumn: 't.organization_id' }));
+      .where(
+        userScopeCondition(p.scopeFilter(permission), {
+          userColumn: 't.user_id',
+          orgColumn: 't.organization_id',
+        }),
+      );
   }
 
-  private async scopedAttempt(db: DbOrTrx, p: Principal, permission: PermissionKey, id: string): Promise<AttemptRow> {
-    const row = await this.scoped(db, p, permission).selectAll('t').where('t.id', '=', id).executeTakeFirst();
+  private async scopedAttempt(
+    db: DbOrTrx,
+    p: Principal,
+    permission: PermissionKey,
+    id: string,
+  ): Promise<AttemptRow> {
+    const row = await this.scoped(db, p, permission)
+      .selectAll('t')
+      .where('t.id', '=', id)
+      .executeTakeFirst();
     if (!row) throw new NotFoundError('Attempt');
     return row;
   }
@@ -89,12 +109,20 @@ export class ReviewService {
     if (f.submittedTo) query = query.where('t.submitted_at', '<', new Date(f.submittedTo));
     if (f.q) {
       const pattern = likePattern(f.q);
-      query = query.where((eb) => eb.or([eb('u.display_name', 'ilike', pattern), eb('u.email', 'ilike', pattern), eb('a.title', 'ilike', pattern)]));
+      query = query.where((eb) =>
+        eb.or([
+          eb('u.display_name', 'ilike', pattern),
+          eb('u.email', 'ilike', pattern),
+          eb('a.title', 'ilike', pattern),
+        ]),
+      );
     }
     const desc = f.sort ? f.sort.startsWith('-') : true;
     const key = (f.sort?.replace(/^-/, '') ?? 'submittedAt') as keyof typeof SORTS;
     query = query
-      .orderBy(SORTS[key] ?? SORTS.submittedAt, (ob) => (desc ? ob.desc().nullsLast() : ob.asc().nullsLast()))
+      .orderBy(SORTS[key] ?? SORTS.submittedAt, (ob) =>
+        desc ? ob.desc().nullsLast() : ob.asc().nullsLast(),
+      )
       .orderBy('t.id', 'desc');
 
     const page = await paginate(query, { page: f.page, pageSize: f.pageSize });
@@ -126,10 +154,18 @@ export class ReviewService {
     };
   }
 
-  async detail(p: Principal, id: string, permission: PermissionKey = 'assessment_attempts.view'): Promise<assessment.ReviewAttemptDetail> {
+  async detail(
+    p: Principal,
+    id: string,
+    permission: PermissionKey = 'assessment_attempts.view',
+  ): Promise<assessment.ReviewAttemptDetail> {
     const t = await this.scopedAttempt(this.db, p, permission, id);
     const [a, rows, overrides] = await Promise.all([
-      this.db.selectFrom('assessments').select(['id', 'title', 'kind']).where('id', '=', t.assessment_id).executeTakeFirstOrThrow(),
+      this.db
+        .selectFrom('assessments')
+        .select(['id', 'title', 'kind'])
+        .where('id', '=', t.assessment_id)
+        .executeTakeFirstOrThrow(),
       this.db
         .selectFrom('attempt_questions as aq')
         .innerJoin('question_versions as v', 'v.id', 'aq.question_version_id')
@@ -163,7 +199,13 @@ export class ReviewService {
         .where('aq.attempt_id', '=', id)
         .orderBy('aq.position')
         .execute(),
-      this.db.selectFrom('score_overrides').selectAll().where('attempt_id', '=', id).orderBy('created_at', 'desc').orderBy('id', 'desc').execute(),
+      this.db
+        .selectFrom('score_overrides')
+        .selectAll()
+        .where('attempt_id', '=', id)
+        .orderBy('created_at', 'desc')
+        .orderBy('id', 'desc')
+        .execute(),
     ]);
     const learner = await this.people.refs([t.user_id]);
     const score = effectiveScore(t, overrides[0]);
@@ -208,7 +250,9 @@ export class ReviewService {
         isCorrect: r.is_correct,
         awardedPoints: r.awarded_points,
         feedback: r.feedback,
-        gradedBy: r.graded_by ? { id: r.graded_by, displayName: r.graded_by_name ?? 'Unknown user' } : null,
+        gradedBy: r.graded_by
+          ? { id: r.graded_by, displayName: r.graded_by_name ?? 'Unknown user' }
+          : null,
         gradedAt: r.graded_at?.toISOString() ?? null,
       })),
       overrides: overrides.map((o) => ({
@@ -228,19 +272,35 @@ export class ReviewService {
   async grade(
     p: Principal,
     id: string,
-    grades: ReadonlyArray<{ attemptQuestionId: string; awardedPoints: number; feedback?: string | null }>,
+    grades: ReadonlyArray<{
+      attemptQuestionId: string;
+      awardedPoints: number;
+      feedback?: string | null;
+    }>,
   ): Promise<assessment.ReviewAttemptDetail> {
     await this.scopedAttempt(this.db, p, 'assessment_attempts.grade', id);
     await withIntegrityErrors(() =>
       this.db.transaction().execute(async (trx) => {
         const now = this.clock.now();
-        let attempt = await trx.selectFrom('attempts').selectAll().where('id', '=', id).forUpdate().executeTakeFirstOrThrow();
+        let attempt = await trx
+          .selectFrom('attempts')
+          .selectAll()
+          .where('id', '=', id)
+          .forUpdate()
+          .executeTakeFirstOrThrow();
         if (attempt.status === 'in_progress') {
-          throw new ConflictError('ATTEMPT_NOT_SUBMITTED', 'This attempt has not been submitted yet. Answers can be graded after the learner submits.');
+          throw new ConflictError(
+            'ATTEMPT_NOT_SUBMITTED',
+            'This attempt has not been submitted yet. Answers can be graded after the learner submits.',
+          );
         }
-        if (attempt.status === 'submitted' || attempt.status === 'expired') attempt = await this.engine.grade(trx, id, now);
+        if (attempt.status === 'submitted' || attempt.status === 'expired')
+          attempt = await this.engine.grade(trx, id, now);
         if (attempt.status === 'graded') {
-          throw new ConflictError('ATTEMPT_ALREADY_GRADED', 'This attempt is already graded. Record a score override to change its result.');
+          throw new ConflictError(
+            'ATTEMPT_ALREADY_GRADED',
+            'This attempt is already graded. Record a score override to change its result.',
+          );
         }
         const answers = await trx
           .selectFrom('attempt_answers as aa')
@@ -253,13 +313,27 @@ export class ReviewService {
         const seen = new Set<string>();
         grades.forEach((g, index) => {
           const answer = byQuestion.get(g.attemptQuestionId);
-          if (!answer) fields.push({ path: `grades.${index}.attemptQuestionId`, message: 'This question is not part of the attempt' });
+          if (!answer)
+            fields.push({
+              path: `grades.${index}.attemptQuestionId`,
+              message: 'This question is not part of the attempt',
+            });
           else if (!answer.needs_review) {
-            fields.push({ path: `grades.${index}.attemptQuestionId`, message: `Question ${answer.position} is graded automatically and cannot be graded by hand` });
+            fields.push({
+              path: `grades.${index}.attemptQuestionId`,
+              message: `Question ${answer.position} is graded automatically and cannot be graded by hand`,
+            });
           } else if (g.awardedPoints > answer.points) {
-            fields.push({ path: `grades.${index}.awardedPoints`, message: `Award at most ${answer.points} points for question ${answer.position}` });
+            fields.push({
+              path: `grades.${index}.awardedPoints`,
+              message: `Award at most ${answer.points} points for question ${answer.position}`,
+            });
           }
-          if (seen.has(g.attemptQuestionId)) fields.push({ path: `grades.${index}.attemptQuestionId`, message: 'Each question can be graded once per request' });
+          if (seen.has(g.attemptQuestionId))
+            fields.push({
+              path: `grades.${index}.attemptQuestionId`,
+              message: 'Each question can be graded once per request',
+            });
           seen.add(g.attemptQuestionId);
         });
         if (fields.length) throw new ValidationError(fields);
@@ -267,13 +341,19 @@ export class ReviewService {
         await this.engine.applyReviewerGrades(
           trx,
           id,
-          grades.map((g) => ({ attemptQuestionId: g.attemptQuestionId, awardedPoints: g.awardedPoints, feedback: g.feedback ?? null })),
+          grades.map((g) => ({
+            attemptQuestionId: g.attemptQuestionId,
+            awardedPoints: g.awardedPoints,
+            feedback: g.feedback ?? null,
+          })),
           { id: p.userId, name: p.displayName },
           now,
         );
         const finalized = await this.engine.finalizeReview(trx, id, now);
         await this.events.audit(trx, {
-          action: finalized ? 'assessment.attempt.review_completed' : 'assessment.attempt.answers_graded',
+          action: finalized
+            ? 'assessment.attempt.review_completed'
+            : 'assessment.attempt.answers_graded',
           resourceType: 'assessment_attempt',
           resourceId: id,
           actorDisplay: p.displayName,
@@ -298,18 +378,33 @@ export class ReviewService {
    * previous and new effective result, an audit entry is written and `attempt.graded` is emitted
    * with `overridden: true`.
    */
-  async override(p: Principal, id: string, input: { scorePercent: number; passed?: boolean; reason: string }): Promise<assessment.ReviewAttemptDetail> {
+  async override(
+    p: Principal,
+    id: string,
+    input: { scorePercent: number; passed?: boolean; reason: string },
+  ): Promise<assessment.ReviewAttemptDetail> {
     await this.scopedAttempt(this.db, p, 'assessment_scores.override', id);
     await this.db.transaction().execute(async (trx) => {
-      const attempt = await trx.selectFrom('attempts').selectAll().where('id', '=', id).forUpdate().executeTakeFirstOrThrow();
+      const attempt = await trx
+        .selectFrom('attempts')
+        .selectAll()
+        .where('id', '=', id)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
       if (attempt.status !== 'graded') {
-        throw new ConflictError('ATTEMPT_NOT_GRADED', 'Only graded attempts can be overridden. Finish reviewing the open answers first.');
+        throw new ConflictError(
+          'ATTEMPT_NOT_GRADED',
+          'Only graded attempts can be overridden. Finish reviewing the open answers first.',
+        );
       }
       const previous = effectiveScore(attempt, (await latestOverrides(trx, [id])).get(id));
       const newPercent = round2(input.scorePercent);
       const newPassed = input.passed ?? isPassing(newPercent, attempt.config.passingPercent);
       if (previous.scorePercent === newPercent && previous.passed === newPassed) {
-        throw new PreconditionError('OVERRIDE_UNCHANGED', 'The new score and result are the same as the current ones. Nothing was changed.');
+        throw new PreconditionError(
+          'OVERRIDE_UNCHANGED',
+          'The new score and result are the same as the current ones. Nothing was changed.',
+        );
       }
       const now = this.clock.now();
       await trx
@@ -336,9 +431,18 @@ export class ReviewService {
         before: { scorePercent: previous.scorePercent, passed: previous.passed },
         after: { scorePercent: newPercent, passed: newPassed },
         reason: input.reason,
-        metadata: { learnerId: attempt.user_id, assessmentId: attempt.assessment_id, attemptNumber: attempt.attempt_number },
+        metadata: {
+          learnerId: attempt.user_id,
+          assessmentId: attempt.assessment_id,
+          attemptNumber: attempt.attempt_number,
+        },
       });
-      await this.engine.emitGraded(trx, attempt, { scorePercent: newPercent, passed: newPassed, gradedAt: now, overridden: true });
+      await this.engine.emitGraded(trx, attempt, {
+        scorePercent: newPercent,
+        passed: newPassed,
+        gradedAt: now,
+        overridden: true,
+      });
     });
     return this.detail(p, id, 'assessment_scores.override');
   }

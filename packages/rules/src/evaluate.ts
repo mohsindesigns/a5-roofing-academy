@@ -1,4 +1,10 @@
-import { isGroup, type ApprovalKind, type AssessmentKind, type LeafRule, type Rule } from './schema.js';
+import {
+  isGroup,
+  type ApprovalKind,
+  type AssessmentKind,
+  type LeafRule,
+  type Rule,
+} from './schema.js';
 
 /**
  * Facts available to the evaluator. Callers preload facts (one query per fact family) and expose
@@ -156,13 +162,22 @@ function evaluateLeaf(rule: LeafRule, facts: RuleFacts): RuleResult {
     case 'days_since_enrollment': {
       if (!facts.enrolledAt) return unknown(rule);
       const enrolled = facts.enrolledAt();
-      if (!enrolled) return { rule, satisfied: false, progress: { current: 0, target: rule.days, unit: 'days' } };
+      if (!enrolled)
+        return {
+          rule,
+          satisfied: false,
+          progress: { current: 0, target: rule.days, unit: 'days' },
+        };
       const now = facts.now?.() ?? new Date();
       const days = Math.floor((now.getTime() - enrolled.getTime()) / 86_400_000);
       return {
         rule,
         satisfied: days >= rule.days,
-        progress: { current: Math.max(0, Math.min(days, rule.days)), target: rule.days, unit: 'days' },
+        progress: {
+          current: Math.max(0, Math.min(days, rule.days)),
+          target: rule.days,
+          unit: 'days',
+        },
       };
     }
   }

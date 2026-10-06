@@ -28,7 +28,9 @@ export function configureApplication(
 ): void {
   app.set('trust proxy', 'loopback, linklocal, uniquelocal');
   app.disable('x-powered-by');
-  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'same-site' } }));
+  app.use(
+    helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'same-site' } }),
+  );
   if (parseBodies) {
     app.useBodyParser('json', { limit: config.bodyLimit });
     app.useBodyParser('urlencoded', { limit: config.bodyLimit, extended: false });
@@ -87,6 +89,9 @@ export async function bootstrapService(options: BootstrapOptions): Promise<NestE
   process.once('SIGINT', () => void shutdown('SIGINT'));
 
   await app.listen(config.port, config.host);
-  logger.info({ port: config.port, role: config.role, env: config.nodeEnv }, `${config.serviceName} listening`);
+  logger.info(
+    { port: config.port, role: config.role, env: config.nodeEnv },
+    `${config.serviceName} listening`,
+  );
   return app;
 }

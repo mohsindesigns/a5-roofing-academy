@@ -1,7 +1,14 @@
 import { HttpCode, Post } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import { media } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZResponse,
+} from '@a5/nest-kit';
 import { UploadsService } from './uploads.service.js';
 
 @ApiController('media/uploads', 'media')
@@ -12,7 +19,10 @@ export class UploadsController {
   @Post()
   @RequirePermissions('media.upload')
   @ZResponse(media.createUploadResponseSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(media.createUploadRequestSchema) body: media.CreateUploadRequest) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(media.createUploadRequestSchema) body: media.CreateUploadRequest,
+  ) {
     return this.uploads.create(p, body);
   }
 

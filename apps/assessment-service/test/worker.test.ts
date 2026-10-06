@@ -54,15 +54,31 @@ describe('expiry job', () => {
       await h.app.get(ExpirySweeper).enqueueSweep(`test-sweep-${attempt.id}`);
       const row = await waitFor(
         async () => {
-          const r = await h.db.selectFrom('attempts').select(['status', 'auto_submitted', 'score_percent', 'submitted_at', 'expires_at']).where('id', '=', attempt.id).executeTakeFirstOrThrow();
+          const r = await h.db
+            .selectFrom('attempts')
+            .select(['status', 'auto_submitted', 'score_percent', 'submitted_at', 'expires_at'])
+            .where('id', '=', attempt.id)
+            .executeTakeFirstOrThrow();
           return r.status === 'graded' ? r : null;
         },
-        { timeoutMs: 20_000, intervalMs: 200, message: 'the expiry job to auto-submit the attempt' },
+        {
+          timeoutMs: 20_000,
+          intervalMs: 200,
+          message: 'the expiry job to auto-submit the attempt',
+        },
       );
       expect(row).toMatchObject({ auto_submitted: true, score_percent: 100 });
       expect(row.submitted_at!.getTime()).toBe(row.expires_at!.getTime());
-      const events = await h.db.selectFrom('outbox_events').select('type').where('envelope', '@>', { subject: { id: attempt.id } } as never).execute();
-      expect(events.map((e) => e.type).sort()).toEqual(['assessment.attempt.graded', 'assessment.attempt.started', 'assessment.attempt.submitted']);
+      const events = await h.db
+        .selectFrom('outbox_events')
+        .select('type')
+        .where('envelope', '@>', { subject: { id: attempt.id } } as never)
+        .execute();
+      expect(events.map((e) => e.type).sort()).toEqual([
+        'assessment.attempt.graded',
+        'assessment.attempt.started',
+        'assessment.attempt.submitted',
+      ]);
     } finally {
       h.clock.advanceMinutes(-2);
     }
@@ -75,10 +91,18 @@ describe('expiry job', () => {
     try {
       const row = await waitFor(
         async () => {
-          const r = await h.db.selectFrom('attempts').select(['status', 'auto_submitted']).where('id', '=', attempt.id).executeTakeFirstOrThrow();
+          const r = await h.db
+            .selectFrom('attempts')
+            .select(['status', 'auto_submitted'])
+            .where('id', '=', attempt.id)
+            .executeTakeFirstOrThrow();
           return r.status === 'graded' ? r : null;
         },
-        { timeoutMs: 30_000, intervalMs: 250, message: 'the repeatable sweep to close the attempt' },
+        {
+          timeoutMs: 30_000,
+          intervalMs: 250,
+          message: 'the repeatable sweep to close the attempt',
+        },
       );
       expect(row.auto_submitted).toBe(true);
     } finally {
@@ -102,7 +126,11 @@ describe('expiry job', () => {
       .execute();
     const outcome = await h.app.get(ExpirySweeper).sweep();
     expect(outcome.graded).toBeGreaterThanOrEqual(1);
-    const row = await h.db.selectFrom('attempts').select(['status', 'score_percent']).where('id', '=', attempt.id).executeTakeFirstOrThrow();
+    const row = await h.db
+      .selectFrom('attempts')
+      .select(['status', 'score_percent'])
+      .where('id', '=', attempt.id)
+      .executeTakeFirstOrThrow();
     expect(row).toMatchObject({ status: 'graded', score_percent: 100 });
     // The learner opening the attempt also repairs it, and the result is stable.
     const result = await h.http.get(`/api/v1/attempts/${attempt.id}/result`).set(headers);
@@ -117,20 +145,40 @@ describe('outbox relay', () => {
     await h.http.post(`/api/v1/attempts/${attempt.id}/submit`).set(headers).expect(200);
     const types = await waitFor(
       async () => {
-        const entries = await h.redis.xrange(h.ns.stream(streamFor('assessment-service')), '-', '+');
+        const entries = await h.redis.xrange(
+          h.ns.stream(streamFor('assessment-service')),
+          '-',
+          '+',
+        );
         const mine = entries
-          .map(([, fields]) => JSON.parse(fields[fields.indexOf('envelope') + 1]!) as { type: string; subject: { id: string } | null; producer: string })
+          .map(
+            ([, fields]) =>
+              JSON.parse(fields[fields.indexOf('envelope') + 1]!) as {
+                type: string;
+                subject: { id: string } | null;
+                producer: string;
+              },
+          )
           .filter((e) => e.subject?.id === attempt.id);
         return mine.length >= 3 ? mine : null;
       },
       { timeoutMs: 15_000, intervalMs: 200, message: 'the relay to publish the attempt events' },
     );
-    expect(types.map((e) => e.type)).toEqual(['assessment.attempt.started', 'assessment.attempt.submitted', 'assessment.attempt.graded']);
+    expect(types.map((e) => e.type)).toEqual([
+      'assessment.attempt.started',
+      'assessment.attempt.submitted',
+      'assessment.attempt.graded',
+    ]);
     expect(types.every((e) => e.producer === 'assessment-service')).toBe(true);
     // The relay stamps published_at right after appending to the stream.
     await waitFor(
       async () => {
-        const pending = await h.db.selectFrom('outbox_events').select('id').where('published_at', 'is', null).where('envelope', '@>', { subject: { id: attempt.id } } as never).execute();
+        const pending = await h.db
+          .selectFrom('outbox_events')
+          .select('id')
+          .where('published_at', 'is', null)
+          .where('envelope', '@>', { subject: { id: attempt.id } } as never)
+          .execute();
         return pending.length === 0;
       },
       { timeoutMs: 10_000, intervalMs: 100, message: 'the relay to mark the events as published' },
@@ -140,28 +188,58 @@ describe('outbox relay', () => {
 
 describe('directory events', () => {
   const publisher = () => new StreamPublisher(h.redis, h.ns);
-  const userEvent = (person: keyof typeof PEOPLE, revision: number, patch: Partial<ReturnType<typeof directoryUser>>, id = uuidv7()) =>
+  const userEvent = (
+    person: keyof typeof PEOPLE,
+    revision: number,
+    patch: Partial<ReturnType<typeof directoryUser>>,
+    id = uuidv7(),
+  ) =>
     buildEvent(
       identityEvents.directoryUserUpserted,
       { user: { ...directoryUser(person), ...patch }, revision },
-      { id, producer: 'identity-service', organizationId: principalDataFor(person).organizationId, actor: { type: 'system', id: null }, subject: { type: 'user', id: PEOPLE[person].id } },
+      {
+        id,
+        producer: 'identity-service',
+        organizationId: principalDataFor(person).organizationId,
+        actor: { type: 'system', id: null },
+        subject: { type: 'user', id: PEOPLE[person].id },
+      },
     );
-  const publish = (event: ReturnType<typeof userEvent>) => publisher().publish([{ stream: streamFor('identity-service'), envelope: event }]);
+  const publish = (event: ReturnType<typeof userEvent>) =>
+    publisher().publish([{ stream: streamFor('identity-service'), envelope: event }]);
   const jobTitle = async (person: keyof typeof PEOPLE) =>
-    (await h.db.selectFrom('dir_users').select('job_title').where('id', '=', PEOPLE[person].id).executeTakeFirstOrThrow()).job_title;
+    (
+      await h.db
+        .selectFrom('dir_users')
+        .select('job_title')
+        .where('id', '=', PEOPLE[person].id)
+        .executeTakeFirstOrThrow()
+    ).job_title;
 
   it('updates the projection, ignores stale revisions and applies each event once', async () => {
     const promoted = userEvent('devon', 5, { jobTitle: 'Senior Sales Representative' });
     await publish(promoted);
-    await waitFor(async () => (await jobTitle('devon')) === 'Senior Sales Representative', { timeoutMs: 15_000, intervalMs: 100, message: 'the directory update' });
+    await waitFor(async () => (await jobTitle('devon')) === 'Senior Sales Representative', {
+      timeoutMs: 15_000,
+      intervalMs: 100,
+      message: 'the directory update',
+    });
 
     await publish(userEvent('devon', 3, { jobTitle: 'Outdated Title' }));
     await publish(promoted);
     const marker = userEvent('ethan', 2, { jobTitle: 'Marker' });
     await publish(marker);
-    await waitFor(async () => (await jobTitle('ethan')) === 'Marker', { timeoutMs: 15_000, intervalMs: 100, message: 'the marker event' });
+    await waitFor(async () => (await jobTitle('ethan')) === 'Marker', {
+      timeoutMs: 15_000,
+      intervalMs: 100,
+      message: 'the marker event',
+    });
     expect(await jobTitle('devon')).toBe('Senior Sales Representative');
-    const inbox = await h.db.selectFrom('inbox_events').select('event_id').where('event_id', '=', promoted.id).execute();
+    const inbox = await h.db
+      .selectFrom('inbox_events')
+      .select('event_id')
+      .where('event_id', '=', promoted.id)
+      .execute();
     expect(inbox).toHaveLength(1);
   });
 
@@ -173,7 +251,8 @@ describe('directory events', () => {
     // only see him through the team membership in the directory projection.
     const dallasManager = await h.as('danielle');
     const visible = async (viewer: Record<string, string>) =>
-      (await h.http.get('/api/v1/attempts').query({ assessmentId: a.id }).set(viewer)).body.total as number;
+      (await h.http.get('/api/v1/attempts').query({ assessmentId: a.id }).set(viewer)).body
+        .total as number;
     const luisBefore = await h.as('luis');
     // Isaiah starts on the Fort Worth storm team (managed by Luis).
     expect(await visible(luisBefore)).toBe(1);
@@ -181,12 +260,22 @@ describe('directory events', () => {
 
     const dallasA = TEAMS.find((t) => t.name === 'Dallas Residential A')!;
     await publish(userEvent('isaiah', 9, { teamIds: [dallasA.id], displayName: 'Isaiah Grant' }));
-    await waitFor(async () => (await visible(dallasManager)) === 1, { timeoutMs: 15_000, intervalMs: 100, message: 'the team change to reach the review scope' });
+    await waitFor(async () => (await visible(dallasManager)) === 1, {
+      timeoutMs: 15_000,
+      intervalMs: 100,
+      message: 'the team change to reach the review scope',
+    });
     // Identity recomputes Luis's principal after the move: Isaiah is no longer his report.
     const luis = principalDataFor('luis');
-    const luisAfter = await h.as('luis', { managedUserIds: luis.managedUserIds.filter((id) => id !== PEOPLE.isaiah.id) });
+    const luisAfter = await h.as('luis', {
+      managedUserIds: luis.managedUserIds.filter((id) => id !== PEOPLE.isaiah.id),
+    });
     expect(await visible(luisAfter)).toBe(0);
-    expect((await h.http.get(`/api/v1/attempts/${attempt.id}/review`).set(luisAfter)).status).toBe(404);
-    expect((await h.http.get(`/api/v1/attempts/${attempt.id}/review`).set(dallasManager)).status).toBe(200);
+    expect((await h.http.get(`/api/v1/attempts/${attempt.id}/review`).set(luisAfter)).status).toBe(
+      404,
+    );
+    expect(
+      (await h.http.get(`/api/v1/attempts/${attempt.id}/review`).set(dallasManager)).status,
+    ).toBe(200);
   });
 });

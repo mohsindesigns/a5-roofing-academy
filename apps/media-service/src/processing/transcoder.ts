@@ -62,7 +62,11 @@ export interface PlannedRendition extends LadderRung {
  * Pick the ladder rungs that do not upscale the source (by its short side, so portrait video is
  * handled). Sources smaller than the lowest rung get a single rendition at their own size.
  */
-export function planLadder(sourceWidth: number, sourceHeight: number, ladder: readonly LadderRung[] = HLS_LADDER): PlannedRendition[] {
+export function planLadder(
+  sourceWidth: number,
+  sourceHeight: number,
+  ladder: readonly LadderRung[] = HLS_LADDER,
+): PlannedRendition[] {
   const landscape = sourceWidth >= sourceHeight;
   const shortSide = Math.min(sourceWidth, sourceHeight);
   const scaled = (size: number) =>

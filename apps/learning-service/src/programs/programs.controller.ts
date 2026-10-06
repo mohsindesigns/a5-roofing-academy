@@ -2,7 +2,15 @@ import { Get, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { learning } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { ProgramsService } from './programs.service.js';
 import { PublishService } from './publish.service.js';
 
@@ -19,14 +27,28 @@ export class ProgramsController {
   @Get()
   @RequirePermissions('programs.view')
   @ZResponse(learning.programPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(learning.listProgramsQuerySchema) q: Out<typeof learning.listProgramsQuerySchema>) {
-    return this.programs.list(p, { q: q.q, status: q.status, category: q.category, sort: q.sort, page: q.page, pageSize: q.pageSize });
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(learning.listProgramsQuerySchema) q: Out<typeof learning.listProgramsQuerySchema>,
+  ) {
+    return this.programs.list(p, {
+      q: q.q,
+      status: q.status,
+      category: q.category,
+      sort: q.sort,
+      page: q.page,
+      pageSize: q.pageSize,
+    });
   }
 
   @Post()
   @RequirePermissions('programs.create')
   @ZResponse(learning.programDetailSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(learning.createProgramRequestSchema) body: Out<typeof learning.createProgramRequestSchema>) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(learning.createProgramRequestSchema)
+    body: Out<typeof learning.createProgramRequestSchema>,
+  ) {
     return this.programs.create(p, body);
   }
 
@@ -43,7 +65,8 @@ export class ProgramsController {
   update(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(learning.updateProgramRequestSchema) body: Out<typeof learning.updateProgramRequestSchema>,
+    @ZBody(learning.updateProgramRequestSchema)
+    body: Out<typeof learning.updateProgramRequestSchema>,
   ) {
     return this.programs.update(p, id, body);
   }
@@ -54,7 +77,8 @@ export class ProgramsController {
   duplicate(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(learning.duplicateProgramRequestSchema) body: Out<typeof learning.duplicateProgramRequestSchema>,
+    @ZBody(learning.duplicateProgramRequestSchema)
+    body: Out<typeof learning.duplicateProgramRequestSchema>,
   ) {
     return this.programs.duplicate(p, id, body);
   }
@@ -82,7 +106,8 @@ export class ProgramsController {
   publish(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(learning.publishProgramRequestSchema) body: Out<typeof learning.publishProgramRequestSchema>,
+    @ZBody(learning.publishProgramRequestSchema)
+    body: Out<typeof learning.publishProgramRequestSchema>,
   ) {
     return this.publisher.publish(p, id, body.changeNote);
   }
@@ -97,7 +122,11 @@ export class ProgramsController {
   @Get(':id/versions/:version')
   @RequirePermissions('programs.view')
   @ZResponse(learning.programVersionDetailSchema)
-  version(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('version', z.coerce.number().int().min(1)) version: number) {
+  version(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('version', z.coerce.number().int().min(1)) version: number,
+  ) {
     return this.programs.version(p, id, version);
   }
 
@@ -118,7 +147,8 @@ export class ProgramsController {
   setPrerequisites(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(learning.setPrerequisitesRequestSchema) body: Out<typeof learning.setPrerequisitesRequestSchema>,
+    @ZBody(learning.setPrerequisitesRequestSchema)
+    body: Out<typeof learning.setPrerequisitesRequestSchema>,
   ) {
     return this.programs.setPrerequisites(p, id, body.programIds);
   }
@@ -126,7 +156,11 @@ export class ProgramsController {
   @Get(':id/preview')
   @RequirePermissions('programs.view')
   @ZResponse(learning.outlineSchema)
-  preview(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZQuery(learning.previewQuerySchema) q: Out<typeof learning.previewQuerySchema>) {
+  preview(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZQuery(learning.previewQuerySchema) q: Out<typeof learning.previewQuerySchema>,
+  ) {
     return this.programs.preview(p, id, q.source);
   }
 }

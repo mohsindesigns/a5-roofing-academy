@@ -22,7 +22,10 @@ export interface PlannedQuestion {
 }
 
 function wrongOptionIds(options: readonly assessment.ChoiceOption[], rng: Rng): string[] {
-  return shuffle(options.filter((o) => !o.correct).map((o) => o.id), rng);
+  return shuffle(
+    options.filter((o) => !o.correct).map((o) => o.id),
+    rng,
+  );
 }
 
 function candidates(def: Def, seed: SeedQuestion | undefined, rng: Rng): Response[] {
@@ -31,7 +34,10 @@ function candidates(def: Def, seed: SeedQuestion | undefined, rng: Rng): Respons
     case 'multiple_choice': {
       const wrong = wrongOptionIds(def.config.options, rng)[0]!;
       return [
-        { type: 'multiple_choice', optionId: (right as Extract<typeof right, { type: 'multiple_choice' }>).optionId },
+        {
+          type: 'multiple_choice',
+          optionId: (right as Extract<typeof right, { type: 'multiple_choice' }>).optionId,
+        },
         { type: 'multiple_choice', optionId: wrong },
       ];
     }
@@ -43,7 +49,8 @@ function candidates(def: Def, seed: SeedQuestion | undefined, rng: Rng): Respons
         { type: 'multiple_select', optionIds: [wrong[0]!] },
       ];
       if (def.config.scoring === 'partial') {
-        for (let k = 1; k < correctIds.length; k++) out.push({ type: 'multiple_select', optionIds: correctIds.slice(0, k) });
+        for (let k = 1; k < correctIds.length; k++)
+          out.push({ type: 'multiple_select', optionIds: correctIds.slice(0, k) });
         out.push({ type: 'multiple_select', optionIds: [...correctIds, wrong[0]!] });
       }
       return out;
@@ -88,13 +95,19 @@ function candidates(def: Def, seed: SeedQuestion | undefined, rng: Rng): Respons
       return [
         { type: 'ordering', order },
         { type: 'ordering', order: rotated },
-        ...(def.config.scoring === 'partial' ? [{ type: 'ordering' as const, order: swapped }] : []),
+        ...(def.config.scoring === 'partial'
+          ? [{ type: 'ordering' as const, order: swapped }]
+          : []),
       ];
     }
     case 'matching': {
       const pairs = def.config.pairs;
       const right = Object.fromEntries(pairs.map((p) => [p.leftId, p.rightId]));
-      const swapped = { ...right, [pairs[0]!.leftId]: pairs[1]!.rightId, [pairs[1]!.leftId]: pairs[0]!.rightId };
+      const swapped = {
+        ...right,
+        [pairs[0]!.leftId]: pairs[1]!.rightId,
+        [pairs[1]!.leftId]: pairs[0]!.rightId,
+      };
       return [
         { type: 'matching', matches: right },
         { type: 'matching', matches: swapped },
@@ -104,7 +117,12 @@ function candidates(def: Def, seed: SeedQuestion | undefined, rng: Rng): Respons
 }
 
 /** The answers a learner could plausibly give to a question and the points each earns (graded by the real engine). */
-export function answerOptions(def: Def, seed: SeedQuestion | undefined, points: number, rng: Rng): AnswerOption[] {
+export function answerOptions(
+  def: Def,
+  seed: SeedQuestion | undefined,
+  points: number,
+  rng: Rng,
+): AnswerOption[] {
   const out: AnswerOption[] = [];
   const responses = candidates(def, seed, rng);
   responses.forEach((response, index) => {
@@ -172,9 +190,13 @@ export function chooseAnswers(
   for (const [sum, picks] of states) {
     const passes = (sum / maxCents) * 100 + 1e-9 >= target.passingPercent;
     if (passes !== shouldPass) continue;
-    if (!best || Math.abs(sum - targetCents) < Math.abs(best.sum - targetCents)) best = { sum, picks };
+    if (!best || Math.abs(sum - targetCents) < Math.abs(best.sum - targetCents))
+      best = { sum, picks };
   }
-  if (!best) throw new Error(`No answer combination reaches ${target.percent}% on a ${maxPoints}-point attempt`);
+  if (!best)
+    throw new Error(
+      `No answer combination reaches ${target.percent}% on a ${maxPoints}-point attempt`,
+    );
   const picks = best.picks;
   const chosen = new Array<AnswerOption>(questions.length);
   order.forEach((questionIndex, step) => {

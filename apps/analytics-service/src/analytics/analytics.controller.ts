@@ -34,14 +34,20 @@ export class AnalyticsController {
   @Get('dashboards/team')
   @RequirePermissions('analytics.view')
   @ZResponse(analytics.teamDashboardSchema)
-  team(@CurrentPrincipal() p: Principal, @ZQuery(analytics.dashboardQuerySchema) query: DashboardQuery) {
+  team(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(analytics.dashboardQuerySchema) query: DashboardQuery,
+  ) {
     return this.dashboards.team(p, query);
   }
 
   @Get('dashboards/company')
   @RequirePermissions('analytics.view')
   @ZResponse(analytics.companyDashboardSchema)
-  company(@CurrentPrincipal() p: Principal, @ZQuery(analytics.dashboardQuerySchema) query: DashboardQuery) {
+  company(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(analytics.dashboardQuerySchema) query: DashboardQuery,
+  ) {
     return this.dashboards.company(p, query);
   }
 
@@ -59,7 +65,10 @@ export class AnalyticsController {
   @Get('me/summary')
   @RequirePermissions('training.participate')
   @ZResponse(analytics.learnerSummarySchema)
-  mySummary(@CurrentPrincipal() p: Principal, @ZQuery(analytics.learnerSummaryQuerySchema) query: { programId?: string }) {
+  mySummary(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(analytics.learnerSummaryQuerySchema) query: { programId?: string },
+  ) {
     return this.dashboards.mySummary(p, query.programId);
   }
 
@@ -86,7 +95,8 @@ export class AnalyticsController {
   @ZResponse(analytics.analyticsSettingsResponseSchema)
   updateSettings(
     @CurrentPrincipal() p: Principal,
-    @ZBody(analytics.updateAnalyticsSettingsRequestSchema) body: Partial<analytics.AnalyticsSettings>,
+    @ZBody(analytics.updateAnalyticsSettingsRequestSchema)
+    body: Partial<analytics.AnalyticsSettings>,
   ) {
     return this.settings.update(p, body);
   }

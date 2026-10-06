@@ -1,4 +1,11 @@
-import { Queue, Worker, type ConnectionOptions, type Job, type JobsOptions, type Processor } from 'bullmq';
+import {
+  Queue,
+  Worker,
+  type ConnectionOptions,
+  type Job,
+  type JobsOptions,
+  type Processor,
+} from 'bullmq';
 import { getContext, runWithContext, uuidv7, type Logger } from '@a5/observability';
 
 export type { Job, Queue, Worker } from 'bullmq';
@@ -61,15 +68,22 @@ export class QueueFactory {
   }
 
   /** Enqueue with the current request context attached for log correlation. */
-  async add<T>(name: string, jobName: string, data: T, opts: JobsOptions = {}): Promise<Job<JobData<T>>> {
+  async add<T>(
+    name: string,
+    jobName: string,
+    data: T,
+    opts: JobsOptions = {},
+  ): Promise<Job<JobData<T>>> {
     const ctx = getContext();
     const meta: JobMeta = {
       correlationId: ctx?.correlationId ?? uuidv7(),
       requestId: ctx?.requestId ?? uuidv7(),
     };
-    return this.queue<T>(name).add(jobName as never, { ...data, _meta: meta } as never, opts) as Promise<
-      Job<JobData<T>>
-    >;
+    return this.queue<T>(name).add(
+      jobName as never,
+      { ...data, _meta: meta } as never,
+      opts,
+    ) as Promise<Job<JobData<T>>>;
   }
 
   worker<T, R = unknown>(
@@ -99,19 +113,27 @@ export class QueueFactory {
       const final = job.attemptsMade >= attempts;
       logger[final ? 'error' : 'warn'](
         { err, queue: name, jobId: job.id, attemptsMade: job.attemptsMade, attempts },
-        final ? 'job failed permanently; moved to dead-letter queue' : 'job attempt failed; will retry',
+        final
+          ? 'job failed permanently; moved to dead-letter queue'
+          : 'job attempt failed; will retry',
       );
       if (final) {
         void this.queue<Record<string, unknown>>(`${name}.dlq`)
-          .add('dead-letter', {
-            queue: name,
-            jobId: job.id,
-            jobName: job.name,
-            data: job.data,
-            error: err.message,
-            failedAt: new Date().toISOString(),
-          }, { attempts: 1, removeOnComplete: false, removeOnFail: false })
-          .catch((dlqErr: unknown) => logger.error({ err: dlqErr }, 'failed to write dead-letter job'));
+          .add(
+            'dead-letter',
+            {
+              queue: name,
+              jobId: job.id,
+              jobName: job.name,
+              data: job.data,
+              error: err.message,
+              failedAt: new Date().toISOString(),
+            },
+            { attempts: 1, removeOnComplete: false, removeOnFail: false },
+          )
+          .catch((dlqErr: unknown) =>
+            logger.error({ err: dlqErr }, 'failed to write dead-letter job'),
+          );
       }
     });
     worker.on('error', (err) => logger.error({ err, queue: name }, 'queue worker error'));

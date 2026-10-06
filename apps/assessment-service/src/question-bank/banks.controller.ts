@@ -2,7 +2,15 @@ import { Delete, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { assessment, okSchema } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { BanksService } from './banks.service.js';
 
 @ApiController('question-banks')
@@ -12,14 +20,22 @@ export class BanksController {
   @Get()
   @RequirePermissions('assessments.view')
   @ZResponse(assessment.questionBankPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(assessment.listQuestionBanksQuerySchema) q: z.infer<typeof assessment.listQuestionBanksQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(assessment.listQuestionBanksQuerySchema)
+    q: z.infer<typeof assessment.listQuestionBanksQuerySchema>,
+  ) {
     return this.banks.list(p, q);
   }
 
   @Post()
   @RequirePermissions('assessments.create')
   @ZResponse(assessment.questionBankDetailSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(assessment.createQuestionBankRequestSchema) body: z.infer<typeof assessment.createQuestionBankRequestSchema>) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(assessment.createQuestionBankRequestSchema)
+    body: z.infer<typeof assessment.createQuestionBankRequestSchema>,
+  ) {
     return this.banks.create(p, body);
   }
 
@@ -36,7 +52,8 @@ export class BanksController {
   update(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(assessment.updateQuestionBankRequestSchema) body: z.infer<typeof assessment.updateQuestionBankRequestSchema>,
+    @ZBody(assessment.updateQuestionBankRequestSchema)
+    body: z.infer<typeof assessment.updateQuestionBankRequestSchema>,
   ) {
     return this.banks.update(p, id, body);
   }
@@ -81,7 +98,8 @@ export class BanksController {
   createCategory(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(assessment.createCategoryRequestSchema) body: z.infer<typeof assessment.createCategoryRequestSchema>,
+    @ZBody(assessment.createCategoryRequestSchema)
+    body: z.infer<typeof assessment.createCategoryRequestSchema>,
   ) {
     return this.banks.createCategory(p, id, body);
   }
@@ -93,7 +111,8 @@ export class BanksController {
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
     @ZParam('categoryId') categoryId: string,
-    @ZBody(assessment.updateCategoryRequestSchema) body: z.infer<typeof assessment.updateCategoryRequestSchema>,
+    @ZBody(assessment.updateCategoryRequestSchema)
+    body: z.infer<typeof assessment.updateCategoryRequestSchema>,
   ) {
     return this.banks.updateCategory(p, id, categoryId, body);
   }
@@ -101,7 +120,11 @@ export class BanksController {
   @Delete(':id/categories/:categoryId')
   @RequirePermissions('assessments.update')
   @ZResponse(okSchema)
-  async deleteCategory(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('categoryId') categoryId: string) {
+  async deleteCategory(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('categoryId') categoryId: string,
+  ) {
     await this.banks.deleteCategory(p, id, categoryId);
     return { ok: true as const };
   }
@@ -122,7 +145,8 @@ export class BanksController {
   createCompetency(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(assessment.createCompetencyRequestSchema) body: z.infer<typeof assessment.createCompetencyRequestSchema>,
+    @ZBody(assessment.createCompetencyRequestSchema)
+    body: z.infer<typeof assessment.createCompetencyRequestSchema>,
   ) {
     return this.banks.createCompetency(p, id, body);
   }
@@ -134,7 +158,8 @@ export class BanksController {
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
     @ZParam('competencyId') competencyId: string,
-    @ZBody(assessment.updateCompetencyRequestSchema) body: z.infer<typeof assessment.updateCompetencyRequestSchema>,
+    @ZBody(assessment.updateCompetencyRequestSchema)
+    body: z.infer<typeof assessment.updateCompetencyRequestSchema>,
   ) {
     return this.banks.updateCompetency(p, id, competencyId, body);
   }
@@ -142,7 +167,11 @@ export class BanksController {
   @Delete(':id/competencies/:competencyId')
   @RequirePermissions('assessments.update')
   @ZResponse(okSchema)
-  async deleteCompetency(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('competencyId') competencyId: string) {
+  async deleteCompetency(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('competencyId') competencyId: string,
+  ) {
     await this.banks.deleteCompetency(p, id, competencyId);
     return { ok: true as const };
   }

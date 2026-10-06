@@ -28,7 +28,15 @@ export async function issueOneTimeToken(
   const expiresAt = new Date(Date.now() + ttlMs);
   await trx
     .insertInto('one_time_tokens')
-    .values({ id: uuidv7(), user_id: userId, purpose, token_hash: hashToken(token), expires_at: expiresAt, used_at: null, created_by: createdBy })
+    .values({
+      id: uuidv7(),
+      user_id: userId,
+      purpose,
+      token_hash: hashToken(token),
+      expires_at: expiresAt,
+      used_at: null,
+      created_by: createdBy,
+    })
     .execute();
   return { token, expiresAt };
 }

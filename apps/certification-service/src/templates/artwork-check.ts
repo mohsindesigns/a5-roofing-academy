@@ -20,18 +20,28 @@ export async function artworkProblems(
     .select(['s.slot', 'g.id', 'g.name'])
     .where('s.definition_id', '=', def.id)
     .execute();
-  const signatures = await currentSignatures(db, slots.map((s) => s.id));
+  const signatures = await currentSignatures(
+    db,
+    slots.map((s) => s.id),
+  );
   for (const n of [1, 2] as const) {
-    const showsSignature = design.elements.some((el) => el.type === 'signature' && signatureSlotOf(el) === n);
+    const showsSignature = design.elements.some(
+      (el) => el.type === 'signature' && signatureSlotOf(el) === n,
+    );
     const showsDetails = design.elements.some((el) => el.content.includes(`signatory_${n}_`));
     if (!showsSignature && !showsDetails) continue;
     const slot = slots.find((s) => s.slot === n);
-    if (!slot) problems.push(`"${def.name}" has no signatory in slot ${n}, which the design shows.`);
-    else if (showsSignature && !signatures.get(slot.id)) problems.push(`${slot.name} has no signature image, which the design shows for "${def.name}".`);
+    if (!slot)
+      problems.push(`"${def.name}" has no signatory in slot ${n}, which the design shows.`);
+    else if (showsSignature && !signatures.get(slot.id))
+      problems.push(
+        `${slot.name} has no signature image, which the design shows for "${def.name}".`,
+      );
   }
   if (design.elements.some((el) => el.type === 'stamp')) {
     if (!def.stamp_id) problems.push(`"${def.name}" has no stamp, which the design shows.`);
-    else if (!(await currentStampImages(db, [def.stamp_id])).get(def.stamp_id)) problems.push(`The stamp of "${def.name}" has no image, which the design shows.`);
+    else if (!(await currentStampImages(db, [def.stamp_id])).get(def.stamp_id))
+      problems.push(`The stamp of "${def.name}" has no image, which the design shows.`);
   }
   return problems;
 }

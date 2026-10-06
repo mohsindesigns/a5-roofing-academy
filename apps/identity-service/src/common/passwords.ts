@@ -50,11 +50,14 @@ export class PasswordService {
     if (password.length < policy.minLength) return `Use at least ${policy.minLength} characters.`;
     if (password.length > 128) return 'Use at most 128 characters.';
     const lower = password.toLowerCase();
-    if (COMMON_PASSWORDS.has(lower)) return 'This password is too common. Choose something less predictable.';
+    if (COMMON_PASSWORDS.has(lower))
+      return 'This password is too common. Choose something less predictable.';
     const local = context.email?.split('@')[0]?.toLowerCase();
-    if (local && local.length >= 4 && lower.includes(local)) return 'Do not include your email address in your password.';
+    if (local && local.length >= 4 && lower.includes(local))
+      return 'Do not include your email address in your password.';
     for (const name of [context.firstName, context.lastName]) {
-      if (name && name.length >= 4 && lower.includes(name.toLowerCase())) return 'Do not include your name in your password.';
+      if (name && name.length >= 4 && lower.includes(name.toLowerCase()))
+        return 'Do not include your name in your password.';
     }
     if (/^(.)\1+$/.test(password)) return 'Do not repeat a single character.';
     return null;

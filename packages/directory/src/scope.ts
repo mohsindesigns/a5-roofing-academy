@@ -30,7 +30,9 @@ export function userScopeCondition(
         ? sql<SqlBool>`${sql.ref(columns.orgColumn)} = ${filter.organizationId}`
         : sql<SqlBool>`${user} in (select id from dir_users where organization_id = ${filter.organizationId})`;
     case 'managed': {
-      const teamIds = filter.teamIds.length ? filter.teamIds : ['00000000-0000-0000-0000-000000000000'];
+      const teamIds = filter.teamIds.length
+        ? filter.teamIds
+        : ['00000000-0000-0000-0000-000000000000'];
       const userIds = [filter.userId, ...filter.userIds];
       return sql<SqlBool>`(
         ${user} = any(${sql.val(userIds)}::uuid[])
@@ -77,7 +79,9 @@ export class DirectoryReader {
         'u.status',
         'u.location_id',
         'u.department_id',
-        sql<string[]>`coalesce(array_agg(t.team_id) filter (where t.team_id is not null), '{}')`.as('team_ids'),
+        sql<string[]>`coalesce(array_agg(t.team_id) filter (where t.team_id is not null), '{}')`.as(
+          'team_ids',
+        ),
       ])
       .where('u.id', 'in', unique)
       .groupBy('u.id')
@@ -137,7 +141,11 @@ export class DirectoryReader {
 
   async teamNames(ids: readonly string[]): Promise<Map<string, string>> {
     if (ids.length === 0) return new Map();
-    const rows = await this.db.selectFrom('dir_teams').select(['id', 'name']).where('id', 'in', [...new Set(ids)]).execute();
+    const rows = await this.db
+      .selectFrom('dir_teams')
+      .select(['id', 'name'])
+      .where('id', 'in', [...new Set(ids)])
+      .execute();
     return new Map(rows.map((r) => [r.id, r.name]));
   }
 }

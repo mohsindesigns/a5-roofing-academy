@@ -13,9 +13,17 @@ export class InboxService {
     private readonly realtime: RealtimePublisher,
   ) {}
 
-  async list(p: Principal, q: notification.ListNotificationsQuery): Promise<notification.NotificationPage> {
+  async list(
+    p: Principal,
+    q: notification.ListNotificationsQuery,
+  ): Promise<notification.NotificationPage> {
     const [page, unreadCount] = await Promise.all([
-      this.repo.list(p.userId, p.organizationId, { limit: q.limit, cursor: q.cursor, unread: q.unread, category: q.category }),
+      this.repo.list(p.userId, p.organizationId, {
+        limit: q.limit,
+        cursor: q.cursor,
+        unread: q.unread,
+        category: q.category,
+      }),
       this.repo.unreadCount(p.userId),
     ]);
     return { ...page, unreadCount };

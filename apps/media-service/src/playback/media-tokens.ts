@@ -63,11 +63,18 @@ export class MediaTokens {
     return createHmac('sha256', this.secret).update(`${VERSION}.${payload}`).digest('base64url');
   }
 
-  sign<T extends Claims>(claims: Unsigned<T>, ttlSeconds: number): { token: string; expiresAt: Date; claims: T } {
+  sign<T extends Claims>(
+    claims: Unsigned<T>,
+    ttlSeconds: number,
+  ): { token: string; expiresAt: Date; claims: T } {
     const iat = Math.floor(this.clock.now() / 1000);
     const full = { ...claims, iat, exp: iat + ttlSeconds } as T;
     const payload = Buffer.from(JSON.stringify(full)).toString('base64url');
-    return { token: `${VERSION}.${payload}.${this.mac(payload)}`, expiresAt: new Date(full.exp * 1000), claims: full };
+    return {
+      token: `${VERSION}.${payload}.${this.mac(payload)}`,
+      expiresAt: new Date(full.exp * 1000),
+      claims: full,
+    };
   }
 
   verify<K extends Claims['typ']>(token: string, typ: K): Extract<Claims, { typ: K }> {
@@ -76,7 +83,8 @@ export class MediaTokens {
     const [, payload, signature] = parts as [string, string, string];
     const expected = Buffer.from(this.mac(payload));
     const actual = Buffer.from(signature);
-    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) throw new MediaTokenError('invalid');
+    if (expected.length !== actual.length || !timingSafeEqual(expected, actual))
+      throw new MediaTokenError('invalid');
     let claims: Claims;
     try {
       claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Claims;

@@ -1,7 +1,12 @@
 import type { Writable } from 'node:stream';
 import PDFDocument from 'pdfkit';
 import type { analytics } from '@a5/contracts';
-import { displayValue, type RenderInput, type RenderResult, type ReportRenderer } from './renderer.js';
+import {
+  displayValue,
+  type RenderInput,
+  type RenderResult,
+  type ReportRenderer,
+} from './renderer.js';
 
 const MARGIN = 36;
 const ROW_HEIGHT = 14;
@@ -15,7 +20,9 @@ const ZEBRA = '#f4f1ee';
 function weight(column: analytics.ReportColumn): number {
   switch (column.type) {
     case 'string':
-      return column.key === 'employee' || column.key === 'item' || column.key === 'program' ? 2.2 : 1.6;
+      return column.key === 'employee' || column.key === 'item' || column.key === 'program'
+        ? 2.2
+        : 1.6;
     case 'datetime':
       return 1.6;
     default:
@@ -58,7 +65,11 @@ export class PdfRenderer implements ReportRenderer {
 
     const footer = () => {
       doc.font('Helvetica').fontSize(7).fillColor(MUTED);
-      doc.text(`${input.title} · Page ${page}`, MARGIN, doc.page.height - MARGIN - 8, { width: usable, align: 'right', lineBreak: false });
+      doc.text(`${input.title} · Page ${page}`, MARGIN, doc.page.height - MARGIN - 8, {
+        width: usable,
+        align: 'right',
+        lineBreak: false,
+      });
     };
 
     const tableHeader = (y: number): number => {
@@ -66,15 +77,27 @@ export class PdfRenderer implements ReportRenderer {
       doc.font('Helvetica-Bold').fontSize(FONT_SIZE).fillColor('#ffffff');
       let x = MARGIN;
       input.columns.forEach((c, i) => {
-        doc.text(fit(c.label, widths[i]!), x + 3, y + 6, { width: widths[i]! - 6, lineBreak: false });
+        doc.text(fit(c.label, widths[i]!), x + 3, y + 6, {
+          width: widths[i]! - 6,
+          lineBreak: false,
+        });
         x += widths[i]!;
       });
       return y + HEADER_HEIGHT;
     };
 
     doc.font('Helvetica-Bold').fontSize(16).fillColor(CHARCOAL).text(input.title, MARGIN, MARGIN);
-    doc.moveTo(MARGIN, doc.y + 2).lineTo(MARGIN + 60, doc.y + 2).lineWidth(2).strokeColor(COPPER).stroke();
-    doc.font('Helvetica').fontSize(8).fillColor(MUTED).text(input.subtitle, MARGIN, doc.y + 8, { width: usable });
+    doc
+      .moveTo(MARGIN, doc.y + 2)
+      .lineTo(MARGIN + 60, doc.y + 2)
+      .lineWidth(2)
+      .strokeColor(COPPER)
+      .stroke();
+    doc
+      .font('Helvetica')
+      .fontSize(8)
+      .fillColor(MUTED)
+      .text(input.subtitle, MARGIN, doc.y + 8, { width: usable });
     let y = tableHeader(doc.y + 10);
 
     let rowCount = 0;
@@ -91,7 +114,11 @@ export class PdfRenderer implements ReportRenderer {
       input.columns.forEach((c, i) => {
         const text = displayValue(row[c.key] ?? null, c.type, input.timezone);
         const numeric = c.type === 'integer' || c.type === 'number' || c.type === 'percent';
-        doc.text(fit(text, widths[i]!), x + 3, y + 4, { width: widths[i]! - 6, lineBreak: false, align: numeric ? 'right' : 'left' });
+        doc.text(fit(text, widths[i]!), x + 3, y + 4, {
+          width: widths[i]! - 6,
+          lineBreak: false,
+          align: numeric ? 'right' : 'left',
+        });
         x += widths[i]!;
       });
       y += ROW_HEIGHT;
@@ -99,7 +126,11 @@ export class PdfRenderer implements ReportRenderer {
     }
 
     if (rowCount === 0) {
-      doc.font('Helvetica').fontSize(9).fillColor(MUTED).text('No rows match these filters.', MARGIN, y + 8);
+      doc
+        .font('Helvetica')
+        .fontSize(9)
+        .fillColor(MUTED)
+        .text('No rows match these filters.', MARGIN, y + 8);
     }
     if (input.truncated?.()) {
       doc

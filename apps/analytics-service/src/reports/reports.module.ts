@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ExportsService } from './exports.service.js';
-import { ReportExportsController, ReportFilesController, ReportsController } from './reports.controller.js';
+import {
+  ReportExportsController,
+  ReportFilesController,
+  ReportsController,
+} from './reports.controller.js';
 import { ReportsService } from './reports.service.js';
 
 @Module({

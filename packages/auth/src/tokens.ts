@@ -57,7 +57,11 @@ export interface AccessKeyPair {
   kid: string;
 }
 
-export async function importAccessKeys(privatePem: string | undefined, publicPem: string, kid = 'a5-1') {
+export async function importAccessKeys(
+  privatePem: string | undefined,
+  publicPem: string,
+  kid = 'a5-1',
+) {
   return {
     privateKey: privatePem ? await importPKCS8(privatePem, 'EdDSA') : undefined,
     publicKey: await importSPKI(publicPem, 'EdDSA'),
@@ -67,7 +71,10 @@ export async function importAccessKeys(privatePem: string | undefined, publicPem
 
 /** Ephemeral key pair for tests. */
 export async function generateAccessKeys(): Promise<AccessKeyPair & { publicJwk: JWK }> {
-  const { privateKey, publicKey } = await generateKeyPair('EdDSA', { crv: 'Ed25519', extractable: true });
+  const { privateKey, publicKey } = await generateKeyPair('EdDSA', {
+    crv: 'Ed25519',
+    extractable: true,
+  });
   return { privateKey, publicKey, kid: 'test', publicJwk: await exportJWK(publicKey) };
 }
 
@@ -90,7 +97,10 @@ export async function signAccessToken(
     .sign(key.privateKey);
 }
 
-export async function verifyAccessToken(token: string, publicKey: SigningKey): Promise<AccessTokenClaims> {
+export async function verifyAccessToken(
+  token: string,
+  publicKey: SigningKey,
+): Promise<AccessTokenClaims> {
   const payload = await verify<JWTPayload & { sid?: string; org?: string }>(token, publicKey, {
     issuer: ACCESS_TOKEN_ISSUER,
     audience: ACCESS_TOKEN_AUDIENCE,
@@ -122,7 +132,11 @@ interface PrincipalClaims extends JWTPayload {
 }
 
 /** Gateway → service principal token. Short lived; never leaves the internal network. */
-export async function signPrincipalToken(data: PrincipalData, secret: string, ttlSeconds = 60): Promise<string> {
+export async function signPrincipalToken(
+  data: PrincipalData,
+  secret: string,
+  ttlSeconds = 60,
+): Promise<string> {
   const claims: Omit<PrincipalClaims, keyof JWTPayload> = {
     org: data.organizationId,
     sid: data.sessionId,
@@ -160,7 +174,11 @@ export async function verifyPrincipalToken(token: string, secret: string): Promi
 }
 
 /** Service-to-service token for `/internal/*` endpoints. */
-export async function signServiceToken(service: string, secret: string, ttlSeconds = 60): Promise<string> {
+export async function signServiceToken(
+  service: string,
+  secret: string,
+  ttlSeconds = 60,
+): Promise<string> {
   return new SignJWT({ svc: service })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(`service:${service}`)
@@ -170,7 +188,10 @@ export async function signServiceToken(service: string, secret: string, ttlSecon
     .sign(secretKey(secret));
 }
 
-export async function verifyServiceToken(token: string, secret: string): Promise<{ service: string }> {
+export async function verifyServiceToken(
+  token: string,
+  secret: string,
+): Promise<{ service: string }> {
   const p = await verify<JWTPayload & { svc?: string }>(token, secretKey(secret), {
     audience: INTERNAL_AUDIENCE,
     algorithms: ['HS256'],
@@ -196,7 +217,11 @@ export interface LessonGrant {
  * Capability issued by learning-service when a learner opens an unlocked lesson. Media, assessment
  * and AI services verify it instead of calling learning-service synchronously.
  */
-export async function signLessonGrant(grant: LessonGrant, secret: string, ttlSeconds = 4 * 3600): Promise<string> {
+export async function signLessonGrant(
+  grant: LessonGrant,
+  secret: string,
+  ttlSeconds = 4 * 3600,
+): Promise<string> {
   return new SignJWT({
     org: grant.organizationId,
     prg: grant.programId,

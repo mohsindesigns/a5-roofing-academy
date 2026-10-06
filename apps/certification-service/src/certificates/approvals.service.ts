@@ -53,7 +53,9 @@ export class ApprovalsService {
       ]);
   }
 
-  private dto(r: Awaited<ReturnType<ReturnType<ApprovalsService['query']>['executeTakeFirstOrThrow']>>): certification.Approval {
+  private dto(
+    r: Awaited<ReturnType<ReturnType<ApprovalsService['query']>['executeTakeFirstOrThrow']>>,
+  ): certification.Approval {
     return {
       id: r.id,
       status: r.status,
@@ -63,7 +65,12 @@ export class ApprovalsService {
       decidedBy: personRef(r.decided_by, r.decided_by_name),
       comment: r.comment,
       definition: { id: r.definition_id, name: r.definition_name, code: r.definition_code },
-      user: { id: r.user_id, displayName: r.display_name ?? 'Unknown person', employeeId: r.employee_id, jobTitle: r.job_title },
+      user: {
+        id: r.user_id,
+        displayName: r.display_name ?? 'Unknown person',
+        employeeId: r.employee_id,
+        jobTitle: r.job_title,
+      },
       progress: { metCount: r.met_count, totalCount: r.total_count, requirements: r.requirements },
       certificateId: r.certificate_id,
     };
@@ -72,16 +79,36 @@ export class ApprovalsService {
   /** Approval queue limited to the people the caller may approve (`certificate_approvals.decide`). */
   async list(
     p: Principal,
-    f: { q?: string; status?: Array<'pending' | 'approved' | 'rejected' | 'cancelled'>; definitionId?: string; page: number; pageSize: number },
+    f: {
+      q?: string;
+      status?: Array<'pending' | 'approved' | 'rejected' | 'cancelled'>;
+      definitionId?: string;
+      page: number;
+      pageSize: number;
+    },
   ): Promise<Page<certification.Approval>> {
     let q = this.query()
       .where('a.organization_id', '=', p.organizationId)
-      .where(userScopeCondition(p.scopeFilter('certificate_approvals.decide'), { userColumn: 'a.user_id', orgColumn: 'a.organization_id' }))
+      .where(
+        userScopeCondition(p.scopeFilter('certificate_approvals.decide'), {
+          userColumn: 'a.user_id',
+          orgColumn: 'a.organization_id',
+        }),
+      )
       .where('a.status', 'in', f.status?.length ? f.status : ['pending']);
     if (f.definitionId) q = q.where('a.definition_id', '=', f.definitionId);
-    if (f.q) q = q.where((eb) => eb.or([eb('u.display_name', 'ilike', likePattern(f.q!)), eb('u.employee_id', 'ilike', likePattern(f.q!))]));
+    if (f.q)
+      q = q.where((eb) =>
+        eb.or([
+          eb('u.display_name', 'ilike', likePattern(f.q!)),
+          eb('u.employee_id', 'ilike', likePattern(f.q!)),
+        ]),
+      );
     const status = f.status?.length ? f.status : ['pending'];
-    q = status.length === 1 && status[0] === 'pending' ? q.orderBy('a.requested_at').orderBy('a.id') : q.orderBy('a.requested_at', 'desc').orderBy('a.id');
+    q =
+      status.length === 1 && status[0] === 'pending'
+        ? q.orderBy('a.requested_at').orderBy('a.id')
+        : q.orderBy('a.requested_at', 'desc').orderBy('a.id');
     const page = await paginate(q, f);
     return { ...page, items: page.items.map((r) => this.dto(r)) };
   }
@@ -91,41 +118,88 @@ export class ApprovalsService {
    * trainer (or organization-wide scope); manual review needs organization-wide scope.
    * Nobody approves their own certification.
    */
-  private async assertCanDecide(p: Principal, approval: { user_id: string; organization_id: string; kind: ApprovalKind }): Promise<void> {
-    await this.access.assertAdmits(p, 'certificate_approvals.decide', { userId: approval.user_id, organizationId: approval.organization_id }, 'Approval request');
-    if (approval.user_id === p.userId) throw new ForbiddenError('You cannot decide your own certification. Ask another approver.');
+  private async assertCanDecide(
+    p: Principal,
+    approval: { user_id: string; organization_id: string; kind: ApprovalKind },
+  ): Promise<void> {
+    await this.access.assertAdmits(
+      p,
+      'certificate_approvals.decide',
+      { userId: approval.user_id, organizationId: approval.organization_id },
+      'Approval request',
+    );
+    if (approval.user_id === p.userId)
+      throw new ForbiddenError('You cannot decide your own certification. Ask another approver.');
     const scope = p.scopeOf('certificate_approvals.decide');
     const wide = scope === 'organization' || scope === 'platform';
     if (approval.kind === 'manual_review' && !wide) {
-      throw new ForbiddenError('Manual review needs an administrator with organization-wide approval access.');
+      throw new ForbiddenError(
+        'Manual review needs an administrator with organization-wide approval access.',
+      );
     }
     if (approval.kind === 'trainer' && !wide) {
       const trainers = await this.directory.trainersOf(approval.user_id);
-      if (!trainers.includes(p.userId)) throw new ForbiddenError('Only this person’s trainer or an administrator can approve this certification.');
+      if (!trainers.includes(p.userId))
+        throw new ForbiddenError(
+          'Only this person’s trainer or an administrator can approve this certification.',
+        );
     }
   }
 
   async get(p: Principal, id: string): Promise<certification.Approval> {
-    const row = await this.query().where('a.id', '=', id).where('a.organization_id', '=', p.organizationId).executeTakeFirst();
+    const row = await this.query()
+      .where('a.id', '=', id)
+      .where('a.organization_id', '=', p.organizationId)
+      .executeTakeFirst();
     if (!row) throw new NotFoundError('Approval request');
-    await this.access.assertAdmits(p, 'certificate_approvals.decide', { userId: row.user_id, organizationId: row.organization_id }, 'Approval request');
+    await this.access.assertAdmits(
+      p,
+      'certificate_approvals.decide',
+      { userId: row.user_id, organizationId: row.organization_id },
+      'Approval request',
+    );
     return this.dto(row);
   }
 
-  async decide(p: Principal, id: string, input: { decision: 'approved' | 'rejected'; comment?: string | null }): Promise<certification.Approval> {
-    const existing = await this.query().where('a.id', '=', id).where('a.organization_id', '=', p.organizationId).executeTakeFirst();
+  async decide(
+    p: Principal,
+    id: string,
+    input: { decision: 'approved' | 'rejected'; comment?: string | null },
+  ): Promise<certification.Approval> {
+    const existing = await this.query()
+      .where('a.id', '=', id)
+      .where('a.organization_id', '=', p.organizationId)
+      .executeTakeFirst();
     if (!existing) throw new NotFoundError('Approval request');
     await this.assertCanDecide(p, existing);
     const now = new Date();
     await this.db.transaction().execute(async (trx) => {
-      const approval = await trx.selectFrom('certificate_approvals').selectAll().where('id', '=', id).forUpdate().executeTakeFirstOrThrow();
+      const approval = await trx
+        .selectFrom('certificate_approvals')
+        .selectAll()
+        .where('id', '=', id)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
       if (approval.status !== 'pending') {
-        throw new ConflictError('ALREADY_DECIDED', `This request was already ${approval.status}${approval.decided_by_name ? ` by ${approval.decided_by_name}` : ''}.`);
+        throw new ConflictError(
+          'ALREADY_DECIDED',
+          `This request was already ${approval.status}${approval.decided_by_name ? ` by ${approval.decided_by_name}` : ''}.`,
+        );
       }
-      const def = await trx.selectFrom('certification_definitions').select(['name']).where('id', '=', approval.definition_id).executeTakeFirstOrThrow();
+      const def = await trx
+        .selectFrom('certification_definitions')
+        .select(['name'])
+        .where('id', '=', approval.definition_id)
+        .executeTakeFirstOrThrow();
       await trx
         .updateTable('certificate_approvals')
-        .set({ status: input.decision, decided_at: now, decided_by: p.userId, decided_by_name: p.displayName, comment: input.comment ?? null })
+        .set({
+          status: input.decision,
+          decided_at: now,
+          decided_by: p.userId,
+          decided_by_name: p.displayName,
+          comment: input.comment ?? null,
+        })
         .where('id', '=', id)
         .execute();
       if (input.decision === 'rejected') {
@@ -151,17 +225,25 @@ export class ApprovalsService {
         { organizationId: approval.organization_id, subject: { type: 'certificate_approval', id } },
       );
       await this.events.audit(trx, {
-        action: input.decision === 'approved' ? 'certificate_approval.approved' : 'certificate_approval.rejected',
+        action:
+          input.decision === 'approved'
+            ? 'certificate_approval.approved'
+            : 'certificate_approval.rejected',
         resourceType: 'certificate_approval',
         resourceId: id,
         actorDisplay: p.displayName,
         before: { status: 'pending' },
-        after: { status: input.decision, userId: approval.user_id, definitionId: approval.definition_id },
+        after: {
+          status: input.decision,
+          userId: approval.user_id,
+          definitionId: approval.definition_id,
+        },
         reason: input.comment ?? null,
       });
     });
     // Approved: the evaluation now sees the approval, then issues automatically or marks the person approved.
-    if (input.decision === 'approved') await this.eligibility.evaluate(existing.definition_id, existing.user_id);
+    if (input.decision === 'approved')
+      await this.eligibility.evaluate(existing.definition_id, existing.user_id);
     return this.get(p, id);
   }
 }

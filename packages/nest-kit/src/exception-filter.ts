@@ -45,7 +45,11 @@ export class AppExceptionFilter implements ExceptionFilter {
     } else if (status !== 404 && status !== 401) {
       this.logger.info({ status, code: body.error.code, path: req.path }, 'request rejected');
     }
-    if (exception instanceof AppError && exception.status === 429 && exception.details?.retryAfterSeconds) {
+    if (
+      exception instanceof AppError &&
+      exception.status === 429 &&
+      exception.details?.retryAfterSeconds
+    ) {
       res.setHeader('Retry-After', String(exception.details.retryAfterSeconds));
     }
     if (res.headersSent) {
@@ -70,25 +74,51 @@ export class AppExceptionFilter implements ExceptionFilter {
       };
     }
     if (exception instanceof ResponseContractError) {
-      return { status: 500, body: { error: { code: 'INTERNAL', message: 'The server produced an invalid response. The issue has been logged.' } } };
+      return {
+        status: 500,
+        body: {
+          error: {
+            code: 'INTERNAL',
+            message: 'The server produced an invalid response. The issue has been logged.',
+          },
+        },
+      };
     }
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const cause = (exception as { cause?: { type?: string } }).cause;
-      if (status === 400 && (cause?.type === 'entity.parse.failed' || /JSON/i.test(exception.message))) {
-        return { status, body: { error: { code: 'MALFORMED_JSON', message: 'The request body is not valid JSON.' } } };
+      if (
+        status === 400 &&
+        (cause?.type === 'entity.parse.failed' || /JSON/i.test(exception.message))
+      ) {
+        return {
+          status,
+          body: {
+            error: { code: 'MALFORMED_JSON', message: 'The request body is not valid JSON.' },
+          },
+        };
       }
       const known = HTTP_CODES[status] ?? { code: 'HTTP_ERROR', message: exception.message };
       return { status, body: { error: { ...known } } };
     }
     const typed = exception as { type?: string; status?: number };
-    if (typed?.type === 'entity.too.large') return { status: 413, body: { error: HTTP_CODES[413]! } };
+    if (typed?.type === 'entity.too.large')
+      return { status: 413, body: { error: HTTP_CODES[413]! } };
     if (typed?.type === 'entity.parse.failed') {
-      return { status: 400, body: { error: { code: 'MALFORMED_JSON', message: 'The request body is not valid JSON.' } } };
+      return {
+        status: 400,
+        body: { error: { code: 'MALFORMED_JSON', message: 'The request body is not valid JSON.' } },
+      };
     }
     return {
       status: 500,
-      body: { error: { code: 'INTERNAL', message: 'An unexpected error occurred. The issue has been logged; retry or contact support with the request id.' } },
+      body: {
+        error: {
+          code: 'INTERNAL',
+          message:
+            'An unexpected error occurred. The issue has been logged; retry or contact support with the request id.',
+        },
+      },
     };
   }
 }

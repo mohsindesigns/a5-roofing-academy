@@ -52,7 +52,15 @@ export class OverdueService implements OnModuleInit {
     const rows = await this.db
       .selectFrom('enrollments as e')
       .innerJoin('programs as p', 'p.id', 'e.program_id')
-      .select(['e.id', 'e.organization_id', 'e.program_id', 'e.user_id', 'e.due_at', 'e.progress_percent', 'p.title'])
+      .select([
+        'e.id',
+        'e.organization_id',
+        'e.program_id',
+        'e.user_id',
+        'e.due_at',
+        'e.progress_percent',
+        'p.title',
+      ])
       .where('e.status', '=', 'active')
       .where('e.due_at', '<', now)
       .where('p.status', '=', 'published')
@@ -63,7 +71,12 @@ export class OverdueService implements OnModuleInit {
     for (let i = 0; i < rows.length; i += 100) {
       const chunk = rows.slice(i, i + 100);
       for (const programId of new Set(chunk.map((r) => r.program_id))) {
-        if (!titles.has(programId)) titles.set(programId, (await this.trees.published(programId))?.title ?? chunk.find((r) => r.program_id === programId)!.title);
+        if (!titles.has(programId))
+          titles.set(
+            programId,
+            (await this.trees.published(programId))?.title ??
+              chunk.find((r) => r.program_id === programId)!.title,
+          );
       }
       notified += await this.db.transaction().execute(async (trx) => {
         let count = 0;
@@ -92,7 +105,11 @@ export class OverdueService implements OnModuleInit {
         return count;
       });
     }
-    if (notified) this.logger.info({ overdue: rows.length, notified, day }, 'overdue enrollment notices emitted');
+    if (notified)
+      this.logger.info(
+        { overdue: rows.length, notified, day },
+        'overdue enrollment notices emitted',
+      );
     return { overdue: rows.length, notified };
   }
 }

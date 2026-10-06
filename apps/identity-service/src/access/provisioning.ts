@@ -57,7 +57,11 @@ export async function syncPermissionCatalog(db: Db): Promise<void> {
 
 /** Create any built-in roles an organization is missing (new roles shipped in code). */
 export async function ensureSystemRoles(trx: Trx, organizationId: string): Promise<void> {
-  const existing = await trx.selectFrom('roles').select('key').where('organization_id', '=', organizationId).execute();
+  const existing = await trx
+    .selectFrom('roles')
+    .select('key')
+    .where('organization_id', '=', organizationId)
+    .execute();
   const have = new Set(existing.map((r) => r.key));
   for (const role of DEFAULT_ROLES) {
     if (have.has(role.key)) continue;
@@ -93,7 +97,13 @@ export async function ensureSystemRoles(trx: Trx, organizationId: string): Promi
   if (superAdmin) {
     await trx
       .insertInto('role_permissions')
-      .values(PERMISSIONS.map((p) => ({ role_id: superAdmin.id, permission_key: p.key, granted_by: null })))
+      .values(
+        PERMISSIONS.map((p) => ({
+          role_id: superAdmin.id,
+          permission_key: p.key,
+          granted_by: null,
+        })),
+      )
       .onConflict((oc) => oc.columns(['role_id', 'permission_key']).doNothing())
       .execute();
   }
@@ -126,7 +136,14 @@ export async function provisionOrganization(trx: Trx, input: NewOrganization): P
   const flags = defaultFeatureFlags();
   await trx
     .insertInto('feature_flags')
-    .values(Object.entries(flags).map(([key, enabled]) => ({ organization_id: id, key, enabled, updated_by: null })))
+    .values(
+      Object.entries(flags).map(([key, enabled]) => ({
+        organization_id: id,
+        key,
+        enabled,
+        updated_by: null,
+      })),
+    )
     .execute();
   return id;
 }

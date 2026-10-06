@@ -1,7 +1,15 @@
 import { Get, HttpCode, Patch, Post } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import { notification } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { RulesService } from './rules.service.js';
 
 @ApiController('notification-rules')
@@ -11,7 +19,10 @@ export class RulesController {
 
   @Get()
   @ZResponse(notification.ruleListSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(notification.listRulesQuerySchema) q: notification.ListRulesQuery) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(notification.listRulesQuerySchema) q: notification.ListRulesQuery,
+  ) {
     return this.rules.list(p, q);
   }
 

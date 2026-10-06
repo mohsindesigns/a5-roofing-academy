@@ -2,7 +2,14 @@ import { Get } from '@nestjs/common';
 import type { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { learning } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { TeamProgressService } from './team-progress.service.js';
 
 type Out<T extends z.ZodType> = z.output<T>;
@@ -23,7 +30,11 @@ export class ProgressController {
   @Get('teams/:teamId')
   @RequirePermissions('enrollments.view')
   @ZResponse(learning.teamProgressPageSchema)
-  teamProgress(@CurrentPrincipal() p: Principal, @ZParam('teamId') teamId: string, @ZQuery(learning.teamProgressQuerySchema) q: Query) {
+  teamProgress(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('teamId') teamId: string,
+    @ZQuery(learning.teamProgressQuerySchema) q: Query,
+  ) {
     return this.team.list(p, { ...q, teamId });
   }
 

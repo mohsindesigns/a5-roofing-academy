@@ -44,7 +44,12 @@ const CACHE_MAX = 256;
 
 function isMissing(err: unknown): boolean {
   const e = err as { code?: string; name?: string; $metadata?: { httpStatusCode?: number } };
-  return e?.code === 'ENOENT' || e?.code === 'NoSuchKey' || e?.name === 'NoSuchKey' || e?.$metadata?.httpStatusCode === 404;
+  return (
+    e?.code === 'ENOENT' ||
+    e?.code === 'NoSuchKey' ||
+    e?.name === 'NoSuchKey' ||
+    e?.$metadata?.httpStatusCode === 404
+  );
 }
 
 /**
@@ -69,11 +74,18 @@ export class HlsService {
       claims = this.tokens.verify(token ?? '', 'hls');
     } catch (err) {
       if (err instanceof MediaTokenError && err.reason === 'expired') {
-        throw new UnauthenticatedError('PLAYBACK_EXPIRED', 'This playback link expired. Reload the lesson to continue watching.');
+        throw new UnauthenticatedError(
+          'PLAYBACK_EXPIRED',
+          'This playback link expired. Reload the lesson to continue watching.',
+        );
       }
-      throw new UnauthenticatedError('PLAYBACK_TOKEN_INVALID', 'This playback link is not valid. Reload the lesson to continue watching.');
+      throw new UnauthenticatedError(
+        'PLAYBACK_TOKEN_INVALID',
+        'This playback link is not valid. Reload the lesson to continue watching.',
+      );
     }
-    if (claims.aid !== assetId) throw new ForbiddenError('This playback link belongs to a different video.');
+    if (claims.aid !== assetId)
+      throw new ForbiddenError('This playback link belongs to a different video.');
     return claims;
   }
 
@@ -86,7 +98,8 @@ export class HlsService {
     const expiresInSeconds = Math.max(1, claims.exp - Math.floor(this.clock.now() / 1000));
     return rewritePlaylist(text, {
       playlist: (name) => `${name}?token=${encodeURIComponent(token!)}`,
-      object: (name) => this.signer.sign(mediaKeys.hls(claims.org, assetId, name), { expiresInSeconds }),
+      object: (name) =>
+        this.signer.sign(mediaKeys.hls(claims.org, assetId, name), { expiresInSeconds }),
     });
   }
 

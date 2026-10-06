@@ -22,10 +22,19 @@ const STEMS: Record<string, Array<[CategoryKey, string]>> = {
   'quiz-w1': [
     ['company', 'What is the first commitment A5 makes to every homeowner?'],
     ['company', 'Which behaviour does the Sales Code of Conduct prohibit at the door?'],
-    ['company', 'Who should you contact when a homeowner asks a warranty question you cannot answer?'],
-    ['journey', 'Put the A5 customer journey stages in order, from first knock to final walkthrough.'],
+    [
+      'company',
+      'Who should you contact when a homeowner asks a warranty question you cannot answer?',
+    ],
+    [
+      'journey',
+      'Put the A5 customer journey stages in order, from first knock to final walkthrough.',
+    ],
     ['journey', 'At which stage does the production team take over from the sales representative?'],
-    ['journey', 'What must be completed before an inspection photo report is shared with the homeowner?'],
+    [
+      'journey',
+      'What must be completed before an inspection photo report is shared with the homeowner?',
+    ],
     ['journey', 'What is the purpose of the final walkthrough?'],
     ['company', 'How quickly should you follow up after a homeowner requests a call back?'],
   ],
@@ -33,7 +42,10 @@ const STEMS: Record<string, Array<[CategoryKey, string]>> = {
     ['roof', 'What is the primary job of roof underlayment?'],
     ['roof', 'Which ventilation problem most often shortens shingle life in North Texas attics?'],
     ['roof', 'What does a drip edge protect?'],
-    ['storm', 'Which pattern on a shingle most strongly indicates hail impact rather than blistering?'],
+    [
+      'storm',
+      'Which pattern on a shingle most strongly indicates hail impact rather than blistering?',
+    ],
     ['storm', 'Which soft metals should you check first to confirm a hail event?'],
     ['storm', 'How do you document wind damage so an adjuster can verify it?'],
     ['claims', 'Who files the insurance claim: the homeowner or A5?'],
@@ -47,7 +59,10 @@ const STEMS: Record<string, Array<[CategoryKey, string]>> = {
     ['discovery', 'How should you respond when a homeowner says they only have a minute?'],
     ['discovery', 'Why do you summarise what the homeowner told you before presenting?'],
     ['objections', 'What are the four steps of the A5 objection framework?'],
-    ['objections', 'A homeowner says they need to talk to their spouse. What is the best next step?'],
+    [
+      'objections',
+      'A homeowner says they need to talk to their spouse. What is the best next step?',
+    ],
     ['objections', 'How do you respond when a homeowner wants three estimates?'],
     ['objections', 'Why should you never argue with a price objection?'],
     ['objections', 'What should every objection conversation end with?'],
@@ -57,8 +72,14 @@ const STEMS: Record<string, Array<[CategoryKey, string]>> = {
     ['compliance', 'Which statement about insurance coverage may a representative never make?'],
     ['compliance', "Can a representative offer to waive or cover a homeowner's deductible?"],
     ['compliance', 'What must be disclosed before a homeowner signs a contingency agreement?'],
-    ['compliance', 'How long does a Texas homeowner have to cancel a contract signed at their door?'],
-    ['compliance', 'What do you do if a homeowner asks you to describe old damage as storm damage?'],
+    [
+      'compliance',
+      'How long does a Texas homeowner have to cancel a contract signed at their door?',
+    ],
+    [
+      'compliance',
+      'What do you do if a homeowner asks you to describe old damage as storm damage?',
+    ],
     ['claims', "Which document explains the adjuster's approved scope and price?"],
     ['claims', 'What is a supplement, and when is it requested?'],
     ['storm', 'Which evidence best supports a wind claim for lifted shingles?'],
@@ -68,7 +89,10 @@ const STEMS: Record<string, Array<[CategoryKey, string]>> = {
     ['journey', 'Who schedules the production start date with the homeowner?'],
     ['discovery', 'Which question identifies every decision maker early?'],
     ['discovery', 'What should you confirm before leaving a first appointment?'],
-    ['objections', 'A homeowner says their insurance company already inspected the roof. What is your best response?'],
+    [
+      'objections',
+      'A homeowner says their insurance company already inspected the roof. What is your best response?',
+    ],
     ['objections', "How do you handle 'I'm not signing anything today'?"],
     ['objections', 'A homeowner says they already have a roofer. What should you ask?'],
     ['objections', "Which response best addresses 'My roof looks fine'?"],
@@ -100,7 +124,10 @@ export const seedUnit = unit;
 export const QUESTIONS: Record<string, SeedQuestion[]> = Object.fromEntries(
   ASSESSMENTS.map((a) => {
     const stems = STEMS[a.key] ?? [];
-    if (stems.length !== a.questionCount) throw new Error(`Seed question bank for ${a.key} has ${stems.length} questions, expected ${a.questionCount}`);
+    if (stems.length !== a.questionCount)
+      throw new Error(
+        `Seed question bank for ${a.key} has ${stems.length} questions, expected ${a.questionCount}`,
+      );
     return [
       a.key,
       stems.map(([category, prompt], i) => {
@@ -132,7 +159,10 @@ export function questionResults(assessmentKey: string, scorePercent: number, att
   const full = Math.floor(total + 1e-9);
   const partial = Math.round((total - full) * 100) / 100;
   const ranked = [...questions].sort(
-    (a, b) => b.difficulty * 0.6 + unit(`${attemptSalt}:${b.number}`) * 0.8 - (a.difficulty * 0.6 + unit(`${attemptSalt}:${a.number}`) * 0.8),
+    (a, b) =>
+      b.difficulty * 0.6 +
+      unit(`${attemptSalt}:${b.number}`) * 0.8 -
+      (a.difficulty * 0.6 + unit(`${attemptSalt}:${a.number}`) * 0.8),
   );
   const missed = n - full - (partial > 0 ? 1 : 0);
   const awarded = new Map<string, number>();

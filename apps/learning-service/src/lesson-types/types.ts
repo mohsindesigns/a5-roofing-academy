@@ -40,7 +40,10 @@ export interface LessonTypeHandler<C extends Record<string, unknown> = Record<st
   readonly configSchema: z.ZodType<C>;
   readonly completion: learning.CompletionMode;
   /** May the learner press "Mark complete" now? */
-  learnerCompletion(config: C, ctx: { settings: learning.ProgramSettings; progress: ProgressView | null }): CompletionCheck;
+  learnerCompletion(
+    config: C,
+    ctx: { settings: learning.ProgramSettings; progress: ProgressView | null },
+  ): CompletionCheck;
   /** Plain-language description of how the lesson completes. */
   completionHint(config: C, settings: learning.ProgramSettings): string;
   /** Capability for media, assessment or AI services; null when the lesson needs none. */
@@ -51,6 +54,8 @@ export interface LessonTypeHandler<C extends Record<string, unknown> = Record<st
   publishIssues?(lesson: { body: string | null; config: C }): string[];
 }
 
-export function defineLessonType<C extends Record<string, unknown>>(handler: LessonTypeHandler<C>): LessonTypeHandler<C> {
+export function defineLessonType<C extends Record<string, unknown>>(
+  handler: LessonTypeHandler<C>,
+): LessonTypeHandler<C> {
   return handler;
 }

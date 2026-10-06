@@ -175,7 +175,13 @@ export class StreamConsumer {
           await this.deadLetter(key, id, entries[0]?.[1] ?? [], `exceeded ${max} deliveries`);
           continue;
         }
-        const claimed = (await redis.xclaim(key, group, this.consumerName, idle, id)) as StreamEntry[];
+        const claimed = (await redis.xclaim(
+          key,
+          group,
+          this.consumerName,
+          idle,
+          id,
+        )) as StreamEntry[];
         for (const [claimedId, fields] of claimed) {
           if (!fields) {
             // Entry was trimmed from the stream; nothing left to process.
@@ -188,7 +194,12 @@ export class StreamConsumer {
     }
   }
 
-  private async process(stream: string, id: string, fields: string[], deliveryCount: number): Promise<void> {
+  private async process(
+    stream: string,
+    id: string,
+    fields: string[],
+    deliveryCount: number,
+  ): Promise<void> {
     const { redis, group, logger } = this.options;
     const map = fieldsToMap(fields);
     let event: EventEnvelope | null;
@@ -196,7 +207,12 @@ export class StreamConsumer {
       event = parseEnvelope(JSON.parse(map.envelope ?? 'null'));
     } catch (err) {
       // Contract violations will never succeed on retry.
-      await this.deadLetter(stream, id, fields, err instanceof EventContractError ? err.message : String(err));
+      await this.deadLetter(
+        stream,
+        id,
+        fields,
+        err instanceof EventContractError ? err.message : String(err),
+      );
       return;
     }
     const handlers = event ? this.handlers.get(event.type) : undefined;
@@ -212,7 +228,8 @@ export class StreamConsumer {
     };
     try {
       await runWithContext(ctx, async () => {
-        for (const handler of handlers) await handler(event, { streamId: id, stream, deliveryCount });
+        for (const handler of handlers)
+          await handler(event, { streamId: id, stream, deliveryCount });
       });
       await redis.xack(stream, group, id);
     } catch (err) {
@@ -223,11 +240,31 @@ export class StreamConsumer {
     }
   }
 
-  private async deadLetter(stream: string, id: string, fields: string[], reason: string): Promise<void> {
+  private async deadLetter(
+    stream: string,
+    id: string,
+    fields: string[],
+    reason: string,
+  ): Promise<void> {
     const { redis, group, logger } = this.options;
     await redis
       .multi()
-      .xadd(this.dlqKey, 'MAXLEN', '~', 100_000, '*', ...fields, 'sourceStream', stream, 'sourceId', id, 'error', reason, 'failedAt', new Date().toISOString())
+      .xadd(
+        this.dlqKey,
+        'MAXLEN',
+        '~',
+        100_000,
+        '*',
+        ...fields,
+        'sourceStream',
+        stream,
+        'sourceId',
+        id,
+        'error',
+        reason,
+        'failedAt',
+        new Date().toISOString(),
+      )
       .xack(stream, group, id)
       .exec();
     logger.error({ stream, streamId: id, reason }, 'event moved to dead-letter stream');
@@ -240,7 +277,16 @@ export class StreamConsumer {
     for (const [dlqId, fields] of entries) {
       const map = fieldsToMap(fields);
       if (map.sourceStream && map.envelope) {
-        await redis.xadd(map.sourceStream, '*', 'id', map.id ?? '', 'type', map.type ?? '', 'envelope', map.envelope);
+        await redis.xadd(
+          map.sourceStream,
+          '*',
+          'id',
+          map.id ?? '',
+          'type',
+          map.type ?? '',
+          'envelope',
+          map.envelope,
+        );
       }
       await redis.xdel(this.dlqKey, dlqId);
     }

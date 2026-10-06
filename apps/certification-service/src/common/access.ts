@@ -10,7 +10,11 @@ export class AccessService {
   constructor(private readonly directory: DirectoryReader) {}
 
   /** Does the principal's scope for `permission` admit a record owned by `userId` in `organizationId`? */
-  async admits(p: Principal, permission: PermissionKey, target: { userId: string; organizationId: string }): Promise<boolean> {
+  async admits(
+    p: Principal,
+    permission: PermissionKey,
+    target: { userId: string; organizationId: string },
+  ): Promise<boolean> {
     if (target.organizationId !== p.organizationId) return false;
     const filter = p.scopeFilter(permission);
     switch (filter.kind) {
@@ -24,13 +28,24 @@ export class AccessService {
       case 'managed': {
         if (target.userId === p.userId || filter.userIds.includes(target.userId)) return true;
         const user = await this.directory.getUser(target.userId);
-        return user ? scopeAdmitsUser(filter, { userId: target.userId, organizationId: user.organizationId, teamIds: user.teamIds }) : false;
+        return user
+          ? scopeAdmitsUser(filter, {
+              userId: target.userId,
+              organizationId: user.organizationId,
+              teamIds: user.teamIds,
+            })
+          : false;
       }
     }
   }
 
   /** Throws 404 (never 403) so the existence of out-of-scope records is not disclosed. */
-  async assertAdmits(p: Principal, permission: PermissionKey, target: { userId: string; organizationId: string }, resource: string): Promise<void> {
+  async assertAdmits(
+    p: Principal,
+    permission: PermissionKey,
+    target: { userId: string; organizationId: string },
+    resource: string,
+  ): Promise<void> {
     if (!(await this.admits(p, permission, target))) throw new NotFoundError(resource);
   }
 
@@ -38,7 +53,10 @@ export class AccessService {
    * Certificates and progress: the owner with `certificates.view_own`, or anyone whose
    * `certificates.view` scope admits the owner.
    */
-  async canViewCertificatesOf(p: Principal, target: { userId: string; organizationId: string }): Promise<boolean> {
+  async canViewCertificatesOf(
+    p: Principal,
+    target: { userId: string; organizationId: string },
+  ): Promise<boolean> {
     if (target.organizationId !== p.organizationId) return false;
     if (target.userId === p.userId && p.can('certificates.view_own')) return true;
     return this.admits(p, 'certificates.view', target);

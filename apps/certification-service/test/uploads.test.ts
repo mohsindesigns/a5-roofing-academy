@@ -6,7 +6,9 @@ let h: CertHarness;
 let admin: Record<string, string>;
 const signatureUrl = `/api/v1/certification-assets/signatories/${SIGNATORIES[1].id}/signature`;
 const stampUrl = `/api/v1/certification-assets/stamps/${STAMPS[0].id}/image`;
-const SVG = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200"><script>alert(1)</script><rect width="600" height="200"/></svg>');
+const SVG = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200"><script>alert(1)</script><rect width="600" height="200"/></svg>',
+);
 
 beforeAll(async () => {
   h = await createCertHarness('uploads');
@@ -14,7 +16,15 @@ beforeAll(async () => {
 });
 afterAll(() => h?.close());
 
-const assetCount = async () => Number((await h.db.selectFrom('certification_assets').select((eb) => eb.fn.countAll().as('n')).executeTakeFirstOrThrow()).n);
+const assetCount = async () =>
+  Number(
+    (
+      await h.db
+        .selectFrom('certification_assets')
+        .select((eb) => eb.fn.countAll().as('n'))
+        .executeTakeFirstOrThrow()
+    ).n,
+  );
 const upload = (url: string, body: Buffer, contentType: string, headers = admin, field = 'file') =>
   h.http.post(url).set(headers).attach(field, body, { filename: 'upload', contentType });
 
@@ -40,7 +50,14 @@ describe('signature uploads', () => {
     expect(asPng.status).toBe(415);
     const text = await upload(signatureUrl, Buffer.from('definitely not an image'), 'image/png');
     expect(text.status).toBe(415);
-    const gif = await upload(signatureUrl, Buffer.from('GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;', 'latin1'), 'image/gif');
+    const gif = await upload(
+      signatureUrl,
+      Buffer.from(
+        'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;',
+        'latin1',
+      ),
+      'image/gif',
+    );
     expect(gif.status).toBe(415);
   });
 
@@ -86,36 +103,69 @@ describe('signature uploads', () => {
     const wrongField = await upload(signatureUrl, solidPng(600, 200), 'image/png', admin, 'image');
     expect(wrongField.status).toBe(400);
     expect(wrongField.body.error.code).toBe('UNEXPECTED_FILE');
-    const unknown = await upload(`/api/v1/certification-assets/signatories/${'0190a3b2-0000-7000-8000-000000000999'}/signature`, solidPng(600, 200), 'image/png');
+    const unknown = await upload(
+      `/api/v1/certification-assets/signatories/${'0190a3b2-0000-7000-8000-000000000999'}/signature`,
+      solidPng(600, 200),
+      'image/png',
+    );
     expect(unknown.status).toBe(404);
   });
 
   it('is limited to people who manage signatures', async () => {
-    expect((await upload(signatureUrl, solidPng(600, 200), 'image/png', await h.as('marcus'))).status).toBe(403);
-    expect((await upload(signatureUrl, solidPng(600, 200), 'image/png', await h.as('danielle'))).status).toBe(403);
-    expect((await upload(stampUrl, solidPng(400, 400), 'image/png', await h.as('shelby'))).status).toBe(403);
+    expect(
+      (await upload(signatureUrl, solidPng(600, 200), 'image/png', await h.as('marcus'))).status,
+    ).toBe(403);
+    expect(
+      (await upload(signatureUrl, solidPng(600, 200), 'image/png', await h.as('danielle'))).status,
+    ).toBe(403);
+    expect(
+      (await upload(stampUrl, solidPng(400, 400), 'image/png', await h.as('shelby'))).status,
+    ).toBe(403);
   });
 
   it('accepts PNG and JPEG, versions them and records metadata', async () => {
     const before = await assetCount();
     const png = await upload(signatureUrl, solidPng(640, 220), 'image/png');
     expect(png.status).toBe(201);
-    expect(png.body.currentSignature).toMatchObject({ version: 2, contentType: 'image/png', width: 640, height: 220, uploadedBy: { displayName: 'Priya Raman' } });
+    expect(png.body.currentSignature).toMatchObject({
+      version: 2,
+      contentType: 'image/png',
+      width: 640,
+      height: 220,
+      uploadedBy: { displayName: 'Priya Raman' },
+    });
     expect(png.body.currentSignature.sha256).toMatch(/^[0-9a-f]{64}$/);
     const jpeg = await upload(signatureUrl, solidJpeg(), 'image/jpeg');
     expect(jpeg.status).toBe(201);
-    expect(jpeg.body.currentSignature).toMatchObject({ version: 3, contentType: 'image/jpeg', width: 600, height: 200 });
+    expect(jpeg.body.currentSignature).toMatchObject({
+      version: 3,
+      contentType: 'image/jpeg',
+      width: 600,
+      height: 200,
+    });
     expect(await assetCount()).toBe(before + 2);
 
-    const versions = await h.http.get(`/api/v1/signatories/${SIGNATORIES[1].id}/signatures`).set(admin);
+    const versions = await h.http
+      .get(`/api/v1/signatories/${SIGNATORIES[1].id}/signatures`)
+      .set(admin);
     expect(versions.body.items.map((v: { version: number }) => v.version)).toEqual([3, 2, 1]);
     // Signed preview links serve the image.
     const url = new URL(jpeg.body.currentSignature.previewUrl);
     const file = await h.http.get(`${url.pathname}${url.search}`);
     expect(file.status).toBe(200);
     expect(file.headers['content-type']).toBe('image/jpeg');
-    const audit = await h.db.selectFrom('outbox_events').select('envelope').where('type', '=', 'audit.recorded').execute();
-    expect(audit.some((a) => (a.envelope as { payload: { action: string } }).payload.action === 'signatory.signature_uploaded')).toBe(true);
+    const audit = await h.db
+      .selectFrom('outbox_events')
+      .select('envelope')
+      .where('type', '=', 'audit.recorded')
+      .execute();
+    expect(
+      audit.some(
+        (a) =>
+          (a.envelope as { payload: { action: string } }).payload.action ===
+          'signatory.signature_uploaded',
+      ),
+    ).toBe(true);
   });
 
   it('uploads stamp images and template artwork with their own limits', async () => {
@@ -124,11 +174,28 @@ describe('signature uploads', () => {
     expect(stamp.body.currentImage).toMatchObject({ version: 2, width: 400, height: 400 });
     expect((await upload(stampUrl, solidPng(600, 100), 'image/png')).status).toBe(422);
 
-    const background = await h.http.post('/api/v1/certification-assets/images?purpose=background').set(admin).attach('file', solidPng(1200, 800), { filename: 'bg.png', contentType: 'image/png' });
+    const background = await h.http
+      .post('/api/v1/certification-assets/images?purpose=background')
+      .set(admin)
+      .attach('file', solidPng(1200, 800), { filename: 'bg.png', contentType: 'image/png' });
     expect(background.status).toBe(201);
-    expect(background.body).toMatchObject({ purpose: 'background', width: 1200, height: 800, contentType: 'image/png' });
-    expect((await h.http.post('/api/v1/certification-assets/images?purpose=stamp').set(admin).attach('file', solidPng(1200, 800), { filename: 'bg.png', contentType: 'image/png' })).status).toBe(400);
-    const fetched = await h.http.get(`/api/v1/certification-assets/${background.body.id}`).set(admin);
+    expect(background.body).toMatchObject({
+      purpose: 'background',
+      width: 1200,
+      height: 800,
+      contentType: 'image/png',
+    });
+    expect(
+      (
+        await h.http
+          .post('/api/v1/certification-assets/images?purpose=stamp')
+          .set(admin)
+          .attach('file', solidPng(1200, 800), { filename: 'bg.png', contentType: 'image/png' })
+      ).status,
+    ).toBe(400);
+    const fetched = await h.http
+      .get(`/api/v1/certification-assets/${background.body.id}`)
+      .set(admin);
     expect(fetched.status).toBe(200);
   });
 });

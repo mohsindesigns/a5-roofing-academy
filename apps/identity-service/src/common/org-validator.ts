@@ -42,7 +42,11 @@ export async function assertOrgReferences(
       .where('organization_id', '=', organizationId)
       .where('archived_at', 'is', null)
       .execute();
-    if (found.length !== new Set(refs.teamIds).size) problems.push({ path: 'teamIds', message: 'One or more teams do not exist or are archived.' });
+    if (found.length !== new Set(refs.teamIds).size)
+      problems.push({
+        path: 'teamIds',
+        message: 'One or more teams do not exist or are archived.',
+      });
   }
   if (refs.supervisorIds?.length) {
     const found = await db
@@ -53,7 +57,10 @@ export async function assertOrgReferences(
       .where('status', 'in', ['active', 'invited'])
       .execute();
     if (found.length !== new Set(refs.supervisorIds).size) {
-      problems.push({ path: 'managerIds', message: 'Managers and trainers must be active people in your organization.' });
+      problems.push({
+        path: 'managerIds',
+        message: 'Managers and trainers must be active people in your organization.',
+      });
     }
   }
   if (refs.roleIds?.length) {
@@ -64,7 +71,11 @@ export async function assertOrgReferences(
       .where('organization_id', '=', organizationId)
       .where('archived_at', 'is', null)
       .execute();
-    if (found.length !== new Set(refs.roleIds).size) problems.push({ path: 'roleIds', message: 'One or more roles do not exist or are archived.' });
+    if (found.length !== new Set(refs.roleIds).size)
+      problems.push({
+        path: 'roleIds',
+        message: 'One or more roles do not exist or are archived.',
+      });
   }
   if (problems.length) throw new ValidationError(problems);
 }

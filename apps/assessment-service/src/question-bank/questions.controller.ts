@@ -2,7 +2,15 @@ import { Get, HttpCode, Post, Put } from '@nestjs/common';
 import { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { assessment } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { QuestionsService } from './questions.service.js';
 
 @ApiController('questions')
@@ -12,7 +20,11 @@ export class QuestionsController {
   @Get()
   @RequirePermissions('assessments.view')
   @ZResponse(assessment.questionPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(assessment.listQuestionsQuerySchema) q: z.infer<typeof assessment.listQuestionsQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(assessment.listQuestionsQuerySchema)
+    q: z.infer<typeof assessment.listQuestionsQuerySchema>,
+  ) {
     return this.questions.list(p, q);
   }
 
@@ -20,7 +32,11 @@ export class QuestionsController {
   @Post()
   @RequirePermissions('assessments.create')
   @ZResponse(assessment.questionDetailSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(assessment.createQuestionRequestSchema) body: z.infer<typeof assessment.createQuestionRequestSchema>) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(assessment.createQuestionRequestSchema)
+    body: z.infer<typeof assessment.createQuestionRequestSchema>,
+  ) {
     return this.questions.create(p, body);
   }
 
@@ -38,7 +54,8 @@ export class QuestionsController {
   update(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(assessment.updateQuestionRequestSchema) body: z.infer<typeof assessment.updateQuestionRequestSchema>,
+    @ZBody(assessment.updateQuestionRequestSchema)
+    body: z.infer<typeof assessment.updateQuestionRequestSchema>,
   ) {
     return this.questions.update(p, id, body);
   }
@@ -69,7 +86,11 @@ export class QuestionsController {
   @Get(':id/preview')
   @RequirePermissions('assessments.view')
   @ZResponse(assessment.questionPreviewSchema)
-  preview(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZQuery(assessment.questionPreviewQuerySchema) q: { versionId?: string }) {
+  preview(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZQuery(assessment.questionPreviewQuerySchema) q: { versionId?: string },
+  ) {
     return this.questions.preview(p, id, q.versionId);
   }
 
@@ -81,7 +102,8 @@ export class QuestionsController {
   check(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(assessment.checkAnswerRequestSchema) body: z.infer<typeof assessment.checkAnswerRequestSchema>,
+    @ZBody(assessment.checkAnswerRequestSchema)
+    body: z.infer<typeof assessment.checkAnswerRequestSchema>,
   ) {
     return this.questions.check(p, id, body);
   }

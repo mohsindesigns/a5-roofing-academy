@@ -48,7 +48,11 @@ export async function finish(output: Writable): Promise<void> {
 
 /** Wall-clock date/time of an instant in a time zone, e.g. "Oct 5, 2026, 10:00 AM". */
 export function formatDateTime(iso: string, timezone: string): string {
-  return new Intl.DateTimeFormat('en-US', { timeZone: timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(iso));
 }
 
 /**
@@ -67,11 +71,17 @@ export function wallClockDate(iso: string, timezone: string): Date {
     hourCycle: 'h23',
   }).formatToParts(new Date(iso));
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
-  return new Date(Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second')));
+  return new Date(
+    Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second')),
+  );
 }
 
 /** Human-readable cell text (PDF and CSV booleans). */
-export function displayValue(value: ReportRow[string], type: analytics.ReportColumn['type'], timezone: string): string {
+export function displayValue(
+  value: ReportRow[string],
+  type: analytics.ReportColumn['type'],
+  timezone: string,
+): string {
   if (value === null || value === undefined) return '';
   switch (type) {
     case 'boolean':

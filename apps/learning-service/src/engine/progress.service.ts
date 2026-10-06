@@ -23,7 +23,10 @@ export interface SyncResult {
 const clampPercent = (n: number) => Math.max(0, Math.min(100, Math.round(n * 100) / 100));
 
 /** Merge progress details; scores and watch percentages only ever go up. */
-function mergeData(current: LessonProgressData, incoming: LessonProgressData | undefined): LessonProgressData {
+function mergeData(
+  current: LessonProgressData,
+  incoming: LessonProgressData | undefined,
+): LessonProgressData {
   if (!incoming) return current;
   const out: LessonProgressData = { ...current, ...incoming };
   for (const key of ['watchedPercent', 'bestScore'] as const) {
@@ -48,29 +51,51 @@ export class ProgressService {
 
   /** Lock an enrollment for the rest of the transaction (serializes progress updates per learner). */
   async lockEnrollment(trx: Trx, enrollmentId: string): Promise<EnrollmentRow | undefined> {
-    return trx.selectFrom('enrollments').selectAll().where('id', '=', enrollmentId).forUpdate().executeTakeFirst();
+    return trx
+      .selectFrom('enrollments')
+      .selectAll()
+      .where('id', '=', enrollmentId)
+      .forUpdate()
+      .executeTakeFirst();
   }
 
-  async evaluate(db: DbOrTrx, tree: ProgramTree, enrollment: EnrollmentRow, now: Date = new Date()): Promise<{ facts: LearnerFacts; ev: ProgramEval }> {
+  async evaluate(
+    db: DbOrTrx,
+    tree: ProgramTree,
+    enrollment: EnrollmentRow,
+    now: Date = new Date(),
+  ): Promise<{ facts: LearnerFacts; ev: ProgramEval }> {
     const facts = await this.facts.load(db, tree, { userId: enrollment.user_id, enrollment }, now);
     return { facts, ev: evaluateProgram(tree, facts) };
   }
 
   private ref(enrollment: EnrollmentRow) {
-    return { enrollmentId: enrollment.id, programId: enrollment.program_id, userId: enrollment.user_id };
+    return {
+      enrollmentId: enrollment.id,
+      programId: enrollment.program_id,
+      userId: enrollment.user_id,
+    };
   }
 
   private emitOptions(enrollment: EnrollmentRow) {
-    return { organizationId: enrollment.organization_id, subject: { type: 'enrollment', id: enrollment.id } };
+    return {
+      organizationId: enrollment.organization_id,
+      subject: { type: 'enrollment', id: enrollment.id },
+    };
   }
 
   private lesson(tree: ProgramTree, lessonId: string): IndexedLesson {
     const info = lessonIndex(tree).get(lessonId);
-    if (!info) throw new Error(`Lesson ${lessonId} is not part of published program ${tree.programId}`);
+    if (!info)
+      throw new Error(`Lesson ${lessonId} is not part of published program ${tree.programId}`);
     return info;
   }
 
-  private async progressRow(trx: Trx, enrollmentId: string, lessonId: string): Promise<LessonProgressRow | undefined> {
+  private async progressRow(
+    trx: Trx,
+    enrollmentId: string,
+    lessonId: string,
+  ): Promise<LessonProgressRow | undefined> {
     return trx
       .selectFrom('lesson_progress')
       .selectAll()
@@ -85,7 +110,14 @@ export class ProgressService {
    */
   async recordActivity(
     trx: Trx,
-    input: { enrollment: EnrollmentRow; tree: ProgramTree; lessonId: string; at?: Date; percent?: number; data?: LessonProgressData },
+    input: {
+      enrollment: EnrollmentRow;
+      tree: ProgramTree;
+      lessonId: string;
+      at?: Date;
+      percent?: number;
+      data?: LessonProgressData;
+    },
   ): Promise<{ started: boolean; progress: LessonProgressRow }> {
     const at = input.at ?? new Date();
     const { lesson } = this.lesson(input.tree, input.lessonId);
@@ -119,7 +151,10 @@ export class ProgressService {
       );
     } else {
       const data = mergeData(existing.data ?? {}, input.data);
-      const percent = existing.status === 'completed' ? 100 : Math.max(Number(existing.percent), clampPercent(input.percent ?? 0));
+      const percent =
+        existing.status === 'completed'
+          ? 100
+          : Math.max(Number(existing.percent), clampPercent(input.percent ?? 0));
       progress = await trx
         .updateTable('lesson_progress')
         .set({
@@ -136,7 +171,10 @@ export class ProgressService {
       .updateTable('enrollments')
       .set((eb) => ({
         started_at: eb.fn.coalesce('started_at', eb.val(at)),
-        last_activity_at: eb.fn('greatest', [eb.fn.coalesce('last_activity_at', eb.val(at)), eb.val(at)]),
+        last_activity_at: eb.fn('greatest', [
+          eb.fn.coalesce('last_activity_at', eb.val(at)),
+          eb.val(at),
+        ]),
       }))
       .where('id', '=', input.enrollment.id)
       .execute();
@@ -174,7 +212,11 @@ export class ProgressService {
     const progress = existing
       ? await trx
           .updateTable('lesson_progress')
-          .set({ ...values, started_at: existing.started_at ?? at, data: mergeData(existing.data ?? {}, input.data) })
+          .set({
+            ...values,
+            started_at: existing.started_at ?? at,
+            data: mergeData(existing.data ?? {}, input.data),
+          })
           .where('id', '=', existing.id)
           .returningAll()
           .executeTakeFirstOrThrow()
@@ -217,7 +259,11 @@ export class ProgressService {
       },
       this.emitOptions(input.enrollment),
     );
-    const sync = await this.sync(trx, input.enrollment, input.tree, { at, activity: true, forceProgressEvent: true });
+    const sync = await this.sync(trx, input.enrollment, input.tree, {
+      at,
+      activity: true,
+      forceProgressEvent: true,
+    });
     return { changed: true, progress, sync };
   }
 
@@ -253,7 +299,12 @@ export class ProgressService {
           await this.events.emit(
             trx,
             learningEvents.phaseCompleted,
-            { ...this.ref(enrollment), phaseId: phase.phase.id, phaseTitle: phase.phase.title, completedAt: at.toISOString() },
+            {
+              ...this.ref(enrollment),
+              phaseId: phase.phase.id,
+              phaseTitle: phase.phase.title,
+              completedAt: at.toISOString(),
+            },
             this.emitOptions(enrollment),
           );
         }
@@ -284,7 +335,10 @@ export class ProgressService {
         ...(opts.activity
           ? {
               started_at: eb.fn.coalesce('started_at', eb.val(at)),
-              last_activity_at: eb.fn('greatest', [eb.fn.coalesce('last_activity_at', eb.val(at)), eb.val(at)]),
+              last_activity_at: eb.fn('greatest', [
+                eb.fn.coalesce('last_activity_at', eb.val(at)),
+                eb.val(at),
+              ]),
             }
           : {}),
       }))
@@ -316,7 +370,9 @@ export class ProgressService {
     }
 
     if (active) {
-      const reached = ev.ordered.filter((l) => l.lesson.type === 'manager_approval' && !l.completed && l.state !== 'locked');
+      const reached = ev.ordered.filter(
+        (l) => l.lesson.type === 'manager_approval' && !l.completed && l.state !== 'locked',
+      );
       if (reached.length) {
         const existing = await trx
           .selectFrom('approval_requests')
@@ -331,7 +387,13 @@ export class ProgressService {
         const opened = new Set(existing.map((r) => r.lesson_id));
         for (const l of reached) {
           if (!opened.has(l.lesson.id)) {
-            await this.openApproval(trx, { kind: 'manager_approval', enrollment: updated, tree, lessonId: l.lesson.id, at });
+            await this.openApproval(trx, {
+              kind: 'manager_approval',
+              enrollment: updated,
+              tree,
+              lessonId: l.lesson.id,
+              at,
+            });
           }
         }
       }
@@ -385,7 +447,10 @@ export class ProgressService {
         programTitle: input.tree.title,
         kind: input.kind,
       },
-      { organizationId: input.enrollment.organization_id, subject: { type: 'approval', id: approval.id } },
+      {
+        organizationId: input.enrollment.organization_id,
+        subject: { type: 'approval', id: approval.id },
+      },
     );
     return approval;
   }

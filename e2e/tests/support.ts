@@ -33,7 +33,9 @@ export async function apiAs(request: APIRequestContext, email: string) {
   const { accessToken } = (await res.json()) as { accessToken: string };
   const headers = { authorization: `Bearer ${accessToken}` };
   return {
-    get: async <T>(path: string) => (await (await request.get(`/api/v1${path}`, { headers })).json()) as T,
-    post: async <T>(path: string, data: unknown = {}) => (await (await request.post(`/api/v1${path}`, { headers, data })).json()) as T,
+    get: async <T>(path: string) =>
+      (await (await request.get(`/api/v1${path}`, { headers })).json()) as T,
+    post: async <T>(path: string, data: unknown = {}) =>
+      (await (await request.post(`/api/v1${path}`, { headers, data })).json()) as T,
   };
 }

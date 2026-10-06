@@ -47,9 +47,16 @@ class ImageRejected extends Error {}
  * expected size. Rejecting corrupt data here keeps the PDF renderer from failing later.
  */
 function inspectPng(buf: Buffer): ImageInfo {
-  if (buf.length < 33 || !buf.subarray(0, 8).equals(PNG_SIGNATURE)) throw new ImageRejected('The file is not a valid PNG image.');
+  if (buf.length < 33 || !buf.subarray(0, 8).equals(PNG_SIGNATURE))
+    throw new ImageRejected('The file is not a valid PNG image.');
   let offset = 8;
-  let header: { width: number; height: number; depth: number; colorType: number; interlace: number } | null = null;
+  let header: {
+    width: number;
+    height: number;
+    depth: number;
+    colorType: number;
+    interlace: number;
+  } | null = null;
   const idat: Buffer[] = [];
   let ended = false;
   let hasPalette = false;
@@ -59,7 +66,8 @@ function inspectPng(buf: Buffer): ImageInfo {
     const end = offset + 12 + length;
     if (end > buf.length) throw new ImageRejected('The PNG file is truncated.');
     const crc = buf.readUInt32BE(offset + 8 + length);
-    if (crc32(buf.subarray(offset + 4, offset + 8 + length)) !== crc) throw new ImageRejected('The PNG file is corrupt (checksum mismatch).');
+    if (crc32(buf.subarray(offset + 4, offset + 8 + length)) !== crc)
+      throw new ImageRejected('The PNG file is corrupt (checksum mismatch).');
     const data = buf.subarray(offset + 8, offset + 8 + length);
     if (type === 'IHDR') {
       if (length !== 13) throw new ImageRejected('The PNG header is invalid.');
@@ -80,11 +88,14 @@ function inspectPng(buf: Buffer): ImageInfo {
     }
     offset = end;
   }
-  if (!header || !ended || idat.length === 0) throw new ImageRejected('The PNG file is incomplete.');
+  if (!header || !ended || idat.length === 0)
+    throw new ImageRejected('The PNG file is incomplete.');
   const color = PNG_COLOR_TYPES[header.colorType];
-  if (!color || !color.depths.includes(header.depth)) throw new ImageRejected('The PNG uses an unsupported color format.');
+  if (!color || !color.depths.includes(header.depth))
+    throw new ImageRejected('The PNG uses an unsupported color format.');
   if (header.colorType === 3 && !hasPalette) throw new ImageRejected('The PNG palette is missing.');
-  if (header.interlace > 1) throw new ImageRejected('The PNG uses an unsupported interlace method.');
+  if (header.interlace > 1)
+    throw new ImageRejected('The PNG uses an unsupported interlace method.');
   if (header.width === 0 || header.height === 0 || header.width * header.height > MAX_PIXELS) {
     throw new ImageRejected('The image has too many pixels. Resize it and upload again.');
   }
@@ -110,11 +121,14 @@ function inspectPng(buf: Buffer): ImageInfo {
   return { contentType: 'image/png', width: header.width, height: header.height };
 }
 
-const SOF_MARKERS = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+const SOF_MARKERS = new Set([
+  0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+]);
 
 /** Walks JPEG segments to find the frame header; requires a scan and an end-of-image marker. */
 function inspectJpeg(buf: Buffer): ImageInfo {
-  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) throw new ImageRejected('The file is not a valid JPEG image.');
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8)
+    throw new ImageRejected('The file is not a valid JPEG image.');
   let offset = 2;
   let size: { width: number; height: number; components: number } | null = null;
   let scan = false;
@@ -131,10 +145,16 @@ function inspectJpeg(buf: Buffer): ImageInfo {
       continue;
     }
     const length = buf.readUInt16BE(offset + 2);
-    if (length < 2 || offset + 2 + length > buf.length) throw new ImageRejected('The JPEG file is truncated.');
+    if (length < 2 || offset + 2 + length > buf.length)
+      throw new ImageRejected('The JPEG file is truncated.');
     if (SOF_MARKERS.has(marker)) {
-      if (marker !== 0xc0 && marker !== 0xc1 && marker !== 0xc2) throw new ImageRejected('Save the JPEG as a standard (baseline or progressive) image.');
-      size = { height: buf.readUInt16BE(offset + 5), width: buf.readUInt16BE(offset + 7), components: buf[offset + 9]! };
+      if (marker !== 0xc0 && marker !== 0xc1 && marker !== 0xc2)
+        throw new ImageRejected('Save the JPEG as a standard (baseline or progressive) image.');
+      size = {
+        height: buf.readUInt16BE(offset + 5),
+        width: buf.readUInt16BE(offset + 7),
+        components: buf[offset + 9]!,
+      };
     }
     if (marker === 0xda) {
       scan = true;
@@ -143,9 +163,11 @@ function inspectJpeg(buf: Buffer): ImageInfo {
     offset += 2 + length;
   }
   if (!size || !scan) throw new ImageRejected('The JPEG file is incomplete.');
-  if (![1, 3, 4].includes(size.components)) throw new ImageRejected('The JPEG uses an unsupported color format.');
+  if (![1, 3, 4].includes(size.components))
+    throw new ImageRejected('The JPEG uses an unsupported color format.');
   const tail = buf.subarray(Math.max(0, buf.length - 1024));
-  if (tail.indexOf(Buffer.from([0xff, 0xd9])) === -1) throw new ImageRejected('The JPEG file is truncated.');
+  if (tail.indexOf(Buffer.from([0xff, 0xd9])) === -1)
+    throw new ImageRejected('The JPEG file is truncated.');
   if (size.width === 0 || size.height === 0 || size.width * size.height > MAX_PIXELS) {
     throw new ImageRejected('The image has too many pixels. Resize it and upload again.');
   }
@@ -177,16 +199,33 @@ async function assertEmbeddable(buf: Buffer): Promise<void> {
  * Validate an uploaded certificate image: PNG or JPEG only (no SVG), magic bytes must match the
  * declared type, size and dimension limits per purpose, and the image must embed into a PDF.
  */
-export async function validateCertificateImage(buf: Buffer, declaredType: string, purpose: ImagePurpose): Promise<ValidatedImage> {
+export async function validateCertificateImage(
+  buf: Buffer,
+  declaredType: string,
+  purpose: ImagePurpose,
+): Promise<ValidatedImage> {
   const rules = certification.IMAGE_UPLOAD_RULES[purpose];
-  const label = purpose === 'signature' ? 'Signature images' : purpose === 'stamp' ? 'Stamp images' : 'Images';
+  const label =
+    purpose === 'signature' ? 'Signature images' : purpose === 'stamp' ? 'Stamp images' : 'Images';
   if (buf.length === 0) throw new AppError(400, 'FILE_EMPTY', 'The uploaded file is empty.');
   if (buf.length > rules.maxBytes) {
-    throw new AppError(413, 'FILE_TOO_LARGE', `${label} must be ${Math.round(rules.maxBytes / 1024 / 1024)} MB or smaller.`);
+    throw new AppError(
+      413,
+      'FILE_TOO_LARGE',
+      `${label} must be ${Math.round(rules.maxBytes / 1024 / 1024)} MB or smaller.`,
+    );
   }
-  const content = await validateFileContent('certificateImage', declaredType, buf.subarray(0, 4100));
+  const content = await validateFileContent(
+    'certificateImage',
+    declaredType,
+    buf.subarray(0, 4100),
+  );
   if (!content.ok) {
-    throw new AppError(415, 'UNSUPPORTED_FILE_TYPE', `${content.reason} Upload a PNG or JPEG image.`);
+    throw new AppError(
+      415,
+      'UNSUPPORTED_FILE_TYPE',
+      `${content.reason} Upload a PNG or JPEG image.`,
+    );
   }
   let info: ImageInfo;
   try {
@@ -214,7 +253,11 @@ export async function validateCertificateImage(buf: Buffer, declaredType: string
   try {
     await assertEmbeddable(buf);
   } catch {
-    throw new AppError(415, 'INVALID_IMAGE', 'The image cannot be placed on a certificate. Export it again as a standard PNG or JPEG.');
+    throw new AppError(
+      415,
+      'INVALID_IMAGE',
+      'The image cannot be placed on a certificate. Export it again as a standard PNG or JPEG.',
+    );
   }
   return { ...info, byteSize: buf.length, sha256: createHash('sha256').update(buf).digest('hex') };
 }

@@ -47,7 +47,9 @@ export class EmailDispatcher implements OnModuleInit, OnApplicationShutdown {
 
   onModuleInit(): void {
     if (!runsWorkers(this.config)) return;
-    this.queues.worker<EmailJob>(EMAIL_QUEUE, (job) => this.process(job), { concurrency: this.config.email.concurrency });
+    this.queues.worker<EmailJob>(EMAIL_QUEUE, (job) => this.process(job), {
+      concurrency: this.config.email.concurrency,
+    });
   }
 
   async onApplicationShutdown(): Promise<void> {
@@ -75,26 +77,39 @@ export class EmailDispatcher implements OnModuleInit, OnApplicationShutdown {
       try {
         await this.enqueue(item.id, item.scheduledAt.getTime() - now);
       } catch (err) {
-        this.logger.warn({ err, deliveryId: item.id }, 'could not enqueue email; the maintenance sweep will retry');
+        this.logger.warn(
+          { err, deliveryId: item.id },
+          'could not enqueue email; the maintenance sweep will retry',
+        );
       }
     }
   }
 
   async process(job: Job<JobData<EmailJob>>): Promise<'sent' | 'skipped'> {
     const { deliveryId } = job.data;
-    const row = await this.db.selectFrom('email_deliveries').selectAll().where('id', '=', deliveryId).executeTakeFirst();
+    const row = await this.db
+      .selectFrom('email_deliveries')
+      .selectAll()
+      .where('id', '=', deliveryId)
+      .executeTakeFirst();
     if (!row || row.status !== 'queued') return 'skipped';
 
     let content: SealedEmailContent;
     if (row.sensitive) {
       if (!row.sealed_content) {
-        await this.fail(deliveryId, 'The message content is no longer available. Request a new link.');
+        await this.fail(
+          deliveryId,
+          'The message content is no longer available. Request a new link.',
+        );
         return 'skipped';
       }
       try {
         content = this.sealer.unseal<SealedEmailContent>(row.sealed_content);
       } catch (err) {
-        await this.fail(deliveryId, `Sealed content could not be opened (${errorMessage(err)}). Request a new link.`);
+        await this.fail(
+          deliveryId,
+          `Sealed content could not be opened (${errorMessage(err)}). Request a new link.`,
+        );
         return 'skipped';
       }
     } else {
@@ -135,7 +150,9 @@ export class EmailDispatcher implements OnModuleInit, OnApplicationShutdown {
           attempts: sql<number>`attempts + 1`,
           last_attempt_at: sql<Date>`now()`,
           last_error: errorMessage(err),
-          ...(finalAttempt ? { status: 'failed' as const, failed_at: sql<Date>`now()`, sealed_content: null } : {}),
+          ...(finalAttempt
+            ? { status: 'failed' as const, failed_at: sql<Date>`now()`, sealed_content: null }
+            : {}),
         })
         .where('id', '=', deliveryId)
         .where('status', '=', 'queued')
@@ -148,7 +165,12 @@ export class EmailDispatcher implements OnModuleInit, OnApplicationShutdown {
   private async fail(deliveryId: string, error: string): Promise<void> {
     await this.db
       .updateTable('email_deliveries')
-      .set({ status: 'failed', failed_at: sql<Date>`now()`, last_error: error, sealed_content: null })
+      .set({
+        status: 'failed',
+        failed_at: sql<Date>`now()`,
+        last_error: error,
+        sealed_content: null,
+      })
       .where('id', '=', deliveryId)
       .where('status', '=', 'queued')
       .execute();

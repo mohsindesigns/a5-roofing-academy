@@ -25,7 +25,10 @@ export interface ServiceRuntimeConfig {
 }
 
 const baseSchema = serviceEnvSchema.extend({
-  REDIS_NAMESPACE: z.string().regex(/^[a-zA-Z0-9:_-]+$/).default('a5'),
+  REDIS_NAMESPACE: z
+    .string()
+    .regex(/^[a-zA-Z0-9:_-]+$/)
+    .default('a5'),
   SWAGGER_ENABLED: env.boolean(),
   BODY_LIMIT: z.string().default('1mb'),
   PUBLIC_APP_URL: z.url().default('http://localhost:5173'),

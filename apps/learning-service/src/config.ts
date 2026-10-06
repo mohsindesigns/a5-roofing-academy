@@ -15,7 +15,9 @@ export function loadLearningConfig(source?: Record<string, string | undefined>) 
   const config = loadServiceConfig('learning-service', 4020, learningEnv, { source });
   const e = config.env;
   if (e.LESSON_GRANT_TTL_SECONDS < 60 || e.LESSON_GRANT_TTL_SECONDS > 24 * 3600) {
-    throw new Error('Invalid configuration:\n  - LESSON_GRANT_TTL_SECONDS must be between 60 and 86400.');
+    throw new Error(
+      'Invalid configuration:\n  - LESSON_GRANT_TTL_SECONDS must be between 60 and 86400.',
+    );
   }
   return {
     ...config,

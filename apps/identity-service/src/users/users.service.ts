@@ -56,7 +56,10 @@ export class UsersService {
   ) {}
 
   list(actor: Principal, filters: UserListFilters): Promise<Page<identity.UserSummary>> {
-    return this.repo.list(userScope(actor.scopeFilter('users.view'), actor.organizationId), filters);
+    return this.repo.list(
+      userScope(actor.scopeFilter('users.view'), actor.organizationId),
+      filters,
+    );
   }
 
   async get(actor: Principal, id: string): Promise<UserDetail> {
@@ -68,7 +71,11 @@ export class UsersService {
 
   /** Throws NotFound (not Forbidden) for out-of-scope users so existence is not disclosed. */
   async assertInScope(actor: Principal, permission: PermissionKey, userId: string): Promise<void> {
-    const target = await this.db.selectFrom('users').select(['id', 'organization_id']).where('id', '=', userId).executeTakeFirst();
+    const target = await this.db
+      .selectFrom('users')
+      .select(['id', 'organization_id'])
+      .where('id', '=', userId)
+      .executeTakeFirst();
     if (!target) throw new NotFoundError('User');
     const teamIds = await this.repo.teamIdsOf(this.db, userId);
     const filter = actor.scopeFilter(permission);
@@ -103,7 +110,10 @@ export class UsersService {
     return `${this.config.publicAppUrl}/activate?token=${encodeURIComponent(token)}`;
   }
 
-  async create(actor: Principal, input: CreateUserInput): Promise<{ user: UserDetail; activationUrl: string | null }> {
+  async create(
+    actor: Principal,
+    input: CreateUserInput,
+  ): Promise<{ user: UserDetail; activationUrl: string | null }> {
     await assertOrgReferences(this.db, actor.organizationId, {
       locationId: input.locationId,
       departmentId: input.departmentId,
@@ -111,7 +121,10 @@ export class UsersService {
       supervisorIds: [...input.managerIds, ...input.trainerIds],
       roleIds: input.roleIds,
     });
-    AccessPolicy.assertCanAssignRoles(actor, await this.rolesWithPermissions(this.db, input.roleIds));
+    AccessPolicy.assertCanAssignRoles(
+      actor,
+      await this.rolesWithPermissions(this.db, input.roleIds),
+    );
 
     const id = uuidv7();
     let activationUrl: string | null = null;
@@ -144,7 +157,9 @@ export class UsersService {
         await this.writePlacement(trx, id, input);
         await trx
           .insertInto('user_roles')
-          .values(input.roleIds.map((role_id) => ({ user_id: id, role_id, assigned_by: actor.userId })))
+          .values(
+            input.roleIds.map((role_id) => ({ user_id: id, role_id, assigned_by: actor.userId })),
+          )
           .execute();
 
         const roles = await this.repo.rolesOf(trx, [id]);
@@ -160,7 +175,14 @@ export class UsersService {
           },
           { subject: { type: 'user', id } },
         );
-        if (input.sendInvitation) activationUrl = await this.invite(trx, actor, id, input.email, `${input.firstName} ${input.lastName}`);
+        if (input.sendInvitation)
+          activationUrl = await this.invite(
+            trx,
+            actor,
+            id,
+            input.email,
+            `${input.firstName} ${input.lastName}`,
+          );
         await this.directory.users(trx, [id]);
         await this.directory.teams(trx, input.teamIds);
         await this.events.audit(trx, {
@@ -168,12 +190,19 @@ export class UsersService {
           resourceType: 'user',
           resourceId: id,
           actorDisplay: actor.displayName,
-          after: { email: input.email, name: `${input.firstName} ${input.lastName}`, roleIds: input.roleIds, teamIds: input.teamIds },
+          after: {
+            email: input.email,
+            name: `${input.firstName} ${input.lastName}`,
+            roleIds: input.roleIds,
+            teamIds: input.teamIds,
+          },
         });
       });
     } catch (err) {
-      if (isUniqueViolation(err, 'users_email_uq')) throw new ConflictError('EMAIL_TAKEN', 'Someone already uses this email address.');
-      if (isUniqueViolation(err, 'users_org_employee_uq')) throw new ConflictError('EMPLOYEE_ID_TAKEN', 'This employee ID is already assigned.');
+      if (isUniqueViolation(err, 'users_email_uq'))
+        throw new ConflictError('EMAIL_TAKEN', 'Someone already uses this email address.');
+      if (isUniqueViolation(err, 'users_org_employee_uq'))
+        throw new ConflictError('EMPLOYEE_ID_TAKEN', 'This employee ID is already assigned.');
       throw err;
     }
     await this.cache.invalidateUsers([...input.managerIds, ...input.trainerIds]);
@@ -181,7 +210,13 @@ export class UsersService {
     return { user, activationUrl: this.config.auth.exposeActivationLinks ? activationUrl : null };
   }
 
-  private async invite(trx: Trx, actor: Principal, userId: string, email: string, displayName: string): Promise<string> {
+  private async invite(
+    trx: Trx,
+    actor: Principal,
+    userId: string,
+    email: string,
+    displayName: string,
+  ): Promise<string> {
     const { token, expiresAt } = await issueOneTimeToken(
       trx,
       userId,
@@ -193,31 +228,63 @@ export class UsersService {
     await this.events.emit(
       trx,
       identityEvents.invitationCreated,
-      { userId, email, displayName, activationUrl: url, expiresAt: expiresAt.toISOString(), invitedByName: actor.displayName },
+      {
+        userId,
+        email,
+        displayName,
+        activationUrl: url,
+        expiresAt: expiresAt.toISOString(),
+        invitedByName: actor.displayName,
+      },
       { subject: { type: 'user', id: userId } },
     );
     return url;
   }
 
-  async resendInvitation(actor: Principal, id: string): Promise<{ user: UserDetail; activationUrl: string | null }> {
+  async resendInvitation(
+    actor: Principal,
+    id: string,
+  ): Promise<{ user: UserDetail; activationUrl: string | null }> {
     await this.assertInScope(actor, 'users.view', id);
-    const user = await this.db.selectFrom('users').selectAll().where('id', '=', id).executeTakeFirstOrThrow();
+    const user = await this.db
+      .selectFrom('users')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
     if (user.status !== 'invited') {
-      throw new PreconditionError('ALREADY_ACTIVATED', 'This person has already activated their account.');
+      throw new PreconditionError(
+        'ALREADY_ACTIVATED',
+        'This person has already activated their account.',
+      );
     }
     let url = '';
     await this.db.transaction().execute(async (trx) => {
       url = await this.invite(trx, actor, id, user.email, `${user.first_name} ${user.last_name}`);
-      await this.events.audit(trx, { action: 'user.invitation_resent', resourceType: 'user', resourceId: id, actorDisplay: actor.displayName });
+      await this.events.audit(trx, {
+        action: 'user.invitation_resent',
+        resourceType: 'user',
+        resourceId: id,
+        actorDisplay: actor.displayName,
+      });
     });
-    return { user: (await this.repo.detail(this.db, id))!, activationUrl: this.config.auth.exposeActivationLinks ? url : null };
+    return {
+      user: (await this.repo.detail(this.db, id))!,
+      activationUrl: this.config.auth.exposeActivationLinks ? url : null,
+    };
   }
 
-  private async writePlacement(trx: Trx, userId: string, input: { teamIds?: string[]; managerIds?: string[]; trainerIds?: string[] }) {
+  private async writePlacement(
+    trx: Trx,
+    userId: string,
+    input: { teamIds?: string[]; managerIds?: string[]; trainerIds?: string[] },
+  ) {
     if (input.teamIds) {
       await trx.deleteFrom('team_members').where('user_id', '=', userId).execute();
       if (input.teamIds.length) {
-        await trx.insertInto('team_members').values([...new Set(input.teamIds)].map((team_id) => ({ team_id, user_id: userId }))).execute();
+        await trx
+          .insertInto('team_members')
+          .values([...new Set(input.teamIds)].map((team_id) => ({ team_id, user_id: userId })))
+          .execute();
       }
     }
     for (const [kind, ids] of [
@@ -225,12 +292,19 @@ export class UsersService {
       ['trainer', input.trainerIds],
     ] as const) {
       if (!ids) continue;
-      if (ids.includes(userId)) throw new PreconditionError('SELF_SUPERVISION', 'A person cannot supervise themselves.');
-      await trx.deleteFrom('user_relationships').where('user_id', '=', userId).where('kind', '=', kind).execute();
+      if (ids.includes(userId))
+        throw new PreconditionError('SELF_SUPERVISION', 'A person cannot supervise themselves.');
+      await trx
+        .deleteFrom('user_relationships')
+        .where('user_id', '=', userId)
+        .where('kind', '=', kind)
+        .execute();
       if (ids.length) {
         await trx
           .insertInto('user_relationships')
-          .values([...new Set(ids)].map((supervisor_id) => ({ user_id: userId, supervisor_id, kind })))
+          .values(
+            [...new Set(ids)].map((supervisor_id) => ({ user_id: userId, supervisor_id, kind })),
+          )
           .execute();
       }
     }
@@ -278,21 +352,32 @@ export class UsersService {
         });
       });
     } catch (err) {
-      if (isUniqueViolation(err, 'users_email_uq')) throw new ConflictError('EMAIL_TAKEN', 'Someone already uses this email address.');
-      if (isUniqueViolation(err, 'users_org_employee_uq')) throw new ConflictError('EMPLOYEE_ID_TAKEN', 'This employee ID is already assigned.');
+      if (isUniqueViolation(err, 'users_email_uq'))
+        throw new ConflictError('EMAIL_TAKEN', 'Someone already uses this email address.');
+      if (isUniqueViolation(err, 'users_org_employee_uq'))
+        throw new ConflictError('EMPLOYEE_ID_TAKEN', 'This employee ID is already assigned.');
       throw err;
     }
-    await this.cache.invalidateUsers([id, ...previousSupervisors, ...(input.managerIds ?? []), ...(input.trainerIds ?? [])]);
+    await this.cache.invalidateUsers([
+      id,
+      ...previousSupervisors,
+      ...(input.managerIds ?? []),
+      ...(input.trainerIds ?? []),
+    ]);
     return (await this.repo.detail(this.db, id))!;
   }
 
   async setRoles(actor: Principal, id: string, roleIds: string[]): Promise<UserDetail> {
-    if (id === actor.userId) throw new ForbiddenError('You cannot change your own roles. Ask another administrator.');
+    if (id === actor.userId)
+      throw new ForbiddenError('You cannot change your own roles. Ask another administrator.');
     await this.assertInScope(actor, 'users.view', id);
     await assertOrgReferences(this.db, actor.organizationId, { roleIds });
     const current = (await this.repo.rolesOf(this.db, [id])).get(id) ?? [];
     const currentIds = current.map((r) => r.id);
-    const changed = [...roleIds.filter((r) => !currentIds.includes(r)), ...currentIds.filter((r) => !roleIds.includes(r))];
+    const changed = [
+      ...roleIds.filter((r) => !currentIds.includes(r)),
+      ...currentIds.filter((r) => !roleIds.includes(r)),
+    ];
     if (changed.length === 0) return (await this.repo.detail(this.db, id))!;
     AccessPolicy.assertCanAssignRoles(actor, await this.rolesWithPermissions(this.db, changed));
 
@@ -300,7 +385,13 @@ export class UsersService {
       await trx.deleteFrom('user_roles').where('user_id', '=', id).execute();
       await trx
         .insertInto('user_roles')
-        .values([...new Set(roleIds)].map((role_id) => ({ user_id: id, role_id, assigned_by: actor.userId })))
+        .values(
+          [...new Set(roleIds)].map((role_id) => ({
+            user_id: id,
+            role_id,
+            assigned_by: actor.userId,
+          })),
+        )
         .execute();
       await this.directory.users(trx, [id]);
       await this.events.audit(trx, {
@@ -319,12 +410,21 @@ export class UsersService {
   async deactivate(actor: Principal, id: string, reason: string): Promise<UserDetail> {
     if (id === actor.userId) throw new ForbiddenError('You cannot deactivate your own account.');
     await this.assertInScope(actor, 'users.disable', id);
-    const user = await this.db.selectFrom('users').select(['status']).where('id', '=', id).executeTakeFirstOrThrow();
+    const user = await this.db
+      .selectFrom('users')
+      .select(['status'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
     if (user.status === 'deactivated') return (await this.repo.detail(this.db, id))!;
     const sessions = await this.db.transaction().execute(async (trx) => {
       await trx
         .updateTable('users')
-        .set({ status: 'deactivated', deactivated_at: new Date(), deactivation_reason: reason, updated_by: actor.userId })
+        .set({
+          status: 'deactivated',
+          deactivated_at: new Date(),
+          deactivation_reason: reason,
+          updated_by: actor.userId,
+        })
         .where('id', '=', id)
         .execute();
       const revoked = await trx
@@ -334,7 +434,12 @@ export class UsersService {
         .where('revoked_at', 'is', null)
         .returning('id')
         .execute();
-      await this.events.emit(trx, identityEvents.userDeactivated, { userId: id, reason }, { subject: { type: 'user', id } });
+      await this.events.emit(
+        trx,
+        identityEvents.userDeactivated,
+        { userId: id, reason },
+        { subject: { type: 'user', id } },
+      );
       await this.directory.users(trx, [id]);
       await this.events.audit(trx, {
         action: 'user.deactivated',
@@ -354,8 +459,13 @@ export class UsersService {
 
   async reactivate(actor: Principal, id: string): Promise<UserDetail> {
     await this.assertInScope(actor, 'users.disable', id);
-    const user = await this.db.selectFrom('users').select(['status', 'activated_at']).where('id', '=', id).executeTakeFirstOrThrow();
-    if (user.status !== 'deactivated') throw new PreconditionError('NOT_DEACTIVATED', 'This account is not deactivated.');
+    const user = await this.db
+      .selectFrom('users')
+      .select(['status', 'activated_at'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    if (user.status !== 'deactivated')
+      throw new PreconditionError('NOT_DEACTIVATED', 'This account is not deactivated.');
     const nextStatus = user.activated_at ? 'active' : 'invited';
     await this.db.transaction().execute(async (trx) => {
       await trx
@@ -370,7 +480,13 @@ export class UsersService {
         })
         .where('id', '=', id)
         .execute();
-      if (nextStatus === 'active') await this.events.emit(trx, identityEvents.userActivated, { userId: id }, { subject: { type: 'user', id } });
+      if (nextStatus === 'active')
+        await this.events.emit(
+          trx,
+          identityEvents.userActivated,
+          { userId: id },
+          { subject: { type: 'user', id } },
+        );
       await this.directory.users(trx, [id]);
       await this.events.audit(trx, {
         action: 'user.reactivated',
@@ -389,9 +505,16 @@ export class UsersService {
   async delete(actor: Principal, id: string): Promise<void> {
     if (id === actor.userId) throw new ForbiddenError('You cannot delete your own account.');
     await this.assertInScope(actor, 'users.view', id);
-    const user = await this.db.selectFrom('users').select(['status', 'activated_at', 'email']).where('id', '=', id).executeTakeFirstOrThrow();
+    const user = await this.db
+      .selectFrom('users')
+      .select(['status', 'activated_at', 'email'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
     if (user.activated_at) {
-      throw new PreconditionError('USER_HAS_HISTORY', 'This person has signed in before. Deactivate the account instead to keep their training history.');
+      throw new PreconditionError(
+        'USER_HAS_HISTORY',
+        'This person has signed in before. Deactivate the account instead to keep their training history.',
+      );
     }
     const teams = await this.repo.teamIdsOf(this.db, id);
     await this.db.transaction().execute(async (trx) => {
@@ -453,7 +576,10 @@ export class UsersService {
     const revoked = await this.db.transaction().execute(async (trx) => {
       const rows = await trx
         .updateTable('sessions')
-        .set({ revoked_at: new Date(), revoked_reason: id === actor.userId ? 'signed_out' : 'revoked_by_admin' })
+        .set({
+          revoked_at: new Date(),
+          revoked_reason: id === actor.userId ? 'signed_out' : 'revoked_by_admin',
+        })
         .where('user_id', '=', id)
         .where('revoked_at', 'is', null)
         .$if(Boolean(sessionId), (q) => q.where('id', '=', sessionId!))

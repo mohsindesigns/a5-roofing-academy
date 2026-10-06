@@ -13,7 +13,11 @@ export interface EventSink {
     trx: Trx,
     def: EventDefinition<T, S>,
     payload: z.input<S>,
-    options?: { subject?: { type: string; id: string } | null; organizationId?: string | null; actor?: EventActor },
+    options?: {
+      subject?: { type: string; id: string } | null;
+      organizationId?: string | null;
+      actor?: EventActor;
+    },
   ): Promise<unknown>;
 }
 
@@ -53,7 +57,12 @@ export class AttemptEngine {
   async create(trx: Trx, input: CreateAttemptInput): Promise<AttemptRow> {
     const { assessment: a, drawn } = input;
     const id = input.id ?? uuidv7();
-    const config: assessment.AttemptConfigSnapshot = { ...a.config, title: a.title, kind: a.kind, assessmentRevision: a.revision };
+    const config: assessment.AttemptConfigSnapshot = {
+      ...a.config,
+      title: a.title,
+      kind: a.kind,
+      assessmentRevision: a.revision,
+    };
     const maxPoints = round2(drawn.reduce((sum, q) => sum + q.points, 0));
     const attempt = await trx
       .insertInto('attempts')
@@ -67,7 +76,9 @@ export class AttemptEngine {
         context: input.context,
         config,
         started_at: input.startedAt,
-        expires_at: config.timeLimitSeconds ? new Date(input.startedAt.getTime() + config.timeLimitSeconds * 1000) : null,
+        expires_at: config.timeLimitSeconds
+          ? new Date(input.startedAt.getTime() + config.timeLimitSeconds * 1000)
+          : null,
         submitted_at: null,
         graded_at: null,
         auto_submitted: false,
@@ -114,7 +125,13 @@ export class AttemptEngine {
     await this.events.emit(
       trx,
       assessmentEvents.attemptStarted,
-      { attemptId: id, assessmentId: a.id, userId: input.userId, attemptNumber: input.attemptNumber, context: input.context },
+      {
+        attemptId: id,
+        assessmentId: a.id,
+        userId: input.userId,
+        attemptNumber: input.attemptNumber,
+        context: input.context,
+      },
       { subject: subject(id), organizationId: a.organization_id },
     );
     return attempt;
@@ -146,13 +163,22 @@ export class AttemptEngine {
   }
 
   /** Freeze the answers: `in_progress` → `submitted` (learner) or `expired` (time limit). */
-  async close(trx: Trx, attempt: AttemptRow, reason: 'learner' | 'time_limit', at: Date): Promise<AttemptRow> {
+  async close(
+    trx: Trx,
+    attempt: AttemptRow,
+    reason: 'learner' | 'time_limit',
+    at: Date,
+  ): Promise<AttemptRow> {
     if (attempt.status !== 'in_progress') return attempt;
     const rows = await this.answerRows(trx, attempt.id);
     const reviewNeeded = rows.some((r) => needsReview(toDefinition(r), r.response));
     const closed = await trx
       .updateTable('attempts')
-      .set({ status: reason === 'learner' ? 'submitted' : 'expired', submitted_at: at, auto_submitted: reason === 'time_limit' })
+      .set({
+        status: reason === 'learner' ? 'submitted' : 'expired',
+        submitted_at: at,
+        auto_submitted: reason === 'time_limit',
+      })
       .where('id', '=', attempt.id)
       .where('status', '=', 'in_progress')
       .returningAll()
@@ -178,7 +204,12 @@ export class AttemptEngine {
    * wait for a reviewer (`pending_review`). Without open answers the attempt is final (`graded`).
    */
   async grade(trx: Trx, attemptId: string, at: Date): Promise<AttemptRow> {
-    const attempt = await trx.selectFrom('attempts').selectAll().where('id', '=', attemptId).forUpdate().executeTakeFirstOrThrow();
+    const attempt = await trx
+      .selectFrom('attempts')
+      .selectAll()
+      .where('id', '=', attemptId)
+      .forUpdate()
+      .executeTakeFirstOrThrow();
     if (attempt.status !== 'submitted' && attempt.status !== 'expired') return attempt;
     const rows = await this.answerRows(trx, attemptId);
     let pending = false;
@@ -186,23 +217,43 @@ export class AttemptEngine {
       const grade = gradeResponse(toDefinition(row), row.response, row.points);
       if (grade.kind === 'review') {
         pending = true;
-        await trx.updateTable('attempt_answers').set({ needs_review: true }).where('id', '=', row.id).execute();
+        await trx
+          .updateTable('attempt_answers')
+          .set({ needs_review: true })
+          .where('id', '=', row.id)
+          .execute();
       } else {
         await trx
           .updateTable('attempt_answers')
-          .set({ needs_review: false, is_correct: grade.correct, awarded_points: grade.awarded, graded_at: at })
+          .set({
+            needs_review: false,
+            is_correct: grade.correct,
+            awarded_points: grade.awarded,
+            graded_at: at,
+          })
           .where('id', '=', row.id)
           .execute();
       }
     }
     if (pending) {
-      return trx.updateTable('attempts').set({ status: 'pending_review' }).where('id', '=', attemptId).returningAll().executeTakeFirstOrThrow();
+      return trx
+        .updateTable('attempts')
+        .set({ status: 'pending_review' })
+        .where('id', '=', attemptId)
+        .returningAll()
+        .executeTakeFirstOrThrow();
     }
     return this.finalize(trx, attempt, at);
   }
 
   /** Store reviewer grades for open answers of a `pending_review` attempt. */
-  async applyReviewerGrades(trx: Trx, attemptId: string, grades: readonly ReviewerGrade[], reviewer: { id: string; name: string }, at: Date): Promise<void> {
+  async applyReviewerGrades(
+    trx: Trx,
+    attemptId: string,
+    grades: readonly ReviewerGrade[],
+    reviewer: { id: string; name: string },
+    at: Date,
+  ): Promise<void> {
     for (const g of grades) {
       const row = await trx
         .selectFrom('attempt_answers as aa')
@@ -229,7 +280,12 @@ export class AttemptEngine {
 
   /** Finish a `pending_review` attempt once every open answer has a grade. Returns null while answers remain. */
   async finalizeReview(trx: Trx, attemptId: string, at: Date): Promise<AttemptRow | null> {
-    const attempt = await trx.selectFrom('attempts').selectAll().where('id', '=', attemptId).forUpdate().executeTakeFirstOrThrow();
+    const attempt = await trx
+      .selectFrom('attempts')
+      .selectAll()
+      .where('id', '=', attemptId)
+      .forUpdate()
+      .executeTakeFirstOrThrow();
     if (attempt.status !== 'pending_review') return null;
     const open = await trx
       .selectFrom('attempt_answers')
@@ -258,15 +314,26 @@ export class AttemptEngine {
       .where('id', '=', attempt.id)
       .returningAll()
       .executeTakeFirstOrThrow();
-    await this.emitGraded(trx, graded, { scorePercent: percent, passed: graded.passed!, gradedAt: at, overridden: false });
+    await this.emitGraded(trx, graded, {
+      scorePercent: percent,
+      passed: graded.passed!,
+      gradedAt: at,
+      overridden: false,
+    });
     return graded;
   }
 
   /** `assessment.attempt.graded` for a final result (automatic, after review, or overridden). */
-  async emitGraded(trx: Trx, attempt: AttemptRow, result: { scorePercent: number; passed: boolean; gradedAt: Date; overridden: boolean }): Promise<void> {
+  async emitGraded(
+    trx: Trx,
+    attempt: AttemptRow,
+    result: { scorePercent: number; passed: boolean; gradedAt: Date; overridden: boolean },
+  ): Promise<void> {
     const rows = await this.answerRows(trx, attempt.id);
     const outcome = result.passed ? 'passed' : 'failed';
-    const notifyManagerIds = attempt.config.notifyManagerOn.includes(outcome) ? await this.managers.managersOf(attempt.user_id) : [];
+    const notifyManagerIds = attempt.config.notifyManagerOn.includes(outcome)
+      ? await this.managers.managersOf(attempt.user_id)
+      : [];
     await this.events.emit(
       trx,
       assessmentEvents.attemptGraded,

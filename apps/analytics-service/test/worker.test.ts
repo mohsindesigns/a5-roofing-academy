@@ -27,7 +27,13 @@ describe('event stream to fact tables', () => {
   it('consumes learning events published by other services, once each', async () => {
     const enrolled = evt(
       learningEvents.enrolled,
-      { ...marcus, programTitle: PROGRAM.title, assignedBy: null, dueAt: '2026-11-01T14:00:00Z', source: 'rule' },
+      {
+        ...marcus,
+        programTitle: PROGRAM.title,
+        assignedBy: null,
+        dueAt: '2026-11-01T14:00:00Z',
+        source: 'rule',
+      },
       '2026-10-01T14:00:00Z',
       'worker:enrolled',
     );
@@ -57,14 +63,22 @@ describe('event stream to fact tables', () => {
 
     const row = await waitFor(
       async () => {
-        const r = await h.db.selectFrom('fact_enrollments').selectAll().where('enrollment_id', '=', marcus.enrollmentId).executeTakeFirst();
+        const r = await h.db
+          .selectFrom('fact_enrollments')
+          .selectAll()
+          .where('enrollment_id', '=', marcus.enrollmentId)
+          .executeTakeFirst();
         return r?.enrolled_at && r.program_title ? r : null;
       },
       { timeoutMs: 15_000, message: 'enrollment fact from the stream' },
     );
     expect(row).toMatchObject({ source: 'rule', status: 'active', program_title: PROGRAM.title });
     expect(row.last_activity_at?.toISOString()).toBe('2026-10-01T15:00:00.000Z');
-    await waitFor(async () => (await h.db.selectFrom('fact_lesson_events').select('lesson_id').execute()).length === 1, { message: 'lesson fact' });
+    await waitFor(
+      async () =>
+        (await h.db.selectFrom('fact_lesson_events').select('lesson_id').execute()).length === 1,
+      { message: 'lesson fact' },
+    );
 
     const inbox = await h.db
       .selectFrom('inbox_events')
@@ -72,9 +86,15 @@ describe('event stream to fact tables', () => {
       .where('event_id', '=', enrolled.id)
       .execute();
     expect(inbox).toEqual([{ handler: 'analytics.program.enrolled' }]);
-    expect(await h.db.selectFrom('fact_activity').select('id').where('kind', '=', 'enrolled').execute()).toHaveLength(1);
+    expect(
+      await h.db.selectFrom('fact_activity').select('id').where('kind', '=', 'enrolled').execute(),
+    ).toHaveLength(1);
     // The consumer marked the affected days for the rollup job.
-    const dirty = await h.db.selectFrom('rollup_dirty_days').select('date').orderBy('date').execute();
+    const dirty = await h.db
+      .selectFrom('rollup_dirty_days')
+      .select('date')
+      .orderBy('date')
+      .execute();
     expect(dirty.map((d) => d.date)).toEqual(['2026-10-01']);
   });
 });
@@ -83,7 +103,10 @@ describe('background jobs', () => {
   it('registers the repeatable rollup and maintenance jobs', async () => {
     const queues = h.app.get(QueueFactory, { strict: false });
     const rollup = await queues.queue(ROLLUP_QUEUE).getJobSchedulers();
-    expect(rollup.map((s) => s.key).sort()).toEqual(['analytics.rollup.dirty', 'analytics.rollup.nightly']);
+    expect(rollup.map((s) => s.key).sort()).toEqual([
+      'analytics.rollup.dirty',
+      'analytics.rollup.nightly',
+    ]);
     expect(Number(rollup.find((s) => s.key === 'analytics.rollup.dirty')!.every)).toBe(15 * 60_000);
     expect(rollup.find((s) => s.key === 'analytics.rollup.nightly')!.pattern).toBe('17 3 * * *');
     const reports = await queues.queue(REPORT_QUEUE).getJobSchedulers();
@@ -92,12 +115,19 @@ describe('background jobs', () => {
 
   it('rebuilds rollups on demand through the queue', async () => {
     const admin = await h.as('grant');
-    const queued = await h.http.post('/api/v1/analytics/rollups/refresh').set(admin).send({ from: '2026-10-01', to: '2026-10-02' });
+    const queued = await h.http
+      .post('/api/v1/analytics/rollups/refresh')
+      .set(admin)
+      .send({ from: '2026-10-01', to: '2026-10-02' });
     expect(queued.status).toBe(202);
     expect(queued.body.jobId).toMatch(/^refresh\./);
     const rows = await waitFor(
       async () => {
-        const r = await h.db.selectFrom('daily_rollups').select(['metric', 'dimension_type', 'dimension_id', 'value']).where('date', '=', '2026-10-01').execute();
+        const r = await h.db
+          .selectFrom('daily_rollups')
+          .select(['metric', 'dimension_type', 'dimension_id', 'value'])
+          .where('date', '=', '2026-10-01')
+          .execute();
         return r.length ? r : null;
       },
       { timeoutMs: 15_000, message: 'rollup rows' },
@@ -111,13 +141,22 @@ describe('background jobs', () => {
       ['team', 1],
       ['user', 1],
     ]);
-    expect(rows.find((r) => r.metric === 'enrollments_started' && r.dimension_type === 'department')!.value).toBe(1);
-    expect(rows.find((r) => r.metric === 'active_learners' && r.dimension_type === 'organization')!.value).toBe(1);
+    expect(
+      rows.find((r) => r.metric === 'enrollments_started' && r.dimension_type === 'department')!
+        .value,
+    ).toBe(1);
+    expect(
+      rows.find((r) => r.metric === 'active_learners' && r.dimension_type === 'organization')!
+        .value,
+    ).toBe(1);
   });
 
   it('renders exports in the worker and finishes them without any manual step', async () => {
     const admin = await h.as('grant');
-    const created = await h.http.post('/api/v1/reports/exports').set(admin).send({ report: 'training-completion', format: 'csv' });
+    const created = await h.http
+      .post('/api/v1/reports/exports')
+      .set(admin)
+      .send({ report: 'training-completion', format: 'csv' });
     expect(created.status).toBe(202);
     const done = await waitFor(
       async () => {
@@ -128,7 +167,9 @@ describe('background jobs', () => {
     );
     expect(done).toMatchObject({ status: 'completed', rowCount: 1, error: null });
     expect(done.fileName).toMatch(/^training-completion-\d{4}-\d{2}-\d{2}\.csv$/);
-    const download = await h.http.get(`/api/v1/reports/exports/${created.body.id}/download`).set(admin);
+    const download = await h.http
+      .get(`/api/v1/reports/exports/${created.body.id}/download`)
+      .set(admin);
     expect(download.status).toBe(200);
   });
 });

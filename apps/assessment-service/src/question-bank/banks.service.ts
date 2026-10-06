@@ -41,19 +41,29 @@ export class BanksService {
         'b.updated_at',
         'b.created_by',
         'b.updated_by',
-        eb.selectFrom('questions as q').select(eb.fn.countAll<number>().as('n')).whereRef('q.bank_id', '=', 'b.id').as('question_count'),
+        eb
+          .selectFrom('questions as q')
+          .select(eb.fn.countAll<number>().as('n'))
+          .whereRef('q.bank_id', '=', 'b.id')
+          .as('question_count'),
         eb
           .selectFrom('questions as q')
           .select(eb.fn.countAll<number>().as('n'))
           .whereRef('q.bank_id', '=', 'b.id')
           .where('q.status', '=', 'active')
           .as('active_question_count'),
-        eb.selectFrom('question_categories as c').select(eb.fn.countAll<number>().as('n')).whereRef('c.bank_id', '=', 'b.id').as('category_count'),
+        eb
+          .selectFrom('question_categories as c')
+          .select(eb.fn.countAll<number>().as('n'))
+          .whereRef('c.bank_id', '=', 'b.id')
+          .as('category_count'),
       ])
       .where('b.organization_id', '=', organizationId);
   }
 
-  private toSummary(r: Awaited<ReturnType<ReturnType<BanksService['summaryQuery']>['execute']>>[number]): assessment.QuestionBankSummary {
+  private toSummary(
+    r: Awaited<ReturnType<ReturnType<BanksService['summaryQuery']>['execute']>>[number],
+  ): assessment.QuestionBankSummary {
     return {
       id: r.id,
       title: r.title,
@@ -67,22 +77,32 @@ export class BanksService {
     };
   }
 
-  async list(p: Principal, f: { q?: string; includeArchived?: boolean; sort?: string; page: number; pageSize: number }): Promise<Page<assessment.QuestionBankSummary>> {
+  async list(
+    p: Principal,
+    f: { q?: string; includeArchived?: boolean; sort?: string; page: number; pageSize: number },
+  ): Promise<Page<assessment.QuestionBankSummary>> {
     let query = this.summaryQuery(this.db, p.organizationId);
     if (!f.includeArchived) query = query.where('b.archived_at', 'is', null);
     if (f.q) {
       const pattern = likePattern(f.q);
-      query = query.where((eb) => eb.or([eb('b.title', 'ilike', pattern), eb('b.description', 'ilike', pattern)]));
+      query = query.where((eb) =>
+        eb.or([eb('b.title', 'ilike', pattern), eb('b.description', 'ilike', pattern)]),
+      );
     }
     const desc = f.sort?.startsWith('-') ?? false;
     const key = f.sort?.replace(/^-/, '') ?? 'title';
-    query = key === 'updatedAt' ? query.orderBy('b.updated_at', desc ? 'desc' : 'asc') : query.orderBy(sql`lower(b.title)`, desc ? 'desc' : 'asc');
+    query =
+      key === 'updatedAt'
+        ? query.orderBy('b.updated_at', desc ? 'desc' : 'asc')
+        : query.orderBy(sql`lower(b.title)`, desc ? 'desc' : 'asc');
     const page = await paginate(query.orderBy('b.id'), { page: f.page, pageSize: f.pageSize });
     return { ...page, items: page.items.map((r) => this.toSummary(r)) };
   }
 
   async get(p: Principal, id: string): Promise<assessment.QuestionBankDetail> {
-    const row = await this.summaryQuery(this.db, p.organizationId).where('b.id', '=', id).executeTakeFirst();
+    const row = await this.summaryQuery(this.db, p.organizationId)
+      .where('b.id', '=', id)
+      .executeTakeFirst();
     if (!row) throw new NotFoundError('Question bank');
     const [categories, competencies, people] = await Promise.all([
       this.categories(this.db, id),
@@ -148,16 +168,30 @@ export class BanksService {
       .where('c.bank_id', '=', bankId)
       .orderBy(sql`lower(c.name)`)
       .execute();
-    return rows.map((r) => ({ id: r.id, bankId: r.bank_id, name: r.name, description: r.description, questionCount: Number(r.question_count ?? 0) }));
+    return rows.map((r) => ({
+      id: r.id,
+      bankId: r.bank_id,
+      name: r.name,
+      description: r.description,
+      questionCount: Number(r.question_count ?? 0),
+    }));
   }
 
   private async bankRow(db: DbOrTrx, organizationId: string, id: string) {
-    const bank = await db.selectFrom('question_banks').selectAll().where('id', '=', id).where('organization_id', '=', organizationId).executeTakeFirst();
+    const bank = await db
+      .selectFrom('question_banks')
+      .selectAll()
+      .where('id', '=', id)
+      .where('organization_id', '=', organizationId)
+      .executeTakeFirst();
     if (!bank) throw new NotFoundError('Question bank');
     return bank;
   }
 
-  async create(p: Principal, input: Required<Pick<BankInput, 'title'>> & BankInput): Promise<assessment.QuestionBankDetail> {
+  async create(
+    p: Principal,
+    input: Required<Pick<BankInput, 'title'>> & BankInput,
+  ): Promise<assessment.QuestionBankDetail> {
     const id = uuidv7();
     try {
       await this.db.transaction().execute(async (trx) => {
@@ -189,7 +223,10 @@ export class BanksService {
 
   private bankConflict(err: unknown): unknown {
     return isUniqueViolation(err, 'question_banks_org_title_uq')
-      ? new ConflictError('BANK_TITLE_TAKEN', 'A question bank with this title already exists. Choose a different title.')
+      ? new ConflictError(
+          'BANK_TITLE_TAKEN',
+          'A question bank with this title already exists. Choose a different title.',
+        )
       : err;
   }
 
@@ -222,7 +259,11 @@ export class BanksService {
     return this.get(p, id);
   }
 
-  async setArchived(p: Principal, id: string, archived: boolean): Promise<assessment.QuestionBankDetail> {
+  async setArchived(
+    p: Principal,
+    id: string,
+    archived: boolean,
+  ): Promise<assessment.QuestionBankDetail> {
     await this.db.transaction().execute(async (trx) => {
       const bank = await this.bankRow(trx, p.organizationId, id);
       if ((bank.archived_at !== null) === archived) return;
@@ -264,14 +305,28 @@ export class BanksService {
     await this.db.transaction().execute(async (trx) => {
       const bank = await this.bankRow(trx, p.organizationId, id);
       const [questions, pools] = await Promise.all([
-        trx.selectFrom('questions').select((eb) => eb.fn.countAll<number>().as('n')).where('bank_id', '=', id).executeTakeFirstOrThrow(),
-        trx.selectFrom('assessment_items').select((eb) => eb.fn.countAll<number>().as('n')).where('pool_bank_id', '=', id).executeTakeFirstOrThrow(),
+        trx
+          .selectFrom('questions')
+          .select((eb) => eb.fn.countAll<number>().as('n'))
+          .where('bank_id', '=', id)
+          .executeTakeFirstOrThrow(),
+        trx
+          .selectFrom('assessment_items')
+          .select((eb) => eb.fn.countAll<number>().as('n'))
+          .where('pool_bank_id', '=', id)
+          .executeTakeFirstOrThrow(),
       ]);
       if (Number(questions.n) > 0) {
-        throw new ConflictError('BANK_NOT_EMPTY', `This bank still contains ${questions.n} questions. Archive the bank instead of deleting it.`);
+        throw new ConflictError(
+          'BANK_NOT_EMPTY',
+          `This bank still contains ${questions.n} questions. Archive the bank instead of deleting it.`,
+        );
       }
       if (Number(pools.n) > 0) {
-        throw new ConflictError('BANK_IN_USE', 'Assessment pools draw from this bank. Remove those pools before deleting it.');
+        throw new ConflictError(
+          'BANK_IN_USE',
+          'Assessment pools draw from this bank. Remove those pools before deleting it.',
+        );
       }
       await trx.deleteFrom('question_banks').where('id', '=', id).execute();
       await this.events.audit(trx, {
@@ -286,7 +341,11 @@ export class BanksService {
 
   // ---------------------------------------------------------------- categories
 
-  async createCategory(p: Principal, bankId: string, input: Required<Pick<CategoryInput, 'name'>> & CategoryInput): Promise<assessment.QuestionCategory> {
+  async createCategory(
+    p: Principal,
+    bankId: string,
+    input: Required<Pick<CategoryInput, 'name'>> & CategoryInput,
+  ): Promise<assessment.QuestionCategory> {
     const id = uuidv7();
     await this.mutateChild(p, bankId, async (trx) => {
       const last = await trx
@@ -316,9 +375,19 @@ export class BanksService {
     return this.categoryById(bankId, id);
   }
 
-  async updateCategory(p: Principal, bankId: string, categoryId: string, input: CategoryInput): Promise<assessment.QuestionCategory> {
+  async updateCategory(
+    p: Principal,
+    bankId: string,
+    categoryId: string,
+    input: CategoryInput,
+  ): Promise<assessment.QuestionCategory> {
     await this.mutateChild(p, bankId, async (trx) => {
-      const before = await trx.selectFrom('question_categories').selectAll().where('id', '=', categoryId).where('bank_id', '=', bankId).executeTakeFirst();
+      const before = await trx
+        .selectFrom('question_categories')
+        .selectAll()
+        .where('id', '=', categoryId)
+        .where('bank_id', '=', bankId)
+        .executeTakeFirst();
       if (!before) throw new NotFoundError('Category');
       await trx
         .updateTable('question_categories')
@@ -343,11 +412,24 @@ export class BanksService {
 
   async deleteCategory(p: Principal, bankId: string, categoryId: string): Promise<void> {
     await this.mutateChild(p, bankId, async (trx) => {
-      const category = await trx.selectFrom('question_categories').selectAll().where('id', '=', categoryId).where('bank_id', '=', bankId).executeTakeFirst();
+      const category = await trx
+        .selectFrom('question_categories')
+        .selectAll()
+        .where('id', '=', categoryId)
+        .where('bank_id', '=', bankId)
+        .executeTakeFirst();
       if (!category) throw new NotFoundError('Category');
       const [versions, pools] = await Promise.all([
-        trx.selectFrom('question_versions').select((eb) => eb.fn.countAll<number>().as('n')).where('category_id', '=', categoryId).executeTakeFirstOrThrow(),
-        trx.selectFrom('assessment_items').select((eb) => eb.fn.countAll<number>().as('n')).where('pool_category_id', '=', categoryId).executeTakeFirstOrThrow(),
+        trx
+          .selectFrom('question_versions')
+          .select((eb) => eb.fn.countAll<number>().as('n'))
+          .where('category_id', '=', categoryId)
+          .executeTakeFirstOrThrow(),
+        trx
+          .selectFrom('assessment_items')
+          .select((eb) => eb.fn.countAll<number>().as('n'))
+          .where('pool_category_id', '=', categoryId)
+          .executeTakeFirstOrThrow(),
       ]);
       if (Number(versions.n) > 0) {
         throw new ConflictError(
@@ -355,7 +437,11 @@ export class BanksService {
           'Questions (including earlier versions kept for attempt history) use this category. Rename it instead, or move the questions to another category.',
         );
       }
-      if (Number(pools.n) > 0) throw new ConflictError('CATEGORY_IN_USE', 'Assessment pools draw from this category. Change those pools first.');
+      if (Number(pools.n) > 0)
+        throw new ConflictError(
+          'CATEGORY_IN_USE',
+          'Assessment pools draw from this category. Change those pools first.',
+        );
       await trx.deleteFrom('question_categories').where('id', '=', categoryId).execute();
       await this.events.audit(trx, {
         action: 'question_category.deleted',
@@ -375,12 +461,22 @@ export class BanksService {
 
   // ---------------------------------------------------------------- competencies
 
-  async createCompetency(p: Principal, bankId: string, input: Required<Pick<CompetencyInput, 'name'>> & CompetencyInput): Promise<assessment.Competency> {
+  async createCompetency(
+    p: Principal,
+    bankId: string,
+    input: Required<Pick<CompetencyInput, 'name'>> & CompetencyInput,
+  ): Promise<assessment.Competency> {
     const id = uuidv7();
     await this.mutateChild(p, bankId, async (trx) => {
       await trx
         .insertInto('competencies')
-        .values({ id, organization_id: p.organizationId, bank_id: bankId, name: input.name, description: input.description ?? null })
+        .values({
+          id,
+          organization_id: p.organizationId,
+          bank_id: bankId,
+          name: input.name,
+          description: input.description ?? null,
+        })
         .execute();
       await this.events.audit(trx, {
         action: 'competency.created',
@@ -393,9 +489,19 @@ export class BanksService {
     return this.competencyById(bankId, id);
   }
 
-  async updateCompetency(p: Principal, bankId: string, competencyId: string, input: CompetencyInput): Promise<assessment.Competency> {
+  async updateCompetency(
+    p: Principal,
+    bankId: string,
+    competencyId: string,
+    input: CompetencyInput,
+  ): Promise<assessment.Competency> {
     await this.mutateChild(p, bankId, async (trx) => {
-      const before = await trx.selectFrom('competencies').selectAll().where('id', '=', competencyId).where('bank_id', '=', bankId).executeTakeFirst();
+      const before = await trx
+        .selectFrom('competencies')
+        .selectAll()
+        .where('id', '=', competencyId)
+        .where('bank_id', '=', bankId)
+        .executeTakeFirst();
       if (!before) throw new NotFoundError('Competency');
       await trx
         .updateTable('competencies')
@@ -419,7 +525,12 @@ export class BanksService {
 
   async deleteCompetency(p: Principal, bankId: string, competencyId: string): Promise<void> {
     await this.mutateChild(p, bankId, async (trx) => {
-      const competency = await trx.selectFrom('competencies').selectAll().where('id', '=', competencyId).where('bank_id', '=', bankId).executeTakeFirst();
+      const competency = await trx
+        .selectFrom('competencies')
+        .selectAll()
+        .where('id', '=', competencyId)
+        .where('bank_id', '=', bankId)
+        .executeTakeFirst();
       if (!competency) throw new NotFoundError('Competency');
       const used = await trx
         .selectFrom('question_versions')
@@ -450,19 +561,33 @@ export class BanksService {
   }
 
   /** Category/competency changes: bank must exist in the caller's organization and not be archived. */
-  private async mutateChild(p: Principal, bankId: string, fn: (trx: Trx) => Promise<void>): Promise<void> {
+  private async mutateChild(
+    p: Principal,
+    bankId: string,
+    fn: (trx: Trx) => Promise<void>,
+  ): Promise<void> {
     try {
       await this.db.transaction().execute(async (trx) => {
         const bank = await this.bankRow(trx, p.organizationId, bankId);
-        if (bank.archived_at) throw new PreconditionError('BANK_ARCHIVED', 'This question bank is archived. Restore it before changing its categories or competencies.');
+        if (bank.archived_at)
+          throw new PreconditionError(
+            'BANK_ARCHIVED',
+            'This question bank is archived. Restore it before changing its categories or competencies.',
+          );
         await fn(trx);
       });
     } catch (err) {
       if (isUniqueViolation(err, 'question_categories_bank_name_uq')) {
-        throw new ConflictError('CATEGORY_NAME_TAKEN', 'This bank already has a category with that name.');
+        throw new ConflictError(
+          'CATEGORY_NAME_TAKEN',
+          'This bank already has a category with that name.',
+        );
       }
       if (isUniqueViolation(err, 'competencies_bank_name_uq')) {
-        throw new ConflictError('COMPETENCY_NAME_TAKEN', 'This bank already has a competency with that name.');
+        throw new ConflictError(
+          'COMPETENCY_NAME_TAKEN',
+          'This bank already has a competency with that name.',
+        );
       }
       throw err;
     }

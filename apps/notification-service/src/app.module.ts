@@ -9,7 +9,12 @@ import { DeliveriesController, DeliveriesService } from './email/deliveries.cont
 import { EmailDispatcher } from './email/email.dispatcher.js';
 import { MaintenanceService } from './email/maintenance.service.js';
 import { ContentSealer } from './email/sealer.js';
-import { ConsoleTransport, EMAIL_TRANSPORT, SmtpTransport, type EmailTransport } from './email/transports.js';
+import {
+  ConsoleTransport,
+  EMAIL_TRANSPORT,
+  SmtpTransport,
+  type EmailTransport,
+} from './email/transports.js';
 import { NotificationEventHandlers, ProgramLearnersProjection } from './engine/event-handlers.js';
 import { NotificationEngine } from './engine/notification-engine.js';
 import { RecipientResolver } from './engine/recipients.js';
@@ -32,7 +37,9 @@ export interface NotificationAppOptions {
 }
 
 export function createEmailTransport(config: NotificationConfig, logger: Logger): EmailTransport {
-  return config.email.transport === 'smtp' ? new SmtpTransport(config.email.smtpUrl!) : new ConsoleTransport(logger);
+  return config.email.transport === 'smtp'
+    ? new SmtpTransport(config.email.smtpUrl!)
+    : new ConsoleTransport(logger);
 }
 
 /** Configuration, delivery infrastructure and shared repositories. */
@@ -40,7 +47,13 @@ export function createEmailTransport(config: NotificationConfig, logger: Logger)
 @Module({})
 class NotificationCoreModule {
   static register(config: NotificationConfig, options: NotificationAppOptions): DynamicModule {
-    const shared = [DefaultsService, NotificationsRepository, RealtimePublisher, DelayedPushScheduler, EmailDispatcher];
+    const shared = [
+      DefaultsService,
+      NotificationsRepository,
+      RealtimePublisher,
+      DelayedPushScheduler,
+      EmailDispatcher,
+    ];
     return {
       module: NotificationCoreModule,
       providers: [
@@ -48,7 +61,8 @@ class NotificationCoreModule {
         {
           provide: EMAIL_TRANSPORT,
           inject: [LOGGER],
-          useFactory: (logger: Logger) => options.emailTransport ?? createEmailTransport(config, logger),
+          useFactory: (logger: Logger) =>
+            options.emailTransport ?? createEmailTransport(config, logger),
         },
         { provide: ContentSealer, useValue: new ContentSealer(config.sealKey) },
         ...shared,
@@ -60,7 +74,13 @@ class NotificationCoreModule {
 
 /** Event consumption: rules → recipients → notifications and emails; housekeeping. */
 @Module({
-  providers: [RecipientResolver, NotificationEngine, NotificationEventHandlers, ProgramLearnersProjection, MaintenanceService],
+  providers: [
+    RecipientResolver,
+    NotificationEngine,
+    NotificationEventHandlers,
+    ProgramLearnersProjection,
+    MaintenanceService,
+  ],
   exports: [NotificationEngine, MaintenanceService],
 })
 export class EngineModule {}
@@ -82,7 +102,11 @@ export class AdminModule {}
 
 @Module({})
 export class AppModule {
-  static register(config: NotificationConfig, logger: Logger, options: NotificationAppOptions = {}): DynamicModule {
+  static register(
+    config: NotificationConfig,
+    logger: Logger,
+    options: NotificationAppOptions = {},
+  ): DynamicModule {
     return {
       module: AppModule,
       imports: [

@@ -43,7 +43,11 @@ export class MaintenanceService implements OnApplicationBootstrap {
     try {
       await this.queues
         .queue(MAINTENANCE_QUEUE)
-        .upsertJobScheduler('notification-maintenance', { every: this.config.maintenanceIntervalMs }, { name: 'sweep', opts: { attempts: 1 } });
+        .upsertJobScheduler(
+          'notification-maintenance',
+          { every: this.config.maintenanceIntervalMs },
+          { name: 'sweep', opts: { attempts: 1 } },
+        );
     } catch (err) {
       this.logger.error({ err }, 'could not schedule notification maintenance');
     }
@@ -53,8 +57,15 @@ export class MaintenanceService implements OnApplicationBootstrap {
     const expiredSealed = await this.expireSealed();
     const { requeued, abandoned } = await this.requeueStale();
     const { notifications, deliveries } = await this.applyRetention();
-    const result = { requeued, abandoned, expiredSealed, deletedNotifications: notifications, deletedDeliveries: deliveries };
-    if (requeued || abandoned || expiredSealed || notifications || deliveries) this.logger.info(result, 'notification maintenance');
+    const result = {
+      requeued,
+      abandoned,
+      expiredSealed,
+      deletedNotifications: notifications,
+      deletedDeliveries: deliveries,
+    };
+    if (requeued || abandoned || expiredSealed || notifications || deliveries)
+      this.logger.info(result, 'notification maintenance');
     return result;
   }
 
@@ -93,7 +104,12 @@ export class MaintenanceService implements OnApplicationBootstrap {
         // The final attempt failed but its status update was lost: record the outcome.
         await this.db
           .updateTable('email_deliveries')
-          .set({ status: 'failed', failed_at: sql<Date>`now()`, sealed_content: null, last_error: (job?.failedReason ?? 'Delivery failed').slice(0, 1000) })
+          .set({
+            status: 'failed',
+            failed_at: sql<Date>`now()`,
+            sealed_content: null,
+            last_error: (job?.failedReason ?? 'Delivery failed').slice(0, 1000),
+          })
           .where('id', '=', row.id)
           .where('status', '=', 'queued')
           .execute();
@@ -124,6 +140,9 @@ export class MaintenanceService implements OnApplicationBootstrap {
       )
       delete from email_deliveries where id in (select id from doomed)
     `.execute(this.db);
-    return { notifications: Number(n.numAffectedRows ?? 0n), deliveries: Number(d.numAffectedRows ?? 0n) };
+    return {
+      notifications: Number(n.numAffectedRows ?? 0n),
+      deliveries: Number(d.numAffectedRows ?? 0n),
+    };
   }
 }

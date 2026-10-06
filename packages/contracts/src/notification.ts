@@ -12,7 +12,14 @@ export const NOTIFICATION_PRIORITIES = ['low', 'normal', 'high'] as const;
 export const notificationPrioritySchema = z.enum(NOTIFICATION_PRIORITIES);
 export type NotificationPriority = z.infer<typeof notificationPrioritySchema>;
 
-export const NOTIFICATION_CATEGORIES = ['account', 'training', 'assessments', 'ai_coaching', 'approvals', 'certifications'] as const;
+export const NOTIFICATION_CATEGORIES = [
+  'account',
+  'training',
+  'assessments',
+  'ai_coaching',
+  'approvals',
+  'certifications',
+] as const;
 export const notificationCategorySchema = z.enum(NOTIFICATION_CATEGORIES);
 export type NotificationCategory = z.infer<typeof notificationCategorySchema>;
 
@@ -55,7 +62,13 @@ export type NotificationType = z.infer<typeof notificationTypeSchema>;
  * `enrolled_learners` (everyone enrolled in the event's program) or `role:<key>` (everyone
  * holding a role in the organization).
  */
-export const RECIPIENT_KINDS = ['subject', 'managers', 'team_managers', 'trainers', 'enrolled_learners'] as const;
+export const RECIPIENT_KINDS = [
+  'subject',
+  'managers',
+  'team_managers',
+  'trainers',
+  'enrolled_learners',
+] as const;
 export const recipientSchema = z.union([
   z.enum(RECIPIENT_KINDS),
   z.string().regex(/^role:[a-z][a-z0-9_]{1,62}$/, 'Use role:<role key>, for example role:admin'),
@@ -78,7 +91,10 @@ const conditionOperators = z
   })
   .partial()
   .strict()
-  .refine((v) => Object.keys(v).length > 0, 'Add at least one operator (eq, ne, in, notIn, gt, gte, lt, lte)');
+  .refine(
+    (v) => Object.keys(v).length > 0,
+    'Add at least one operator (eq, ne, in, notIn, gt, gte, lt, lte)',
+  );
 
 /**
  * Conditions on the event payload, all of which must hold. Keys are payload field paths such as
@@ -87,7 +103,12 @@ const conditionOperators = z
  */
 export const ruleConditionsSchema = z
   .record(
-    z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*){0,4}$/, 'Use a payload field path such as passed or context.programId'),
+    z
+      .string()
+      .regex(
+        /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*){0,4}$/,
+        'Use a payload field path such as passed or context.programId',
+      ),
     z.union([conditionLiteral, z.array(conditionLiteral).min(1).max(50), conditionOperators]),
   )
   .refine((v) => Object.keys(v).length <= 10, 'Use at most 10 conditions');
@@ -163,7 +184,13 @@ export type PreferencesResponse = z.infer<typeof preferencesResponseSchema>;
 
 export const updatePreferencesRequestSchema = z.object({
   preferences: z
-    .array(z.object({ type: notificationTypeSchema, channel: notificationChannelSchema, enabled: z.boolean() }))
+    .array(
+      z.object({
+        type: notificationTypeSchema,
+        channel: notificationChannelSchema,
+        enabled: z.boolean(),
+      }),
+    )
     .min(1)
     .max(200),
 });

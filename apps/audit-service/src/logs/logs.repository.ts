@@ -32,7 +32,9 @@ export function encodeCursor(at: string, id: string): string {
 export function decodeCursor(cursor: string): { at: string; id: string } {
   const [at, id] = Buffer.from(cursor, 'base64url').toString('utf8').split('|');
   if (!at || !id || !TIMESTAMP.test(at) || !UUID.test(id)) {
-    throw new ValidationError([{ path: 'cursor', message: 'This cursor is invalid. Reload the list and try again.' }]);
+    throw new ValidationError([
+      { path: 'cursor', message: 'This cursor is invalid. Reload the list and try again.' },
+    ]);
   }
   return { at, id };
 }
@@ -69,7 +71,21 @@ function applyFilters<O>(query: Query<O>, f: ResolvedFilter): Query<O> {
 
 const cursorAt = sql<string>`to_char(occurred_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 
-export interface SummaryRow extends Pick<Row, 'id' | 'organization_id' | 'occurred_at' | 'actor_type' | 'actor_id' | 'actor_display' | 'action' | 'resource_type' | 'resource_id' | 'reason' | 'service' | 'ip'> {
+export interface SummaryRow extends Pick<
+  Row,
+  | 'id'
+  | 'organization_id'
+  | 'occurred_at'
+  | 'actor_type'
+  | 'actor_id'
+  | 'actor_display'
+  | 'action'
+  | 'resource_type'
+  | 'resource_id'
+  | 'reason'
+  | 'service'
+  | 'ip'
+> {
   has_changes: boolean;
   cursor_at: string;
 }
@@ -87,7 +103,10 @@ export class LogsRepository {
   constructor(@InjectDb() private readonly db: Db) {}
 
   /** One page, newest first, with a keyset cursor (stable under concurrent inserts). */
-  async list(filter: ResolvedFilter, options: { limit: number; cursor?: string }): Promise<{ rows: SummaryRow[]; nextCursor: string | null }> {
+  async list(
+    filter: ResolvedFilter,
+    options: { limit: number; cursor?: string },
+  ): Promise<{ rows: SummaryRow[]; nextCursor: string | null }> {
     let query = applyFilters(
       this.db
         .selectFrom('audit_logs')
@@ -120,18 +139,35 @@ export class LogsRepository {
       .execute();
     const page = rows.slice(0, options.limit);
     const last = page[page.length - 1];
-    return { rows: page, nextCursor: rows.length > options.limit && last ? encodeCursor(last.cursor_at, last.id) : null };
+    return {
+      rows: page,
+      nextCursor:
+        rows.length > options.limit && last ? encodeCursor(last.cursor_at, last.id) : null,
+    };
   }
 
   async find(organizationId: string, id: string): Promise<Row | undefined> {
-    return this.db.selectFrom('audit_logs').selectAll().where('id', '=', id).where('organization_id', '=', organizationId).limit(1).executeTakeFirst();
+    return this.db
+      .selectFrom('audit_logs')
+      .selectAll()
+      .where('id', '=', id)
+      .where('organization_id', '=', organizationId)
+      .limit(1)
+      .executeTakeFirst();
   }
 
-  async facets(organizationId: string, from: Date, to: Date): Promise<{ actions: FacetValue[]; resourceTypes: FacetValue[]; services: FacetValue[] }> {
+  async facets(
+    organizationId: string,
+    from: Date,
+    to: Date,
+  ): Promise<{ actions: FacetValue[]; resourceTypes: FacetValue[]; services: FacetValue[] }> {
     const group = async (column: 'action' | 'resource_type' | 'service'): Promise<FacetValue[]> => {
       const rows = await this.db
         .selectFrom('audit_logs')
-        .select([sql<string>`${sql.ref(column)}`.as('value'), sql<number>`count(*)::int`.as('count')])
+        .select([
+          sql<string>`${sql.ref(column)}`.as('value'),
+          sql<number>`count(*)::int`.as('count'),
+        ])
         .where('organization_id', '=', organizationId)
         .where('occurred_at', '>=', from)
         .where('occurred_at', '<', to)
@@ -142,13 +178,19 @@ export class LogsRepository {
         .execute();
       return rows.map((r) => ({ value: r.value, count: r.count }));
     };
-    const [actions, resourceTypes, services] = await Promise.all([group('action'), group('resource_type'), group('service')]);
+    const [actions, resourceTypes, services] = await Promise.all([
+      group('action'),
+      group('resource_type'),
+      group('service'),
+    ]);
     return { actions, resourceTypes, services };
   }
 
   /** Number of matching entries, counted only up to `cap` so huge selections stay cheap. */
   async countUpTo(filter: ResolvedFilter, cap: number): Promise<number> {
-    const rows = await applyFilters(this.db.selectFrom('audit_logs').select('id'), filter).limit(cap).execute();
+    const rows = await applyFilters(this.db.selectFrom('audit_logs').select('id'), filter)
+      .limit(cap)
+      .execute();
     return rows.length;
   }
 
@@ -158,9 +200,19 @@ export class LogsRepository {
     let remaining = max;
     while (remaining > 0) {
       const size = Math.min(EXPORT_BATCH, remaining);
-      let query = applyFilters(this.db.selectFrom('audit_logs').selectAll().select(cursorAt.as('cursor_at')), filter);
-      if (cursor) query = query.where(sql<boolean>`(occurred_at, id) < (${cursor.at}::timestamptz, ${cursor.id}::uuid)`);
-      const rows = await query.orderBy('occurred_at', 'desc').orderBy('id', 'desc').limit(size).execute();
+      let query = applyFilters(
+        this.db.selectFrom('audit_logs').selectAll().select(cursorAt.as('cursor_at')),
+        filter,
+      );
+      if (cursor)
+        query = query.where(
+          sql<boolean>`(occurred_at, id) < (${cursor.at}::timestamptz, ${cursor.id}::uuid)`,
+        );
+      const rows = await query
+        .orderBy('occurred_at', 'desc')
+        .orderBy('id', 'desc')
+        .limit(size)
+        .execute();
       if (rows.length === 0) return;
       yield rows;
       remaining -= rows.length;
@@ -171,20 +223,23 @@ export class LogsRepository {
   }
 
   /** Append an entry written by the audit service itself (e.g. an export). */
-  async append(entry: {
-    id: string;
-    organizationId: string | null;
-    occurredAt: Date;
-    actorId: string;
-    actorDisplay: string;
-    action: string;
-    resourceType: string;
-    ip: string | null;
-    userAgent: string | null;
-    requestId: string | null;
-    correlationId: string | null;
-    metadata: Record<string, unknown>;
-  }, db: DbOrTrx = this.db): Promise<void> {
+  async append(
+    entry: {
+      id: string;
+      organizationId: string | null;
+      occurredAt: Date;
+      actorId: string;
+      actorDisplay: string;
+      action: string;
+      resourceType: string;
+      ip: string | null;
+      userAgent: string | null;
+      requestId: string | null;
+      correlationId: string | null;
+      metadata: Record<string, unknown>;
+    },
+    db: DbOrTrx = this.db,
+  ): Promise<void> {
     await db
       .insertInto('audit_logs')
       .values({

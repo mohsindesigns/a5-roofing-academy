@@ -20,16 +20,24 @@ function assertOk(result: MigrationResultSet): string[] {
   if (result.error) {
     const failed = result.results?.find((r) => r.status === 'Error');
     const name = failed ? ` (${failed.migrationName})` : '';
-    throw new Error(`Migration failed${name}: ${String((result.error as Error).message ?? result.error)}`);
+    throw new Error(
+      `Migration failed${name}: ${String((result.error as Error).message ?? result.error)}`,
+    );
   }
   return (result.results ?? []).map((r) => `${r.direction} ${r.migrationName}`);
 }
 
-export async function migrateToLatest(db: Kysely<unknown>, migrations: MigrationMap): Promise<string[]> {
+export async function migrateToLatest(
+  db: Kysely<unknown>,
+  migrations: MigrationMap,
+): Promise<string[]> {
   return assertOk(await createMigrator(db, migrations).migrateToLatest());
 }
 
-export async function migrateDown(db: Kysely<unknown>, migrations: MigrationMap): Promise<string[]> {
+export async function migrateDown(
+  db: Kysely<unknown>,
+  migrations: MigrationMap,
+): Promise<string[]> {
   return assertOk(await createMigrator(db, migrations).migrateDown());
 }
 

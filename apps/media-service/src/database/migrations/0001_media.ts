@@ -1,4 +1,10 @@
-import { addUpdatedAtTrigger, createOutboxTable, createUpdatedAtFunction, sql, type Kysely } from '@a5/database';
+import {
+  addUpdatedAtTrigger,
+  createOutboxTable,
+  createUpdatedAtFunction,
+  sql,
+  type Kysely,
+} from '@a5/database';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
   await createUpdatedAtFunction(db);
@@ -120,7 +126,13 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     create index video_progress_org_user_idx on video_progress (organization_id, user_id, updated_at desc);
   `.execute(db);
 
-  for (const table of ['media_assets', 'media_captions', 'media_chapters', 'media_transcripts', 'video_progress']) {
+  for (const table of [
+    'media_assets',
+    'media_captions',
+    'media_chapters',
+    'media_transcripts',
+    'video_progress',
+  ]) {
     await addUpdatedAtTrigger(db, table);
   }
 }

@@ -238,7 +238,15 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     create index score_overrides_attempt_idx on score_overrides (attempt_id, created_at desc, id desc);
   `.execute(db);
 
-  for (const table of ['question_banks', 'question_categories', 'competencies', 'questions', 'assessments', 'assessment_items', 'attempts']) {
+  for (const table of [
+    'question_banks',
+    'question_categories',
+    'competencies',
+    'questions',
+    'assessments',
+    'assessment_items',
+    'attempts',
+  ]) {
     await addUpdatedAtTrigger(db, table);
   }
 

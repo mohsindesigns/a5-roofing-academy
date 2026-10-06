@@ -2,7 +2,15 @@ import { Get, Header, HttpCode, Param, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import type { Principal } from '@a5/auth';
 import { media } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, Public, RequirePermissions, ZBody, ZParam, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  Public,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZResponse,
+} from '@a5/nest-kit';
 import { HlsService } from './hls.service.js';
 import { PlaybackService } from './playback.service.js';
 
@@ -14,7 +22,10 @@ export class PlaybackController {
   @Post()
   @HttpCode(200)
   @ZResponse(media.playbackDescriptorSchema)
-  describe(@CurrentPrincipal() p: Principal, @ZBody(media.playbackRequestSchema) body: media.PlaybackRequest) {
+  describe(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(media.playbackRequestSchema) body: media.PlaybackRequest,
+  ) {
     return this.playback.forLesson(p, body.grant);
   }
 }

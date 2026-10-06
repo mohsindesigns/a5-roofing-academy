@@ -181,7 +181,9 @@ export const learningEvents = {
           title: z.string(),
         }),
       ),
-      aiScenarios: z.array(z.object({ scenarioId: id, lessonId: id, minScore: z.number().nullable() })),
+      aiScenarios: z.array(
+        z.object({ scenarioId: id, lessonId: id, minScore: z.number().nullable() }),
+      ),
       /** Published lesson outline in learner order (optional; lets consumers label and order lessons). */
       lessons: z
         .array(
@@ -666,7 +668,9 @@ export const EVENT_DEFINITIONS = [
 
 type AnyDefinition = (typeof EVENT_DEFINITIONS)[number];
 export type EventType = AnyDefinition['type'];
-export type EventPayload<T extends EventType> = z.infer<Extract<AnyDefinition, { type: T }>['payload']>;
+export type EventPayload<T extends EventType> = z.infer<
+  Extract<AnyDefinition, { type: T }>['payload']
+>;
 
 const registry = new Map<string, AnyDefinition>(
   EVENT_DEFINITIONS.map((d) => [`${d.type}@${d.version}`, d]),

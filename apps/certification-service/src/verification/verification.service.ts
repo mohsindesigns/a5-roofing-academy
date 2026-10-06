@@ -7,10 +7,19 @@ import { calendarDate } from '../common/dates.js';
 import { loadSettings } from '../common/settings.js';
 
 const UNAVAILABLE = () =>
-  new AppError(404, 'NOT_AVAILABLE', 'This certificate could not be found or is not available for public verification.');
+  new AppError(
+    404,
+    'NOT_AVAILABLE',
+    'This certificate could not be found or is not available for public verification.',
+  );
 
 /** "Jordan Ellis" → "Jordan E." when the organization prefers not to publish full names. */
-function displayName(full: string, firstName: string, lastName: string, mode: 'full_name' | 'first_name_last_initial'): string {
+function displayName(
+  full: string,
+  firstName: string,
+  lastName: string,
+  mode: 'full_name' | 'first_name_last_initial',
+): string {
   if (mode === 'full_name') return full;
   const initial = lastName.trim().charAt(0);
   return initial ? `${firstName.trim()} ${initial.toUpperCase()}.` : firstName.trim();
@@ -53,16 +62,23 @@ export class VerificationService {
     let status: certification.PublicVerification['status'] = 'valid';
     if (row.status === 'revoked') status = 'revoked';
     else if (row.status === 'superseded') status = 'superseded';
-    else if (row.status === 'expired' || (row.expires_at && row.expires_at <= now)) status = 'expired';
+    else if (row.status === 'expired' || (row.expires_at && row.expires_at <= now))
+      status = 'expired';
 
     const recipient = row.snapshot.recipient;
     return {
       status,
-      recipientName: displayName(recipient.legalName, recipient.firstName, recipient.lastName, settings.recipientNameDisplay),
+      recipientName: displayName(
+        recipient.legalName,
+        recipient.firstName,
+        recipient.lastName,
+        settings.recipientNameDisplay,
+      ),
       certificationName: row.snapshot.certification.name,
       issuer: row.snapshot.certification.issuingOrganizationName,
       issuedAt: calendarDate(row.issued_at, tz),
-      expiresAt: row.expires_at && settings.showExpirationDate ? calendarDate(row.expires_at, tz) : null,
+      expiresAt:
+        row.expires_at && settings.showExpirationDate ? calendarDate(row.expires_at, tz) : null,
       certificateNumber: settings.showCertificateNumber ? row.certificate_number : null,
       revokedAt: status === 'revoked' && row.revoked_at ? calendarDate(row.revoked_at, tz) : null,
       revocationNote: status === 'revoked' ? (row.public_note ?? null) : null,

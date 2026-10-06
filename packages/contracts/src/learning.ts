@@ -70,7 +70,15 @@ export const completionSourceSchema = z.enum(COMPLETION_SOURCES);
 export type CompletionSource = z.infer<typeof completionSourceSchema>;
 
 /** How a lesson type completes (lesson type registry). */
-export const COMPLETION_MODES = ['manual', 'video', 'assessment', 'ai_score', 'approval', 'submission', 'acknowledgment'] as const;
+export const COMPLETION_MODES = [
+  'manual',
+  'video',
+  'assessment',
+  'ai_score',
+  'approval',
+  'submission',
+  'acknowledgment',
+] as const;
 export const completionModeSchema = z.enum(COMPLETION_MODES);
 export type CompletionMode = z.infer<typeof completionModeSchema>;
 
@@ -233,7 +241,12 @@ export const requirementSchema = z.object({
 });
 export type Requirement = z.infer<typeof requirementSchema>;
 
-const phaseRefSchema = z.object({ id: z.uuid(), title: z.string(), label: z.string(), position: z.int() });
+const phaseRefSchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  label: z.string(),
+  position: z.int(),
+});
 
 // ------------------------------------------------------------------ admin: programs
 
@@ -269,8 +282,13 @@ const programFields = {
   tags: tagsSchema,
 };
 
-const availabilityRefinement = (v: { availabilityStartsAt?: string | null; availabilityEndsAt?: string | null }) =>
-  !v.availabilityStartsAt || !v.availabilityEndsAt || new Date(v.availabilityEndsAt) > new Date(v.availabilityStartsAt);
+const availabilityRefinement = (v: {
+  availabilityStartsAt?: string | null;
+  availabilityEndsAt?: string | null;
+}) =>
+  !v.availabilityStartsAt ||
+  !v.availabilityEndsAt ||
+  new Date(v.availabilityEndsAt) > new Date(v.availabilityStartsAt);
 
 export const createProgramRequestSchema = z
   .object({
@@ -289,13 +307,19 @@ export const createProgramRequestSchema = z
     tags: programFields.tags.default([]),
     settings: programSettingsPatchSchema.default({}),
   })
-  .refine(availabilityRefinement, { path: ['availabilityEndsAt'], message: 'End must be after the start' });
+  .refine(availabilityRefinement, {
+    path: ['availabilityEndsAt'],
+    message: 'End must be after the start',
+  });
 export type CreateProgramRequest = z.input<typeof createProgramRequestSchema>;
 
 export const updateProgramRequestSchema = z
   .object({ ...programFields, settings: programSettingsPatchSchema })
   .partial()
-  .refine(availabilityRefinement, { path: ['availabilityEndsAt'], message: 'End must be after the start' });
+  .refine(availabilityRefinement, {
+    path: ['availabilityEndsAt'],
+    message: 'End must be after the start',
+  });
 export type UpdateProgramRequest = z.input<typeof updateProgramRequestSchema>;
 
 export const duplicateProgramRequestSchema = z.object({
@@ -332,7 +356,12 @@ export const programSummarySchema = z.object({
   publishedAt: isoDateTime.nullable(),
   hasUnpublishedChanges: z.boolean(),
   archivedAt: isoDateTime.nullable(),
-  counts: z.object({ phases: z.int(), lessons: z.int(), activeEnrollments: z.int(), completedEnrollments: z.int() }),
+  counts: z.object({
+    phases: z.int(),
+    lessons: z.int(),
+    activeEnrollments: z.int(),
+    completedEnrollments: z.int(),
+  }),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
 });
@@ -427,7 +456,13 @@ export const programVersionSchema = z.object({
   changeNote: z.string(),
   publishedAt: isoDateTime,
   publishedBy: personRefSchema.nullable(),
-  stats: z.object({ phases: z.int(), modules: z.int(), lessons: z.int(), requiredLessons: z.int(), estimatedMinutes: z.int() }),
+  stats: z.object({
+    phases: z.int(),
+    modules: z.int(),
+    lessons: z.int(),
+    requiredLessons: z.int(),
+    estimatedMinutes: z.int(),
+  }),
 });
 export type ProgramVersion = z.infer<typeof programVersionSchema>;
 
@@ -474,8 +509,14 @@ export const updateModuleRequestSchema = z
 
 /** Explicit position moves (1-based); siblings are renumbered. */
 export const movePhaseRequestSchema = z.object({ position: positionSchema });
-export const moveModuleRequestSchema = z.object({ phaseId: z.uuid().optional(), position: positionSchema });
-export const moveLessonRequestSchema = z.object({ moduleId: z.uuid().optional(), position: positionSchema });
+export const moveModuleRequestSchema = z.object({
+  phaseId: z.uuid().optional(),
+  position: positionSchema,
+});
+export const moveLessonRequestSchema = z.object({
+  moduleId: z.uuid().optional(),
+  position: positionSchema,
+});
 
 /**
  * Validate a lesson config against its type. Issues are reported under `config.*` so forms can
@@ -484,12 +525,17 @@ export const moveLessonRequestSchema = z.object({ moduleId: z.uuid().optional(),
 export function parseLessonConfig(
   type: LessonType,
   config: unknown,
-): { success: true; data: Record<string, unknown> } | { success: false; issues: Array<{ path: string; message: string }> } {
+):
+  | { success: true; data: Record<string, unknown> }
+  | { success: false; issues: Array<{ path: string; message: string }> } {
   const result = lessonConfigSchemas[type].safeParse(config ?? {});
   if (result.success) return { success: true, data: result.data as Record<string, unknown> };
   return {
     success: false,
-    issues: result.error.issues.map((i) => ({ path: ['config', ...i.path.map(String)].join('.'), message: i.message })),
+    issues: result.error.issues.map((i) => ({
+      path: ['config', ...i.path.map(String)].join('.'),
+      message: i.message,
+    })),
   };
 }
 
@@ -519,7 +565,8 @@ export const createLessonRequestSchema = z
   .superRefine((value, ctx) => {
     const parsed = parseLessonConfig(value.type, value.config);
     if (!parsed.success) {
-      for (const issue of parsed.issues) ctx.addIssue({ code: 'custom', path: issue.path.split('.'), message: issue.message });
+      for (const issue of parsed.issues)
+        ctx.addIssue({ code: 'custom', path: issue.path.split('.'), message: issue.message });
     }
   })
   .transform((value) => {
@@ -529,7 +576,9 @@ export const createLessonRequestSchema = z
 export type CreateLessonRequest = z.input<typeof createLessonRequestSchema>;
 
 /** The lesson type cannot change; the config is validated against the existing type. */
-export const updateLessonRequestSchema = z.object({ ...lessonContentFields, config: lessonConfigRecordSchema }).partial();
+export const updateLessonRequestSchema = z
+  .object({ ...lessonContentFields, config: lessonConfigRecordSchema })
+  .partial();
 export type UpdateLessonRequest = z.input<typeof updateLessonRequestSchema>;
 
 export const lessonResourceRequestSchema = z
@@ -537,7 +586,11 @@ export const lessonResourceRequestSchema = z
     title: nameString(160),
     description: optionalText(1_000),
     kind: z.enum(['link', 'media']),
-    url: z.url({ protocol: /^https?$/, error: 'Enter a full http(s) address' }).max(2000).nullable().optional(),
+    url: z
+      .url({ protocol: /^https?$/, error: 'Enter a full http(s) address' })
+      .max(2000)
+      .nullable()
+      .optional(),
     mediaAssetId: z.uuid().nullable().optional(),
     position: positionSchema.optional(),
   })
@@ -549,7 +602,10 @@ export const updateLessonResourceRequestSchema = z
   .object({
     title: nameString(160),
     description: optionalText(1_000),
-    url: z.url({ protocol: /^https?$/ }).max(2000).nullable(),
+    url: z
+      .url({ protocol: /^https?$/ })
+      .max(2000)
+      .nullable(),
     mediaAssetId: z.uuid().nullable(),
     position: positionSchema,
   })
@@ -665,7 +721,11 @@ export const bulkEnrollResultSchema = z.object({
   reactivated: z.int(),
   unchanged: z.int(),
   items: z.array(
-    z.object({ userId: z.uuid(), enrollmentId: z.uuid(), outcome: z.enum(['created', 'reactivated', 'unchanged']) }),
+    z.object({
+      userId: z.uuid(),
+      enrollmentId: z.uuid(),
+      outcome: z.enum(['created', 'reactivated', 'unchanged']),
+    }),
   ),
 });
 export type BulkEnrollResult = z.infer<typeof bulkEnrollResultSchema>;
@@ -734,7 +794,13 @@ export const approvalPageSchema = pageSchema(approvalSummarySchema);
 
 export const enrollmentDetailSchema = enrollmentSummarySchema.extend({
   withdrawalReason: z.string().nullable(),
-  phases: z.array(phaseRefSchema.extend({ state: nodeStateSchema, ...progressNumbers, completedAt: isoDateTime.nullable() })),
+  phases: z.array(
+    phaseRefSchema.extend({
+      state: nodeStateSchema,
+      ...progressNumbers,
+      completedAt: isoDateTime.nullable(),
+    }),
+  ),
   lessons: z.array(enrollmentLessonProgressSchema),
   approvals: z.array(approvalSummarySchema),
 });
@@ -743,12 +809,22 @@ export type EnrollmentDetail = z.infer<typeof enrollmentDetailSchema>;
 export const withdrawEnrollmentRequestSchema = z.object({ reason: optionalText(500) });
 export const setDueDateRequestSchema = z.object({ dueAt: isoDateTime.nullable() });
 export const overrideCompletionRequestSchema = z.object({
-  reason: z.string().trim().min(3, 'Explain why you are completing this lesson for the learner').max(500),
+  reason: z
+    .string()
+    .trim()
+    .min(3, 'Explain why you are completing this lesson for the learner')
+    .max(500),
 });
 
 // ------------------------------------------------------------------ manager oversight
 
-export const ATTENTION_CODES = ['inactive', 'overdue', 'failing_assessment', 'awaiting_approval', 'not_started'] as const;
+export const ATTENTION_CODES = [
+  'inactive',
+  'overdue',
+  'failing_assessment',
+  'awaiting_approval',
+  'not_started',
+] as const;
 export const attentionFlagSchema = z.object({ code: z.enum(ATTENTION_CODES), message: z.string() });
 export type AttentionFlag = z.infer<typeof attentionFlagSchema>;
 
@@ -896,7 +972,10 @@ export type ContinueLearning = z.infer<typeof continueLearningSchema>;
 export const lessonGrantSchema = z.object({
   token: z.string(),
   expiresAt: isoDateTime,
-  resource: z.object({ type: z.enum(['media', 'assessment', 'ai_scenario', 'document']), id: z.uuid() }),
+  resource: z.object({
+    type: z.enum(['media', 'assessment', 'ai_scenario', 'document']),
+    id: z.uuid(),
+  }),
   policy: z.record(z.string(), z.unknown()),
 });
 export type LessonGrantDto = z.infer<typeof lessonGrantSchema>;
@@ -1017,7 +1096,12 @@ export const searchQuerySchema = z.object({
 
 export const searchResultSchema = z.object({
   programs: z.array(
-    z.object({ id: z.uuid(), title: z.string(), summary: z.string().nullable(), status: programStatusSchema }),
+    z.object({
+      id: z.uuid(),
+      title: z.string(),
+      summary: z.string().nullable(),
+      status: programStatusSchema,
+    }),
   ),
   lessons: z.array(
     z.object({
@@ -1043,7 +1127,12 @@ export const internalProgramSummarySchema = z.object({
   publishedVersion: z.int(),
   phaseLabel: z.string(),
   phases: z.array(
-    z.object({ id: z.uuid(), title: z.string(), position: z.int(), requiredLessonIds: z.array(z.uuid()) }),
+    z.object({
+      id: z.uuid(),
+      title: z.string(),
+      position: z.int(),
+      requiredLessonIds: z.array(z.uuid()),
+    }),
   ),
   requiredLessonIds: z.array(z.uuid()),
   assessments: z.array(
@@ -1055,6 +1144,8 @@ export const internalProgramSummarySchema = z.object({
       title: z.string(),
     }),
   ),
-  aiScenarios: z.array(z.object({ scenarioId: z.uuid(), lessonId: z.uuid(), minScore: z.number().nullable() })),
+  aiScenarios: z.array(
+    z.object({ scenarioId: z.uuid(), lessonId: z.uuid(), minScore: z.number().nullable() }),
+  ),
 });
 export type InternalProgramSummary = z.infer<typeof internalProgramSummarySchema>;

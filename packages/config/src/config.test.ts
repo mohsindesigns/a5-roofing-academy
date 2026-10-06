@@ -3,10 +3,11 @@ import { ConfigError, assertProductionSafe, env, loadEnv, serviceEnvSchema, z } 
 
 describe('loadEnv', () => {
   it('applies defaults and coercion', () => {
-    const cfg = loadEnv(
-      serviceEnvSchema.extend({ PORT: env.port(4010), FLAGS: env.csv('a,b') }),
-      { REDIS_URL: 'redis://localhost:6379', INTERNAL_AUTH_SECRET: 'x'.repeat(32), PORT: '5000' },
-    );
+    const cfg = loadEnv(serviceEnvSchema.extend({ PORT: env.port(4010), FLAGS: env.csv('a,b') }), {
+      REDIS_URL: 'redis://localhost:6379',
+      INTERNAL_AUTH_SECRET: 'x'.repeat(32),
+      PORT: '5000',
+    });
     expect(cfg.PORT).toBe(5000);
     expect(cfg.NODE_ENV).toBe('development');
     expect(cfg.FLAGS).toEqual(['a', 'b']);
@@ -40,8 +41,8 @@ describe('assertProductionSafe', () => {
     expect(() => assertProductionSafe('development', [[false, 'nope']])).not.toThrow();
   });
   it('throws in production', () => {
-    expect(() => assertProductionSafe('production', [[false, 'COOKIE_SECURE must be true']])).toThrow(
-      /COOKIE_SECURE/,
-    );
+    expect(() =>
+      assertProductionSafe('production', [[false, 'COOKIE_SECURE must be true']]),
+    ).toThrow(/COOKIE_SECURE/);
   });
 });

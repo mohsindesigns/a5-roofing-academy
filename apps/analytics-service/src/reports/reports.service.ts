@@ -23,7 +23,8 @@ interface ResolvedSort {
 function cell(value: unknown): string | number | boolean | null {
   if (value === null || value === undefined) return null;
   if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'string')
+    return value;
   if (typeof value === 'bigint') return Number(value);
   return String(value);
 }
@@ -46,20 +47,37 @@ export class ReportsService {
     const column = def.columns.find((c) => c.key === key && c.sortable);
     if (!column) {
       throw new ValidationError([
-        { path: 'sort', message: `Sort by one of: ${def.columns.filter((c) => c.sortable).map((c) => c.key).join(', ')}` },
+        {
+          path: 'sort',
+          message: `Sort by one of: ${def.columns
+            .filter((c) => c.sortable)
+            .map((c) => c.key)
+            .join(', ')}`,
+        },
       ]);
     }
     return { key, descending, text };
   }
 
-  private source(def: ReportDefinition, ctx: QueryContext, request: ReportRequest): RawBuilder<Record<string, unknown>> {
+  private source(
+    def: ReportDefinition,
+    ctx: QueryContext,
+    request: ReportRequest,
+  ): RawBuilder<Record<string, unknown>> {
     const inner = def.query(new QuerySql(ctx));
     const search = request.q?.trim();
-    const where = search ? sql`where ${sql.ref(`r.${def.searchColumn}`)} ilike ${likePattern(search)}` : sql``;
+    const where = search
+      ? sql`where ${sql.ref(`r.${def.searchColumn}`)} ilike ${likePattern(search)}`
+      : sql``;
     return sql<Record<string, unknown>>`select r.* from (${inner}) r ${where}`;
   }
 
-  private ordered(def: ReportDefinition, sort: ResolvedSort, source: RawBuilder<unknown>, extra: RawBuilder<unknown>): RawBuilder<Record<string, unknown>> {
+  private ordered(
+    def: ReportDefinition,
+    sort: ResolvedSort,
+    source: RawBuilder<unknown>,
+    extra: RawBuilder<unknown>,
+  ): RawBuilder<Record<string, unknown>> {
     const column = def.columns.find((c) => c.key === sort.key)!;
     const ref = sql.ref(`s.${sort.key}`);
     const expr = column.type === 'string' ? sql`lower(${ref})` : ref;
@@ -87,10 +105,17 @@ export class ReportsService {
     const def = this.definition(key);
     const sort = this.resolveSort(def, request.sort);
     const offset = (request.page - 1) * request.pageSize;
-    const result = await this.ordered(def, sort, this.source(def, ctx, request), sql`limit ${request.pageSize} offset ${offset}`).execute(this.db);
+    const result = await this.ordered(
+      def,
+      sort,
+      this.source(def, ctx, request),
+      sql`limit ${request.pageSize} offset ${offset}`,
+    ).execute(this.db);
     let total = Number(result.rows[0]?.__total ?? 0);
     if (!result.rows.length && request.page > 1) {
-      const count = await sql<{ n: number }>`select count(*) as n from (${this.source(def, ctx, request)}) c`.execute(this.db);
+      const count = await sql<{
+        n: number;
+      }>`select count(*) as n from (${this.source(def, ctx, request)}) c`.execute(this.db);
       total = Number(count.rows[0]?.n ?? 0);
     }
     return {
@@ -107,7 +132,12 @@ export class ReportsService {
   }
 
   /** Stream every row in report order, in bounded batches (exports). */
-  async *rows(ctx: QueryContext, key: analytics.ReportKey, request: ReportRequest, options: { batchSize?: number; maxRows?: number } = {}): AsyncGenerator<ReportRow> {
+  async *rows(
+    ctx: QueryContext,
+    key: analytics.ReportKey,
+    request: ReportRequest,
+    options: { batchSize?: number; maxRows?: number } = {},
+  ): AsyncGenerator<ReportRow> {
     const def = this.definition(key);
     const sort = this.resolveSort(def, request.sort);
     const batch = options.batchSize ?? 1_000;
@@ -115,7 +145,12 @@ export class ReportsService {
     let offset = 0;
     while (offset < max) {
       const limit = Math.min(batch, max - offset);
-      const result = await this.ordered(def, sort, this.source(def, ctx, request), sql`limit ${limit} offset ${offset}`).execute(this.db);
+      const result = await this.ordered(
+        def,
+        sort,
+        this.source(def, ctx, request),
+        sql`limit ${limit} offset ${offset}`,
+      ).execute(this.db);
       for (const raw of result.rows) yield this.toRow(def, raw);
       if (result.rows.length < limit) return;
       offset += limit;

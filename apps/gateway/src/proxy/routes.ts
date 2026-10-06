@@ -36,31 +36,54 @@ export const ROUTES: RouteRule[] = [
   r('/api/v1/auth/tokens', 'identity-service', { access: 'public', rate: 'sensitive' }),
   r('/api/v1/auth/activate', 'identity-service', { access: 'public', rate: 'sensitive' }),
   r('/api/v1/auth', 'identity-service'),
-  ...['users', 'roles', 'permissions', 'organization', 'locations', 'departments', 'teams', 'settings', 'feature-flags'].map(
-    (p) => r(`/api/v1/${p}`, 'identity-service'),
-  ),
+  ...[
+    'users',
+    'roles',
+    'permissions',
+    'organization',
+    'locations',
+    'departments',
+    'teams',
+    'settings',
+    'feature-flags',
+  ].map((p) => r(`/api/v1/${p}`, 'identity-service')),
   // learning
-  ...['programs', 'enrollments', 'lessons', 'progress', 'learning'].map((p) => r(`/api/v1/${p}`, 'learning-service')),
+  ...['programs', 'enrollments', 'lessons', 'progress', 'learning'].map((p) =>
+    r(`/api/v1/${p}`, 'learning-service'),
+  ),
   // media
   r('/api/v1/media/hls', 'media-service', { access: 'public', rate: 'public' }),
   // navigator.sendBeacon cannot send Authorization headers; the body carries a signed playback token.
   r('/api/v1/media/playback/beacon', 'media-service', { access: 'public', rate: 'default' }),
-  r('/api/v1/media/dev-storage', 'media-service', { access: 'public', rate: 'public', upload: true }),
+  r('/api/v1/media/dev-storage', 'media-service', {
+    access: 'public',
+    rate: 'public',
+    upload: true,
+  }),
   r('/api/v1/media', 'media-service'),
   // assessment
-  ...['question-banks', 'questions', 'assessments', 'attempts'].map((p) => r(`/api/v1/${p}`, 'assessment-service')),
+  ...['question-banks', 'questions', 'assessments', 'attempts'].map((p) =>
+    r(`/api/v1/${p}`, 'assessment-service'),
+  ),
   // ai coaching
   r('/api/v1/ai', 'ai-coaching-service', { stream: true }),
   // certification
   r('/api/v1/public/certificates', 'certification-service', { access: 'public', rate: 'public' }),
   r('/api/v1/certification-assets', 'certification-service', { upload: true }),
   r('/api/v1/certification-files', 'certification-service', { access: 'public', rate: 'public' }),
-  ...['certifications', 'certificate-templates', 'certificates', 'signatories', 'stamps', 'certification-settings'].map((p) =>
-    r(`/api/v1/${p}`, 'certification-service'),
-  ),
+  ...[
+    'certifications',
+    'certificate-templates',
+    'certificates',
+    'signatories',
+    'stamps',
+    'certification-settings',
+  ].map((p) => r(`/api/v1/${p}`, 'certification-service')),
   // notifications
   r('/api/v1/notifications/stream', 'notification-service', { stream: true }),
-  ...['notifications', 'notification-templates', 'notification-rules'].map((p) => r(`/api/v1/${p}`, 'notification-service')),
+  ...['notifications', 'notification-templates', 'notification-rules'].map((p) =>
+    r(`/api/v1/${p}`, 'notification-service'),
+  ),
   // analytics & audit
   // Signed export downloads are opened by the browser without a bearer token.
   r('/api/v1/reports/files', 'analytics-service', { access: 'public', rate: 'public' }),

@@ -7,6 +7,7 @@ const config = loadCertificationConfig();
 await bootstrapService({
   config,
   title: 'A5 Certification Service',
-  description: 'Certifications, eligibility, templates, signatories, issuance, PDF certificates and public verification.',
+  description:
+    'Certifications, eligibility, templates, signatories, issuance, PDF certificates and public verification.',
   module: (logger) => AppModule.register(config, logger),
 });

@@ -2,7 +2,12 @@ import type { Writable } from 'node:stream';
 import ExcelJS from 'exceljs';
 import type { analytics } from '@a5/contracts';
 import type { ReportRow } from '../reports.service.js';
-import { wallClockDate, type RenderInput, type RenderResult, type ReportRenderer } from './renderer.js';
+import {
+  wallClockDate,
+  type RenderInput,
+  type RenderResult,
+  type ReportRenderer,
+} from './renderer.js';
 
 const NUMBER_FORMATS: Partial<Record<analytics.ReportColumn['type'], string>> = {
   integer: '0',
@@ -32,18 +37,29 @@ export class XlsxRenderer implements ReportRenderer {
   readonly contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   readonly extension = 'xlsx';
 
-  private cell(value: ReportRow[string], column: analytics.ReportColumn, timezone: string): ExcelJS.CellValue {
+  private cell(
+    value: ReportRow[string],
+    column: analytics.ReportColumn,
+    timezone: string,
+  ): ExcelJS.CellValue {
     if (value === null || value === undefined) return null;
-    if (column.type === 'datetime' || column.type === 'date') return wallClockDate(String(value), timezone);
+    if (column.type === 'datetime' || column.type === 'date')
+      return wallClockDate(String(value), timezone);
     if (column.type === 'boolean') return value ? 'Yes' : 'No';
     return value;
   }
 
   async render(input: RenderInput, output: Writable): Promise<RenderResult> {
-    const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: output, useStyles: true, useSharedStrings: false });
+    const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+      stream: output,
+      useStyles: true,
+      useSharedStrings: false,
+    });
     workbook.creator = 'A5 Roofing Sales Academy';
     workbook.created = new Date();
-    const sheet = workbook.addWorksheet(sheetName(input.title), { views: [{ state: 'frozen', ySplit: 1 }] });
+    const sheet = workbook.addWorksheet(sheetName(input.title), {
+      views: [{ state: 'frozen', ySplit: 1 }],
+    });
     sheet.columns = input.columns.map((c) => ({
       header: c.label,
       key: c.key,
@@ -56,7 +72,9 @@ export class XlsxRenderer implements ReportRenderer {
 
     let rowCount = 0;
     for await (const row of input.rows) {
-      sheet.addRow(input.columns.map((c) => this.cell(row[c.key] ?? null, c, input.timezone))).commit();
+      sheet
+        .addRow(input.columns.map((c) => this.cell(row[c.key] ?? null, c, input.timezone)))
+        .commit();
       rowCount += 1;
     }
     sheet.commit();
@@ -71,7 +89,12 @@ export class XlsxRenderer implements ReportRenderer {
     about.addRow(['Details', input.subtitle]).commit();
     about.addRow(['Rows', rowCount]).commit();
     if (input.truncated?.()) {
-      about.addRow(['Note', `Limited to the first ${rowCount.toLocaleString('en-US')} rows. Narrow the filters to export the rest.`]).commit();
+      about
+        .addRow([
+          'Note',
+          `Limited to the first ${rowCount.toLocaleString('en-US')} rows. Narrow the filters to export the rest.`,
+        ])
+        .commit();
     }
     about.addRow(['Times shown in', input.timezone]).commit();
     about.commit();

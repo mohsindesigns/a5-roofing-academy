@@ -21,7 +21,11 @@ export interface RunOptions {
  * Run an executable without a shell (arguments are never interpolated) and collect stdout.
  * The process is killed when it exceeds the timeout.
  */
-export function runProcess(command: string, args: string[], options: RunOptions): Promise<{ stdout: string; stderr: string }> {
+export function runProcess(
+  command: string,
+  args: string[],
+  options: RunOptions,
+): Promise<{ stdout: string; stderr: string }> {
   const stderrLimit = options.stderrLimit ?? 16 * 1024;
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -39,12 +43,26 @@ export function runProcess(command: string, args: string[], options: RunOptions)
     child.once('error', (err) => {
       clearTimeout(timer);
       const missing = (err as NodeJS.ErrnoException).code === 'ENOENT';
-      reject(new ProcessError(missing ? `${command} is not installed or not on PATH` : `${command} failed to start: ${err.message}`, null, ''));
+      reject(
+        new ProcessError(
+          missing
+            ? `${command} is not installed or not on PATH`
+            : `${command} failed to start: ${err.message}`,
+          null,
+          '',
+        ),
+      );
     });
     child.once('close', (code) => {
       clearTimeout(timer);
       if (timedOut) {
-        reject(new ProcessError(`${command} exceeded the time limit of ${Math.round(options.timeoutMs / 1000)} s`, code, stderr));
+        reject(
+          new ProcessError(
+            `${command} exceeded the time limit of ${Math.round(options.timeoutMs / 1000)} s`,
+            code,
+            stderr,
+          ),
+        );
       } else if (code !== 0) {
         reject(new ProcessError(`${command} exited with code ${code}`, code, stderr));
       } else {

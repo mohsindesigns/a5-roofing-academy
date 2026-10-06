@@ -7,11 +7,17 @@ export type LessonProgressRow = Selectable<LessonProgressTable>;
 
 export const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
 
-export function isOverdue(row: Pick<EnrollmentRow, 'status' | 'due_at'>, now: Date = new Date()): boolean {
+export function isOverdue(
+  row: Pick<EnrollmentRow, 'status' | 'due_at'>,
+  now: Date = new Date(),
+): boolean {
   return row.status === 'active' && row.due_at !== null && row.due_at < now;
 }
 
-export function enrollmentProgressDto(row: EnrollmentRow, now: Date = new Date()): learning.EnrollmentProgress {
+export function enrollmentProgressDto(
+  row: EnrollmentRow,
+  now: Date = new Date(),
+): learning.EnrollmentProgress {
   return {
     id: row.id,
     status: row.status,
@@ -30,7 +36,10 @@ export function enrollmentProgressDto(row: EnrollmentRow, now: Date = new Date()
   };
 }
 
-export function lessonProgressDto(lessonId: string, row: LessonProgressRow | undefined | null): learning.LessonProgress {
+export function lessonProgressDto(
+  lessonId: string,
+  row: LessonProgressRow | undefined | null,
+): learning.LessonProgress {
   if (!row) {
     return {
       lessonId,

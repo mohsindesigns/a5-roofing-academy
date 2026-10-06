@@ -25,7 +25,11 @@ export interface SeedOptions {
   log?: (line: string) => void;
 }
 
-function event(def: Parameters<typeof buildEvent>[0], payload: unknown, subject: { type: string; id: string }): EventEnvelope {
+function event(
+  def: Parameters<typeof buildEvent>[0],
+  payload: unknown,
+  subject: { type: string; id: string },
+): EventEnvelope {
   return buildEvent(def, payload as never, {
     id: uuidv7(),
     producer: 'identity-service',
@@ -54,10 +58,17 @@ async function emit(trx: Trx, events: EventEnvelope[]) {
  * Seed the A5 Roofing organization: locations, departments, teams, people, roles and
  * relationships. Idempotent: does nothing when the organization already exists.
  */
-export async function seedIdentity(db: Db, options: SeedOptions = {}): Promise<{ created: boolean }> {
+export async function seedIdentity(
+  db: Db,
+  options: SeedOptions = {},
+): Promise<{ created: boolean }> {
   const log = options.log ?? (() => undefined);
   await syncPermissionCatalog(db);
-  const existing = await db.selectFrom('organizations').select('id').where('id', '=', ORGANIZATION.id).executeTakeFirst();
+  const existing = await db
+    .selectFrom('organizations')
+    .select('id')
+    .where('id', '=', ORGANIZATION.id)
+    .executeTakeFirst();
   if (existing) {
     log('identity: organization already seeded');
     return { created: false };
@@ -88,13 +99,28 @@ export async function seedIdentity(db: Db, options: SeedOptions = {}): Promise<{
     for (const l of LOCATIONS) {
       await trx
         .insertInto('locations')
-        .values({ id: l.id, organization_id: ORGANIZATION.id, name: l.name, code: l.code, city: l.city, state: l.state, timezone: l.timezone, archived_at: null })
+        .values({
+          id: l.id,
+          organization_id: ORGANIZATION.id,
+          name: l.name,
+          code: l.code,
+          city: l.city,
+          state: l.state,
+          timezone: l.timezone,
+          archived_at: null,
+        })
         .execute();
     }
     for (const d of DEPARTMENTS) {
       await trx
         .insertInto('departments')
-        .values({ id: d.id, organization_id: ORGANIZATION.id, name: d.name, code: d.code, archived_at: null })
+        .values({
+          id: d.id,
+          organization_id: ORGANIZATION.id,
+          name: d.name,
+          code: d.code,
+          archived_at: null,
+        })
         .execute();
     }
     for (const t of TEAMS) {
@@ -113,7 +139,11 @@ export async function seedIdentity(db: Db, options: SeedOptions = {}): Promise<{
         .execute();
     }
 
-    const roles = await trx.selectFrom('roles').select(['id', 'key']).where('organization_id', '=', ORGANIZATION.id).execute();
+    const roles = await trx
+      .selectFrom('roles')
+      .select(['id', 'key'])
+      .where('organization_id', '=', ORGANIZATION.id)
+      .execute();
     const roleId = (key: string) => roles.find((r) => r.key === key)!.id;
     const activatedAt = new Date('2026-08-20T14:00:00Z');
 
@@ -142,7 +172,10 @@ export async function seedIdentity(db: Db, options: SeedOptions = {}): Promise<{
           updated_by: null,
         })
         .execute();
-      await trx.insertInto('credentials').values({ user_id: p.id, password_hash: passwordHash }).execute();
+      await trx
+        .insertInto('credentials')
+        .values({ user_id: p.id, password_hash: passwordHash })
+        .execute();
       await trx
         .insertInto('user_roles')
         .values(p.roles.map((r) => ({ user_id: p.id, role_id: roleId(r), assigned_by: null })))
@@ -150,13 +183,23 @@ export async function seedIdentity(db: Db, options: SeedOptions = {}): Promise<{
     }
 
     for (const t of TEAMS) {
-      await trx.insertInto('team_managers').values(t.managers.map((m) => ({ team_id: t.id, user_id: PEOPLE[m].id }))).execute();
-      await trx.insertInto('team_members').values(t.members.map((m) => ({ team_id: t.id, user_id: PEOPLE[m].id }))).execute();
+      await trx
+        .insertInto('team_managers')
+        .values(t.managers.map((m) => ({ team_id: t.id, user_id: PEOPLE[m].id })))
+        .execute();
+      await trx
+        .insertInto('team_members')
+        .values(t.members.map((m) => ({ team_id: t.id, user_id: PEOPLE[m].id })))
+        .execute();
       for (const member of t.members) {
         for (const manager of t.managers) {
           await trx
             .insertInto('user_relationships')
-            .values({ user_id: PEOPLE[member].id, supervisor_id: PEOPLE[manager].id, kind: 'manager' })
+            .values({
+              user_id: PEOPLE[member].id,
+              supervisor_id: PEOPLE[manager].id,
+              kind: 'manager',
+            })
             .execute();
         }
       }
@@ -164,20 +207,38 @@ export async function seedIdentity(db: Db, options: SeedOptions = {}): Promise<{
     for (const a of TRAINER_ASSIGNMENTS) {
       await trx
         .insertInto('user_relationships')
-        .values(a.trainees.map((t) => ({ user_id: PEOPLE[t].id, supervisor_id: PEOPLE[a.trainer].id, kind: 'trainer' as const })))
+        .values(
+          a.trainees.map((t) => ({
+            user_id: PEOPLE[t].id,
+            supervisor_id: PEOPLE[a.trainer].id,
+            kind: 'trainer' as const,
+          })),
+        )
         .execute();
     }
 
     // Directory events so other services build their projections when they run.
     const events: EventEnvelope[] = [
       ...directoryUnits().map((unit) =>
-        event(identityEvents.directoryUnitUpserted, { unit, revision: 1 }, { type: unit.kind, id: unit.id }),
+        event(
+          identityEvents.directoryUnitUpserted,
+          { unit, revision: 1 },
+          { type: unit.kind, id: unit.id },
+        ),
       ),
       ...directoryTeams().map((team) =>
-        event(identityEvents.directoryTeamUpserted, { team, revision: 1 }, { type: 'team', id: team.id }),
+        event(
+          identityEvents.directoryTeamUpserted,
+          { team, revision: 1 },
+          { type: 'team', id: team.id },
+        ),
       ),
       ...directoryUsers().map((user) =>
-        event(identityEvents.directoryUserUpserted, { user, revision: 1 }, { type: 'user', id: user.id }),
+        event(
+          identityEvents.directoryUserUpserted,
+          { user, revision: 1 },
+          { type: 'user', id: user.id },
+        ),
       ),
     ];
     await emit(trx, events);
@@ -185,4 +246,3 @@ export async function seedIdentity(db: Db, options: SeedOptions = {}): Promise<{
   log(`identity: seeded ${Object.keys(PEOPLE).length} people, ${TEAMS.length} teams`);
   return { created: true };
 }
-

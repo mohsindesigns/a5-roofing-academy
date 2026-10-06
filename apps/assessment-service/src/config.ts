@@ -18,7 +18,9 @@ export function loadAssessmentConfig(source?: Record<string, string | undefined>
     throw new Error('Invalid configuration:\n  - ATTEMPT_EXPIRY_SWEEP_SECONDS must be at least 5');
   }
   if (e.ATTEMPT_DEADLINE_GRACE_SECONDS < 0 || e.ATTEMPT_DEADLINE_GRACE_SECONDS > 120) {
-    throw new Error('Invalid configuration:\n  - ATTEMPT_DEADLINE_GRACE_SECONDS must be between 0 and 120');
+    throw new Error(
+      'Invalid configuration:\n  - ATTEMPT_DEADLINE_GRACE_SECONDS must be between 0 and 120',
+    );
   }
   return {
     ...config,

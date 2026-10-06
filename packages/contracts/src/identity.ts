@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { DATA_SCOPES, PERMISSION_KEYS, type PermissionKey } from '@a5/permissions';
-import { isoDateTime, nameString, optionalText, pageQuerySchema, pageSchema, queryList } from './common.js';
+import {
+  isoDateTime,
+  nameString,
+  optionalText,
+  pageQuerySchema,
+  pageSchema,
+  queryList,
+} from './common.js';
 import type { FeatureFlagState } from './feature-flags.js';
 
 const permissionKeySchema = z.enum(PERMISSION_KEYS as [PermissionKey, ...PermissionKey[]]);
@@ -325,7 +332,11 @@ export type TeamSummary = z.infer<typeof teamSummarySchema>;
 
 export const teamDetailSchema = teamSummarySchema.extend({
   members: z.array(
-    personRef.extend({ email: z.string(), jobTitle: z.string().nullable(), status: userStatusSchema }),
+    personRef.extend({
+      email: z.string(),
+      jobTitle: z.string().nullable(),
+      status: userStatusSchema,
+    }),
   ),
 });
 export type TeamDetail = z.infer<typeof teamDetailSchema>;
@@ -365,9 +376,18 @@ export type OrgStructure = z.infer<typeof orgStructureSchema>;
 export const securitySettingsSchema = z.object({
   passwordMinLength: z.int().min(8).max(64),
   lockoutThreshold: z.int().min(3).max(20),
-  lockoutMinutes: z.int().min(1).max(24 * 60),
-  sessionIdleMinutes: z.int().min(5).max(7 * 24 * 60),
-  sessionMaxHours: z.int().min(1).max(24 * 90),
+  lockoutMinutes: z
+    .int()
+    .min(1)
+    .max(24 * 60),
+  sessionIdleMinutes: z
+    .int()
+    .min(5)
+    .max(7 * 24 * 60),
+  sessionMaxHours: z
+    .int()
+    .min(1)
+    .max(24 * 90),
 });
 export type SecuritySettings = z.infer<typeof securitySettingsSchema>;
 

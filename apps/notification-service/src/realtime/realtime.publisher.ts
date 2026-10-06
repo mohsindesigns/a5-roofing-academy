@@ -7,7 +7,10 @@ import { NotificationsRepository } from '../inbox/notifications.repository.js';
 
 /** Messages on the `rt:user:{id}` channel, consumed by whichever instance holds the user's stream. */
 export type RealtimeNotificationMessage =
-  | { type: 'notification.created'; data: { notification: notification.Notification; unreadCount: number } }
+  | {
+      type: 'notification.created';
+      data: { notification: notification.Notification; unreadCount: number };
+    }
   | { type: 'notification.unread'; data: { unreadCount: number } };
 
 /**
@@ -22,7 +25,9 @@ export class RealtimePublisher {
     @Inject(LOGGER) private readonly logger: Logger,
   ) {}
 
-  async notificationsCreated(items: Array<{ userId: string; notification: notification.Notification }>): Promise<void> {
+  async notificationsCreated(
+    items: Array<{ userId: string; notification: notification.Notification }>,
+  ): Promise<void> {
     if (items.length === 0) return;
     try {
       const counts = await this.repo.unreadCounts(items.map((i) => i.userId));
@@ -35,14 +40,20 @@ export class RealtimePublisher {
         ),
       );
     } catch (err) {
-      this.logger.warn({ err, count: items.length }, 'real-time push failed; notifications remain in the inbox');
+      this.logger.warn(
+        { err, count: items.length },
+        'real-time push failed; notifications remain in the inbox',
+      );
     }
   }
 
   async unreadChanged(userId: string, unreadCount?: number): Promise<void> {
     try {
       const count = unreadCount ?? (await this.repo.unreadCount(userId));
-      await this.bus.publishToUser(userId, { type: 'notification.unread', data: { unreadCount: count } } satisfies RealtimeNotificationMessage);
+      await this.bus.publishToUser(userId, {
+        type: 'notification.unread',
+        data: { unreadCount: count },
+      } satisfies RealtimeNotificationMessage);
     } catch (err) {
       this.logger.warn({ err, userId }, 'real-time unread update failed');
     }

@@ -10,7 +10,9 @@ export class People {
   async refs(ids: ReadonlyArray<string | null | undefined>): Promise<Map<string, PersonRef>> {
     const wanted = [...new Set(ids.filter((id): id is string => typeof id === 'string'))];
     const users = await this.directory.getUsers(wanted);
-    return new Map(wanted.map((id) => [id, { id, displayName: users.get(id)?.displayName ?? 'Unknown user' }]));
+    return new Map(
+      wanted.map((id) => [id, { id, displayName: users.get(id)?.displayName ?? 'Unknown user' }]),
+    );
   }
 
   async ref(id: string | null | undefined): Promise<PersonRef | null> {
@@ -19,6 +21,9 @@ export class People {
   }
 }
 
-export function refOrNull(map: Map<string, PersonRef>, id: string | null | undefined): PersonRef | null {
+export function refOrNull(
+  map: Map<string, PersonRef>,
+  id: string | null | undefined,
+): PersonRef | null {
   return id ? (map.get(id) ?? null) : null;
 }

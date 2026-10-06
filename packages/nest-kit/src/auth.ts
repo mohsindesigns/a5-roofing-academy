@@ -49,11 +49,16 @@ export const CurrentPrincipal = createParamDecorator((_data: unknown, ctx: Execu
 });
 
 export const OptionalPrincipal = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext) => ctx.switchToHttp().getRequest<A5Request>().principal ?? null,
+  (_data: unknown, ctx: ExecutionContext) =>
+    ctx.switchToHttp().getRequest<A5Request>().principal ?? null,
 );
 
 export const ApiPrincipal = () =>
-  ApiHeader({ name: PRINCIPAL_HEADER, required: true, description: 'Internal principal token (set by the gateway)' });
+  ApiHeader({
+    name: PRINCIPAL_HEADER,
+    required: true,
+    description: 'Internal principal token (set by the gateway)',
+  });
 
 /**
  * Global guard: authenticates the caller from the gateway-issued principal token (or a service
@@ -73,9 +78,12 @@ export class AuthGuard implements CanActivate {
 
     if (this.reflector.getAllAndOverride<boolean>(IS_INTERNAL, targets)) {
       const token = req.header(SERVICE_TOKEN_HEADER);
-      if (!token) throw new UnauthenticatedError('SERVICE_TOKEN_REQUIRED', 'Service token required.');
+      if (!token)
+        throw new UnauthenticatedError('SERVICE_TOKEN_REQUIRED', 'Service token required.');
       try {
-        req.serviceCaller = (await verifyServiceToken(token, this.config.internalAuthSecret)).service;
+        req.serviceCaller = (
+          await verifyServiceToken(token, this.config.internalAuthSecret)
+        ).service;
       } catch {
         throw new UnauthenticatedError('TOKEN_INVALID', 'Service token is invalid.');
       }
@@ -87,11 +95,16 @@ export class AuthGuard implements CanActivate {
     if (token) {
       try {
         req.principal = await verifyPrincipalToken(token, this.config.internalAuthSecret);
-        patchContext({ userId: req.principal.userId, organizationId: req.principal.organizationId });
+        patchContext({
+          userId: req.principal.userId,
+          organizationId: req.principal.organizationId,
+        });
       } catch (err) {
         if (!isPublic) {
           throw new UnauthenticatedError(
-            err instanceof TokenError && err.code === 'expired' ? 'SESSION_EXPIRED' : 'UNAUTHENTICATED',
+            err instanceof TokenError && err.code === 'expired'
+              ? 'SESSION_EXPIRED'
+              : 'UNAUTHENTICATED',
             'Your session expired. Sign in again.',
           );
         }
@@ -100,8 +113,14 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
     if (!req.principal) throw new UnauthenticatedError();
 
-    const all = this.reflector.getAllAndOverride<PermissionKey[] | undefined>(REQUIRED_ALL, targets);
-    const any = this.reflector.getAllAndOverride<PermissionKey[] | undefined>(REQUIRED_ANY, targets);
+    const all = this.reflector.getAllAndOverride<PermissionKey[] | undefined>(
+      REQUIRED_ALL,
+      targets,
+    );
+    const any = this.reflector.getAllAndOverride<PermissionKey[] | undefined>(
+      REQUIRED_ANY,
+      targets,
+    );
     assertPermissions(req.principal, all, any);
     return true;
   }

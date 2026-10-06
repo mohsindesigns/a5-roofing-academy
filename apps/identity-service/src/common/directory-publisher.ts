@@ -34,7 +34,11 @@ export class DirectoryPublisher {
         'revision',
       ])
       .execute();
-    const teams = await trx.selectFrom('team_members').select(['user_id', 'team_id']).where('user_id', 'in', ids).execute();
+    const teams = await trx
+      .selectFrom('team_members')
+      .select(['user_id', 'team_id'])
+      .where('user_id', 'in', ids)
+      .execute();
     const supervisors = await trx
       .selectFrom('user_relationships')
       .select(['user_id', 'supervisor_id', 'kind'])
@@ -61,8 +65,12 @@ export class DirectoryPublisher {
         locationId: u.location_id,
         departmentId: u.department_id,
         teamIds: teams.filter((t) => t.user_id === u.id).map((t) => t.team_id),
-        managerIds: supervisors.filter((s) => s.user_id === u.id && s.kind === 'manager').map((s) => s.supervisor_id),
-        trainerIds: supervisors.filter((s) => s.user_id === u.id && s.kind === 'trainer').map((s) => s.supervisor_id),
+        managerIds: supervisors
+          .filter((s) => s.user_id === u.id && s.kind === 'manager')
+          .map((s) => s.supervisor_id),
+        trainerIds: supervisors
+          .filter((s) => s.user_id === u.id && s.kind === 'trainer')
+          .map((s) => s.supervisor_id),
         roleKeys: roles.filter((r) => r.user_id === u.id).map((r) => r.key),
         hiredAt: u.hired_at ? new Date(`${u.hired_at}T00:00:00Z`).toISOString() : null,
       };
@@ -82,10 +90,26 @@ export class DirectoryPublisher {
       .updateTable('teams')
       .set((eb) => ({ revision: eb('revision', '+', 1) }))
       .where('id', 'in', ids)
-      .returning(['id', 'organization_id', 'name', 'location_id', 'department_id', 'archived_at', 'revision'])
+      .returning([
+        'id',
+        'organization_id',
+        'name',
+        'location_id',
+        'department_id',
+        'archived_at',
+        'revision',
+      ])
       .execute();
-    const managers = await trx.selectFrom('team_managers').select(['team_id', 'user_id']).where('team_id', 'in', ids).execute();
-    const members = await trx.selectFrom('team_members').select(['team_id', 'user_id']).where('team_id', 'in', ids).execute();
+    const managers = await trx
+      .selectFrom('team_managers')
+      .select(['team_id', 'user_id'])
+      .where('team_id', 'in', ids)
+      .execute();
+    const members = await trx
+      .selectFrom('team_members')
+      .select(['team_id', 'user_id'])
+      .where('team_id', 'in', ids)
+      .execute();
     for (const t of rows) {
       const record: DirectoryTeamRecord = {
         id: t.id,
@@ -118,7 +142,13 @@ export class DirectoryPublisher {
       trx,
       identityEvents.directoryUnitUpserted,
       {
-        unit: { id: row.id, organizationId: row.organization_id, kind, name: row.name, archived: row.archived_at !== null },
+        unit: {
+          id: row.id,
+          organizationId: row.organization_id,
+          kind,
+          name: row.name,
+          archived: row.archived_at !== null,
+        },
         revision: Number(row.revision),
       },
       { organizationId: row.organization_id, subject: { type: kind, id: row.id } },

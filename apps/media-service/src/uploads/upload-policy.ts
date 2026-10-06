@@ -18,8 +18,11 @@ export function formatBytes(bytes: number): string {
 /** Display name only: strip any path, control characters and surrounding whitespace. */
 export function sanitizeFilename(name: string): string {
   const base = name.split(/[/\\]/).pop() ?? name;
-  // eslint-disable-next-line no-control-regex
-  const cleaned = base.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
+  const cleaned = base
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   return (cleaned || 'upload').slice(0, 255);
 }
 
@@ -43,16 +46,25 @@ export function validateUpload(
       .flatMap((m) => media.MEDIA_FILE_EXTENSIONS[m] ?? [])
       .map((e) => `.${e}`)
       .join(', ');
-    errors.push({ path: 'mimeType', message: `${KIND_LABEL[input.kind]} must be one of: ${names}.` });
+    errors.push({
+      path: 'mimeType',
+      message: `${KIND_LABEL[input.kind]} must be one of: ${names}.`,
+    });
   } else {
     const extensions = media.MEDIA_FILE_EXTENSIONS[input.mimeType] ?? [];
     if (!extensions.includes(extensionOf(input.filename))) {
-      errors.push({ path: 'filename', message: `The file name must end in ${extensions.map((e) => `.${e}`).join(' or ')} for this file type.` });
+      errors.push({
+        path: 'filename',
+        message: `The file name must end in ${extensions.map((e) => `.${e}`).join(' or ')} for this file type.`,
+      });
     }
   }
   const limit = limits[input.kind];
   if (input.sizeBytes > limit) {
-    errors.push({ path: 'sizeBytes', message: `${KIND_LABEL[input.kind]} can be at most ${formatBytes(limit)}.` });
+    errors.push({
+      path: 'sizeBytes',
+      message: `${KIND_LABEL[input.kind]} can be at most ${formatBytes(limit)}.`,
+    });
   }
   return errors;
 }

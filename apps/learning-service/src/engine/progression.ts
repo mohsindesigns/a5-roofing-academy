@@ -1,5 +1,12 @@
 import type { learning } from '@a5/contracts';
-import { describeRule, evaluateRule, type RuleFacts, type RuleLabelResolver, type RuleResult, type Rule } from '@a5/rules';
+import {
+  describeRule,
+  evaluateRule,
+  type RuleFacts,
+  type RuleLabelResolver,
+  type RuleResult,
+  type Rule,
+} from '@a5/rules';
 import type { LessonProgressData } from '../database/schema.js';
 import { lessonTypes } from '../lesson-types/registry.js';
 import {
@@ -130,7 +137,12 @@ function pct(done: number, total: number): number {
 function counts(lessons: readonly TreeLesson[], done: (id: string) => boolean) {
   const set = completionSet(lessons);
   const completed = set.filter((l) => done(l.id)).length;
-  return { requiredTotal: set.length, requiredCompleted: completed, complete: set.length > 0 && completed === set.length, percent: pct(completed, set.length) };
+  return {
+    requiredTotal: set.length,
+    requiredCompleted: completed,
+    complete: set.length > 0 && completed === set.length,
+    percent: pct(completed, set.length),
+  };
 }
 
 /** Turn a rule result into checklist entries (a root `all` group is flattened). */
@@ -138,7 +150,13 @@ function requirementsOf(result: RuleResult, names: RuleLabelResolver): Requireme
   if (result.rule.type === 'all' && !result.rule.label && result.children) {
     return result.children.flatMap((c) => requirementsOf(c, names));
   }
-  return [{ description: describeRule(result.rule, names), satisfied: result.satisfied, progress: result.progress ?? null }];
+  return [
+    {
+      description: describeRule(result.rule, names),
+      satisfied: result.satisfied,
+      progress: result.progress ?? null,
+    },
+  ];
 }
 
 function nodeState(complete: boolean, locked: boolean, touched: boolean): NodeState {
@@ -147,7 +165,8 @@ function nodeState(complete: boolean, locked: boolean, touched: boolean): NodeSt
   return touched ? 'in_progress' : 'available';
 }
 
-const dateLabel = (d: Date) => d.toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
+const dateLabel = (d: Date) =>
+  d.toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
 
 /**
  * Evaluate a learner's position in a program: per-node state, progress numbers and, for locked
@@ -166,10 +185,16 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
   const phaseCounts = new Map<string, ReturnType<typeof counts>>();
   for (const phase of tree.phases) {
     for (const module of phase.modules) moduleCounts.set(module.id, counts(module.lessons, done));
-    const measured = counts(phase.modules.flatMap((m) => m.lessons), done);
+    const measured = counts(
+      phase.modules.flatMap((m) => m.lessons),
+      done,
+    );
     // A phase the learner already completed stays completed (and unlocked) even if a required
     // lesson is added to it later; the new lesson still counts toward program completion.
-    phaseCounts.set(phase.id, facts.phaseCompletedAt.has(phase.id) ? { ...measured, complete: true } : measured);
+    phaseCounts.set(
+      phase.id,
+      facts.phaseCompletedAt.has(phase.id) ? { ...measured, complete: true } : measured,
+    );
   }
   const programCounts = counts(
     indexed.map((l) => l.lesson),
@@ -183,23 +208,29 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
   const scenarioLessons = new Map<string, string>();
   for (const { lesson } of indexed) {
     const ref = lessonTypes.get(lesson.type).references(lesson.config).aiScenario;
-    if (ref && !scenarioLessons.has(ref.scenarioId)) scenarioLessons.set(ref.scenarioId, lesson.title);
+    if (ref && !scenarioLessons.has(ref.scenarioId))
+      scenarioLessons.set(ref.scenarioId, lesson.title);
   }
 
   const ruleFacts: RuleFacts = {
     lessonCompleted: done,
     moduleCompleted: (id) => moduleCounts.get(id)?.complete ?? false,
     phaseCompleted: (id) => phaseCounts.get(id)?.complete ?? false,
-    programProgress: (id) => (id === tree.programId ? programCounts.percent : (facts.programProgress.get(id) ?? null)),
+    programProgress: (id) =>
+      id === tree.programId ? programCounts.percent : (facts.programProgress.get(id) ?? null),
     assessmentBestScore: (id) => facts.assessmentScores.get(id)?.bestScore ?? null,
     programAssessments: (programId, kinds) =>
       programId === tree.programId
         ? assessmentLessons
             .filter((a) => kinds.includes(a.kind))
-            .map((a) => ({ assessmentId: a.assessmentId, bestScore: facts.assessmentScores.get(a.assessmentId)?.bestScore ?? null }))
+            .map((a) => ({
+              assessmentId: a.assessmentId,
+              bestScore: facts.assessmentScores.get(a.assessmentId)?.bestScore ?? null,
+            }))
         : [],
     aiScenarioBestScore: (id) => facts.aiScores.get(id)?.bestScore ?? null,
-    aiSessions: (ids) => (ids?.length ? facts.aiSessions.filter((s) => ids.includes(s.scenarioId)) : facts.aiSessions),
+    aiSessions: (ids) =>
+      ids?.length ? facts.aiSessions.filter((s) => ids.includes(s.scenarioId)) : facts.aiSessions,
     approval: (kind) => facts.approvals.has(kind),
     enrolledAt: () => facts.enrolledAt,
     now: () => facts.now,
@@ -216,7 +247,9 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
       return i === undefined ? undefined : phaseName(tree, i, tree.phases[i]!.title);
     },
     program: (id) => (id === tree.programId ? tree.title : facts.programTitles.get(id)),
-    assessment: (id) => assessmentLessons.find((a) => a.assessmentId === id)?.title ?? facts.assessmentScores.get(id)?.title,
+    assessment: (id) =>
+      assessmentLessons.find((a) => a.assessmentId === id)?.title ??
+      facts.assessmentScores.get(id)?.title,
     scenario: (id) => scenarioLessons.get(id) ?? facts.aiScores.get(id)?.title,
   };
   const evaluate = (rule: Rule | null): Requirement[] | null => {
@@ -245,7 +278,9 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
   if (facts.availability.endsAt && !programCounts.complete) {
     const open = facts.now < facts.availability.endsAt;
     programRequirements.push({
-      description: open ? `Finish before ${dateLabel(facts.availability.endsAt)}` : `This program closed on ${dateLabel(facts.availability.endsAt)}`,
+      description: open
+        ? `Finish before ${dateLabel(facts.availability.endsAt)}`
+        : `This program closed on ${dateLabel(facts.availability.endsAt)}`,
       satisfied: open,
       progress: { current: open ? 1 : 0, target: 1, unit: 'boolean' },
     });
@@ -266,14 +301,24 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
       own.push({
         description: `Complete ${previousPhase.name}`,
         satisfied: false,
-        progress: { current: previousPhase.requiredCompleted, target: previousPhase.requiredTotal, unit: 'count' },
+        progress: {
+          current: previousPhase.requiredCompleted,
+          target: previousPhase.requiredTotal,
+          unit: 'count',
+        },
       });
     }
     const ruleReqs = evaluate(phase.unlockRule);
     if (ruleReqs) own.push(...ruleReqs);
     const phaseLocked = programLocked || own.some((r) => !r.satisfied);
     const phaseRequirements = programLocked
-      ? [{ description: 'Available once the program requirements are met', satisfied: false, progress: null }]
+      ? [
+          {
+            description: 'Available once the program requirements are met',
+            satisfied: false,
+            progress: null,
+          },
+        ]
       : phaseLocked
         ? own
         : [];
@@ -294,7 +339,11 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
         const isDone = progress?.status === 'completed';
         const lessonOwn: Requirement[] = [];
         if (lessonChain && previousRequired && !previousRequired.done) {
-          lessonOwn.push({ description: `Complete "${previousRequired.lesson.title}"`, satisfied: false, progress: { current: 0, target: 1, unit: 'boolean' } });
+          lessonOwn.push({
+            description: `Complete "${previousRequired.lesson.title}"`,
+            satisfied: false,
+            progress: { current: 0, target: 1, unit: 'boolean' },
+          });
         }
         const lessonRule = evaluate(lesson.unlockRule);
         if (lessonRule) lessonOwn.push(...lessonRule);
@@ -302,13 +351,25 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
         const requirements = isDone
           ? []
           : moduleLocked
-            ? [{ description: phaseLocked ? `Unlocks with ${name}` : `Unlocks with "${module.title}"`, satisfied: false, progress: null }]
+            ? [
+                {
+                  description: phaseLocked
+                    ? `Unlocks with ${name}`
+                    : `Unlocks with "${module.title}"`,
+                  satisfied: false,
+                  progress: null,
+                },
+              ]
             : locked
               ? lessonOwn
               : [];
         const evaluation: LessonEval = {
           ...info,
-          state: nodeState(isDone, locked, Boolean(progress && (progress.status === 'in_progress' || progress.startedAt))),
+          state: nodeState(
+            isDone,
+            locked,
+            Boolean(progress && (progress.status === 'in_progress' || progress.startedAt)),
+          ),
           percent: isDone ? 100 : (progress?.percent ?? 0),
           completed: isDone,
           completedAt: progress?.completedAt ?? null,
@@ -355,10 +416,15 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
   // Once every required lesson is done there is nothing left to continue with, even if optional
   // lessons remain.
   const requiredIds = new Set(completionSet(indexed.map((l) => l.lesson)).map((l) => l.id));
-  const nextLesson = programCounts.complete ? null : (ordered.find((l) => l.state === 'available' || l.state === 'in_progress') ?? null);
+  const nextLesson = programCounts.complete
+    ? null
+    : (ordered.find((l) => l.state === 'available' || l.state === 'in_progress') ?? null);
   const currentLesson = programCounts.complete
     ? null
-    : (nextLesson ?? ordered.find((l) => !l.completed && requiredIds.has(l.lesson.id)) ?? ordered.find((l) => !l.completed) ?? null);
+    : (nextLesson ??
+      ordered.find((l) => !l.completed && requiredIds.has(l.lesson.id)) ??
+      ordered.find((l) => !l.completed) ??
+      null);
   const currentPhase = currentLesson
     ? (phases.find((p) => p.phase.id === currentLesson.phase.id) ?? null)
     : programCounts.complete
@@ -389,7 +455,11 @@ export function evaluateProgram(tree: ProgramTree, facts: LearnerFacts): Program
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
 /** Outline DTO for the learner (or a preview when `enrollment` is null). */
-export function toOutline(tree: ProgramTree, ev: ProgramEval, enrollment: learning.EnrollmentProgress | null): learning.Outline {
+export function toOutline(
+  tree: ProgramTree,
+  ev: ProgramEval,
+  enrollment: learning.EnrollmentProgress | null,
+): learning.Outline {
   return {
     program: {
       id: tree.programId,

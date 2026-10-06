@@ -16,7 +16,11 @@ import { UploadsModule } from './uploads/uploads.module.js';
 
 @Module({})
 export class AppModule {
-  static register(config: MediaConfig, logger: Logger, overrides: MediaAppOverrides = {}): DynamicModule {
+  static register(
+    config: MediaConfig,
+    logger: Logger,
+    overrides: MediaAppOverrides = {},
+  ): DynamicModule {
     return {
       module: AppModule,
       imports: [

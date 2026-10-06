@@ -17,7 +17,11 @@ export class NotificationStreamController {
   @Get('stream')
   @ApiProduces('text/event-stream')
   @ApiOkResponse({ description: 'text/event-stream of unread counts and new notifications' })
-  async stream(@CurrentPrincipal() p: Principal, @Req() req: Request, @Res() res: Response): Promise<void> {
+  async stream(
+    @CurrentPrincipal() p: Principal,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
     await this.streams.open(p, req, res);
   }
 }

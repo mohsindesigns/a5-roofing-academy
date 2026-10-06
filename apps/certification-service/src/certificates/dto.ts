@@ -11,7 +11,10 @@ export interface SummaryRow extends CertificateRow {
 }
 
 /** `expired` as soon as the expiration date passes, even before the nightly job records it. */
-export function effectiveStatus(row: Pick<CertificateRow, 'status' | 'expires_at'>, now: Date): certification.CertificateStatus {
+export function effectiveStatus(
+  row: Pick<CertificateRow, 'status' | 'expires_at'>,
+  now: Date,
+): certification.CertificateStatus {
   if (row.status === 'issued' && row.expires_at && row.expires_at <= now) return 'expired';
   return row.status;
 }

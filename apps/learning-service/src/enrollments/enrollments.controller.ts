@@ -24,7 +24,10 @@ export class EnrollmentsController {
   @Get()
   @RequirePermissions('enrollments.view')
   @ZResponse(learning.enrollmentPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(learning.listEnrollmentsQuerySchema) q: Out<typeof learning.listEnrollmentsQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(learning.listEnrollmentsQuerySchema) q: Out<typeof learning.listEnrollmentsQuerySchema>,
+  ) {
     return this.enrollments.list(p, {
       q: q.q,
       programId: q.programId,
@@ -43,7 +46,10 @@ export class EnrollmentsController {
   @HttpCode(200)
   @RequirePermissions('programs.assign')
   @ZResponse(learning.bulkEnrollResultSchema)
-  enroll(@CurrentPrincipal() p: Principal, @ZBody(learning.enrollRequestSchema) body: Out<typeof learning.enrollRequestSchema>) {
+  enroll(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(learning.enrollRequestSchema) body: Out<typeof learning.enrollRequestSchema>,
+  ) {
     return this.enrollments.enroll(p, body);
   }
 
@@ -61,7 +67,8 @@ export class EnrollmentsController {
   withdraw(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(learning.withdrawEnrollmentRequestSchema) body: Out<typeof learning.withdrawEnrollmentRequestSchema>,
+    @ZBody(learning.withdrawEnrollmentRequestSchema)
+    body: Out<typeof learning.withdrawEnrollmentRequestSchema>,
   ) {
     return this.enrollments.withdraw(p, id, body.reason);
   }
@@ -85,7 +92,8 @@ export class EnrollmentsController {
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
     @ZParam('lessonId') lessonId: string,
-    @ZBody(learning.overrideCompletionRequestSchema) body: Out<typeof learning.overrideCompletionRequestSchema>,
+    @ZBody(learning.overrideCompletionRequestSchema)
+    body: Out<typeof learning.overrideCompletionRequestSchema>,
   ) {
     return this.enrollments.completeOnBehalf(p, id, lessonId, body.reason);
   }

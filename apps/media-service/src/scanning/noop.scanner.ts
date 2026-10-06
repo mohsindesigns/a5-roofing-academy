@@ -8,7 +8,10 @@ export class NoopScanner implements MalwareScanner {
   constructor(private readonly logger: Logger) {}
 
   async scanFile(path: string): Promise<ScanVerdict> {
-    this.logger.info({ path }, 'malware scanning is disabled (MALWARE_SCANNER=none); marking file as not scanned');
+    this.logger.info(
+      { path },
+      'malware scanning is disabled (MALWARE_SCANNER=none); marking file as not scanned',
+    );
     return { status: 'skipped', engine: 'none' };
   }
 

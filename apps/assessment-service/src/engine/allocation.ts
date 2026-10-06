@@ -23,10 +23,14 @@ export interface PoolAllocation {
  * matching into a random draw; without one it is a deterministic feasibility check.
  */
 export function allocatePools(pools: readonly PoolDemand[], rng?: Rng): PoolAllocation {
-  const lists = pools.map((p) => (rng ? shuffle([...new Set(p.candidates)], rng) : [...new Set(p.candidates)]));
+  const lists = pools.map((p) =>
+    rng ? shuffle([...new Set(p.candidates)], rng) : [...new Set(p.candidates)],
+  );
   const slotPool: number[] = [];
   // Most constrained pools first keeps augmenting paths short.
-  const order = pools.map((_, i) => i).sort((a, b) => lists[a]!.length / pools[a]!.count - lists[b]!.length / pools[b]!.count);
+  const order = pools
+    .map((_, i) => i)
+    .sort((a, b) => lists[a]!.length / pools[a]!.count - lists[b]!.length / pools[b]!.count);
   for (const index of order) for (let n = 0; n < pools[index]!.count; n++) slotPool.push(index);
 
   const owner = new Map<string, number>();
@@ -55,8 +59,12 @@ export function allocatePools(pools: readonly PoolDemand[], rng?: Rng): PoolAllo
   pools.forEach((pool, index) => {
     const chosen = byPool.get(index) ?? new Set<string>();
     // Keep the (possibly shuffled) candidate order so the draw order is random too.
-    assigned.set(pool.key, lists[index]!.filter((q) => chosen.has(q)));
-    if (chosen.size < pool.count) shortfalls.push({ key: pool.key, required: pool.count, assigned: chosen.size });
+    assigned.set(
+      pool.key,
+      lists[index]!.filter((q) => chosen.has(q)),
+    );
+    if (chosen.size < pool.count)
+      shortfalls.push({ key: pool.key, required: pool.count, assigned: chosen.size });
   });
   return { ok: shortfalls.length === 0, assigned, shortfalls };
 }

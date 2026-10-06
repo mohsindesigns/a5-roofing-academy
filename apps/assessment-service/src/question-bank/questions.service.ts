@@ -2,13 +2,27 @@ import { Injectable } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import { assessment } from '@a5/contracts';
 import { likePattern, paginate, sql, type Page } from '@a5/database';
-import { ConflictError, EventBus, InjectDb, NotFoundError, PreconditionError, ValidationError } from '@a5/nest-kit';
+import {
+  ConflictError,
+  EventBus,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+  ValidationError,
+} from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import type { z } from 'zod';
 import { People, refOrNull } from '../common/people.js';
 import type { Db, DbOrTrx, QuestionVersionRow, Trx } from '../database/index.js';
 import { planItems } from '../engine/draw.js';
-import { correctAnswer, gradeResponse, initialOrder, isAnswered, learnerQuestion, toDefinition } from '../engine/question-types.js';
+import {
+  correctAnswer,
+  gradeResponse,
+  initialOrder,
+  isAnswered,
+  learnerQuestion,
+  toDefinition,
+} from '../engine/question-types.js';
 import { randomRng } from '../engine/random.js';
 
 type CreateInput = z.infer<typeof assessment.createQuestionRequestSchema>;
@@ -51,7 +65,17 @@ function stable(value: unknown): string {
   return JSON.stringify(value ?? null);
 }
 
-function contentKey(v: { type: string; config: unknown; prompt: string; explanation: string | null; points: number; difficulty: string; categoryId: string | null; competencyIds: readonly string[]; tags: readonly string[] }): string {
+function contentKey(v: {
+  type: string;
+  config: unknown;
+  prompt: string;
+  explanation: string | null;
+  points: number;
+  difficulty: string;
+  categoryId: string | null;
+  competencyIds: readonly string[];
+  tags: readonly string[];
+}): string {
   return stable({
     type: v.type,
     config: v.config,
@@ -110,7 +134,8 @@ export class QuestionsService {
     if (f.bankId) query = query.where('q.bank_id', '=', f.bankId);
     if (f.type?.length) query = query.where('v.type', 'in', f.type);
     if (f.categoryId) query = query.where('v.category_id', '=', f.categoryId);
-    if (f.competencyId) query = query.where(sql<boolean>`${f.competencyId}::uuid = any(v.competency_ids)`);
+    if (f.competencyId)
+      query = query.where(sql<boolean>`${f.competencyId}::uuid = any(v.competency_ids)`);
     if (f.difficulty?.length) query = query.where('v.difficulty', 'in', f.difficulty);
     if (f.tags?.length) query = query.where(sql<boolean>`v.tags @> ${sql.val(f.tags)}::text[]`);
     if (f.q) {
@@ -152,7 +177,11 @@ export class QuestionsService {
   }
 
   private async questionRow(db: DbOrTrx, organizationId: string, id: string, lock = false) {
-    let query = db.selectFrom('questions').selectAll().where('id', '=', id).where('organization_id', '=', organizationId);
+    let query = db
+      .selectFrom('questions')
+      .selectAll()
+      .where('id', '=', id)
+      .where('organization_id', '=', organizationId);
     if (lock) query = query.forUpdate();
     const row = await query.executeTakeFirst();
     if (!row) throw new NotFoundError('Question');
@@ -160,12 +189,29 @@ export class QuestionsService {
   }
 
   /** Map stored versions to API DTOs (category/competency names, author). */
-  async versionDtos(db: DbOrTrx, rows: readonly QuestionVersionRow[]): Promise<assessment.QuestionVersion[]> {
-    const categoryIds = [...new Set(rows.map((r) => r.category_id).filter((c): c is string => c !== null))];
+  async versionDtos(
+    db: DbOrTrx,
+    rows: readonly QuestionVersionRow[],
+  ): Promise<assessment.QuestionVersion[]> {
+    const categoryIds = [
+      ...new Set(rows.map((r) => r.category_id).filter((c): c is string => c !== null)),
+    ];
     const competencyIds = [...new Set(rows.flatMap((r) => r.competency_ids))];
     const [categories, competencies, people] = await Promise.all([
-      categoryIds.length ? db.selectFrom('question_categories').select(['id', 'name']).where('id', 'in', categoryIds).execute() : [],
-      competencyIds.length ? db.selectFrom('competencies').select(['id', 'name']).where('id', 'in', competencyIds).execute() : [],
+      categoryIds.length
+        ? db
+            .selectFrom('question_categories')
+            .select(['id', 'name'])
+            .where('id', 'in', categoryIds)
+            .execute()
+        : [],
+      competencyIds.length
+        ? db
+            .selectFrom('competencies')
+            .select(['id', 'name'])
+            .where('id', 'in', competencyIds)
+            .execute()
+        : [],
       this.people.refs(rows.map((r) => r.created_by)),
     ]);
     const categoryName = new Map(categories.map((c) => [c.id, c.name]));
@@ -182,9 +228,13 @@ export class QuestionsService {
           explanation: r.explanation,
           points: r.points,
           difficulty: r.difficulty,
-          category: r.category_id ? { id: r.category_id, name: categoryName.get(r.category_id) ?? 'Removed category' } : null,
+          category: r.category_id
+            ? { id: r.category_id, name: categoryName.get(r.category_id) ?? 'Removed category' }
+            : null,
           // Competencies deleted later are dropped from the view; the version keeps their ids.
-          competencies: r.competency_ids.filter((id) => competencyName.has(id)).map((id) => ({ id, name: competencyName.get(id)! })),
+          competencies: r.competency_ids
+            .filter((id) => competencyName.has(id))
+            .map((id) => ({ id, name: competencyName.get(id)! })),
           tags: r.tags,
           changeNote: r.change_note,
           createdAt: r.created_at.toISOString(),
@@ -196,9 +246,21 @@ export class QuestionsService {
   async get(p: Principal, id: string): Promise<assessment.QuestionDetail> {
     const q = await this.questionRow(this.db, p.organizationId, id);
     const [bank, current, versionCount, usage, attempts] = await Promise.all([
-      this.db.selectFrom('question_banks').select(['id', 'title']).where('id', '=', q.bank_id).executeTakeFirstOrThrow(),
-      this.db.selectFrom('question_versions').selectAll().where('id', '=', q.current_version_id).executeTakeFirstOrThrow(),
-      this.db.selectFrom('question_versions').select((eb) => eb.fn.countAll<number>().as('n')).where('question_id', '=', id).executeTakeFirstOrThrow(),
+      this.db
+        .selectFrom('question_banks')
+        .select(['id', 'title'])
+        .where('id', '=', q.bank_id)
+        .executeTakeFirstOrThrow(),
+      this.db
+        .selectFrom('question_versions')
+        .selectAll()
+        .where('id', '=', q.current_version_id)
+        .executeTakeFirstOrThrow(),
+      this.db
+        .selectFrom('question_versions')
+        .select((eb) => eb.fn.countAll<number>().as('n'))
+        .where('question_id', '=', id)
+        .executeTakeFirstOrThrow(),
       this.db
         .selectFrom('assessment_items as i')
         .innerJoin('assessments as a', 'a.id', 'i.assessment_id')
@@ -206,7 +268,11 @@ export class QuestionsService {
         .where('i.question_id', '=', id)
         .orderBy('a.title')
         .execute(),
-      this.db.selectFrom('attempt_questions').select((eb) => eb.fn.countAll<number>().as('n')).where('question_id', '=', id).executeTakeFirstOrThrow(),
+      this.db
+        .selectFrom('attempt_questions')
+        .select((eb) => eb.fn.countAll<number>().as('n'))
+        .where('question_id', '=', id)
+        .executeTakeFirstOrThrow(),
     ]);
     const [currentVersion] = await this.versionDtos(this.db, [current]);
     return {
@@ -216,7 +282,12 @@ export class QuestionsService {
       archivedAt: q.archived_at?.toISOString() ?? null,
       versionCount: Number(versionCount.n),
       currentVersion: currentVersion!,
-      usage: usage.map((u) => ({ assessmentId: u.id, title: u.title, status: u.status, kind: u.kind })),
+      usage: usage.map((u) => ({
+        assessmentId: u.id,
+        title: u.title,
+        status: u.status,
+        kind: u.kind,
+      })),
       attemptCount: Number(attempts.n),
       createdAt: q.created_at.toISOString(),
       updatedAt: q.updated_at.toISOString(),
@@ -225,11 +296,20 @@ export class QuestionsService {
 
   async versions(p: Principal, id: string): Promise<assessment.QuestionVersion[]> {
     await this.questionRow(this.db, p.organizationId, id);
-    const rows = await this.db.selectFrom('question_versions').selectAll().where('question_id', '=', id).orderBy('version', 'desc').execute();
+    const rows = await this.db
+      .selectFrom('question_versions')
+      .selectAll()
+      .where('question_id', '=', id)
+      .orderBy('version', 'desc')
+      .execute();
     return this.versionDtos(this.db, rows);
   }
 
-  private async versionFor(organizationId: string, questionId: string, versionId?: string): Promise<QuestionVersionRow> {
+  private async versionFor(
+    organizationId: string,
+    questionId: string,
+    versionId?: string,
+  ): Promise<QuestionVersionRow> {
     const q = await this.questionRow(this.db, organizationId, questionId);
     const version = await this.db
       .selectFrom('question_versions')
@@ -263,7 +343,11 @@ export class QuestionsService {
   }
 
   /** Grade a sample response against a version (editor "try it"). Nothing is stored. */
-  async check(p: Principal, id: string, input: { response: assessment.AnswerResponse; versionId?: string }) {
+  async check(
+    p: Principal,
+    id: string,
+    input: { response: assessment.AnswerResponse; versionId?: string },
+  ) {
     const v = await this.versionFor(p.organizationId, id, input.versionId);
     const def = toDefinition(v);
     const grade = gradeResponse(def, input.response, v.points);
@@ -291,17 +375,40 @@ export class QuestionsService {
   private async assertReferences(trx: Trx, bankId: string, data: VersionData): Promise<void> {
     const fields: Array<{ path: string; message: string }> = [];
     if (data.categoryId) {
-      const category = await trx.selectFrom('question_categories').select('id').where('id', '=', data.categoryId).where('bank_id', '=', bankId).executeTakeFirst();
-      if (!category) fields.push({ path: 'categoryId', message: 'Choose a category from this question bank' });
+      const category = await trx
+        .selectFrom('question_categories')
+        .select('id')
+        .where('id', '=', data.categoryId)
+        .where('bank_id', '=', bankId)
+        .executeTakeFirst();
+      if (!category)
+        fields.push({ path: 'categoryId', message: 'Choose a category from this question bank' });
     }
     if (data.competencyIds.length) {
-      const found = await trx.selectFrom('competencies').select('id').where('id', 'in', data.competencyIds).where('bank_id', '=', bankId).execute();
-      if (found.length !== data.competencyIds.length) fields.push({ path: 'competencyIds', message: 'Choose competencies from this question bank' });
+      const found = await trx
+        .selectFrom('competencies')
+        .select('id')
+        .where('id', 'in', data.competencyIds)
+        .where('bank_id', '=', bankId)
+        .execute();
+      if (found.length !== data.competencyIds.length)
+        fields.push({
+          path: 'competencyIds',
+          message: 'Choose competencies from this question bank',
+        });
     }
     if (fields.length) throw new ValidationError(fields);
   }
 
-  private versionValues(id: string, questionId: string, organizationId: string, version: number, data: VersionData, actorId: string, changeNote: string | null) {
+  private versionValues(
+    id: string,
+    questionId: string,
+    organizationId: string,
+    version: number,
+    data: VersionData,
+    actorId: string,
+    changeNote: string | null,
+  ) {
     return {
       id,
       question_id: questionId,
@@ -326,9 +433,21 @@ export class QuestionsService {
     const id = uuidv7();
     const versionId = uuidv7();
     await this.db.transaction().execute(async (trx) => {
-      const bank = await trx.selectFrom('question_banks').selectAll().where('id', '=', bankId).where('organization_id', '=', p.organizationId).executeTakeFirst();
-      if (!bank) throw new ValidationError([{ path: 'bankId', message: 'Choose an existing question bank' }]);
-      if (bank.archived_at) throw new PreconditionError('BANK_ARCHIVED', 'This question bank is archived. Restore it before adding questions.');
+      const bank = await trx
+        .selectFrom('question_banks')
+        .selectAll()
+        .where('id', '=', bankId)
+        .where('organization_id', '=', p.organizationId)
+        .executeTakeFirst();
+      if (!bank)
+        throw new ValidationError([
+          { path: 'bankId', message: 'Choose an existing question bank' },
+        ]);
+      if (bank.archived_at)
+        throw new PreconditionError(
+          'BANK_ARCHIVED',
+          'This question bank is archived. Restore it before adding questions.',
+        );
       await this.assertReferences(trx, bankId, data as VersionData);
       await trx
         .insertInto('questions')
@@ -343,13 +462,34 @@ export class QuestionsService {
           updated_by: p.userId,
         })
         .execute();
-      await trx.insertInto('question_versions').values(this.versionValues(versionId, id, p.organizationId, 1, data as VersionData, p.userId, null)).execute();
+      await trx
+        .insertInto('question_versions')
+        .values(
+          this.versionValues(
+            versionId,
+            id,
+            p.organizationId,
+            1,
+            data as VersionData,
+            p.userId,
+            null,
+          ),
+        )
+        .execute();
       await this.events.audit(trx, {
         action: 'question.created',
         resourceType: 'question',
         resourceId: id,
         actorDisplay: p.displayName,
-        after: { bankId, version: 1, versionId, type: data.type, prompt: data.prompt, difficulty: data.difficulty, points: data.points },
+        after: {
+          bankId,
+          version: 1,
+          versionId,
+          type: data.type,
+          prompt: data.prompt,
+          difficulty: data.difficulty,
+          points: data.points,
+        },
       });
     });
     return this.get(p, id);
@@ -360,8 +500,16 @@ export class QuestionsService {
     const { changeNote, expectedVersion, ...data } = input;
     await this.db.transaction().execute(async (trx) => {
       const q = await this.questionRow(trx, p.organizationId, id, true);
-      if (q.status === 'archived') throw new ConflictError('QUESTION_ARCHIVED', 'This question is archived. Restore it before editing.');
-      const current = await trx.selectFrom('question_versions').selectAll().where('id', '=', q.current_version_id).executeTakeFirstOrThrow();
+      if (q.status === 'archived')
+        throw new ConflictError(
+          'QUESTION_ARCHIVED',
+          'This question is archived. Restore it before editing.',
+        );
+      const current = await trx
+        .selectFrom('question_versions')
+        .selectAll()
+        .where('id', '=', q.current_version_id)
+        .executeTakeFirstOrThrow();
       if (expectedVersion !== undefined && expectedVersion !== current.version) {
         throw new ConflictError(
           'QUESTION_CHANGED',
@@ -388,23 +536,53 @@ export class QuestionsService {
       const versionId = uuidv7();
       await trx
         .insertInto('question_versions')
-        .values(this.versionValues(versionId, id, p.organizationId, current.version + 1, next, p.userId, changeNote ?? null))
+        .values(
+          this.versionValues(
+            versionId,
+            id,
+            p.organizationId,
+            current.version + 1,
+            next,
+            p.userId,
+            changeNote ?? null,
+          ),
+        )
         .execute();
-      await trx.updateTable('questions').set({ current_version_id: versionId, updated_by: p.userId }).where('id', '=', id).execute();
+      await trx
+        .updateTable('questions')
+        .set({ current_version_id: versionId, updated_by: p.userId })
+        .where('id', '=', id)
+        .execute();
       await this.events.audit(trx, {
         action: 'question.version_created',
         resourceType: 'question',
         resourceId: id,
         actorDisplay: p.displayName,
-        before: { version: current.version, versionId: current.id, type: current.type, prompt: current.prompt, points: current.points },
-        after: { version: current.version + 1, versionId, type: next.type, prompt: next.prompt, points: next.points },
+        before: {
+          version: current.version,
+          versionId: current.id,
+          type: current.type,
+          prompt: current.prompt,
+          points: current.points,
+        },
+        after: {
+          version: current.version + 1,
+          versionId,
+          type: next.type,
+          prompt: next.prompt,
+          points: next.points,
+        },
         reason: changeNote ?? null,
       });
     });
     return this.get(p, id);
   }
 
-  async setArchived(p: Principal, id: string, archived: boolean): Promise<assessment.QuestionDetail> {
+  async setArchived(
+    p: Principal,
+    id: string,
+    archived: boolean,
+  ): Promise<assessment.QuestionDetail> {
     await this.db.transaction().execute(async (trx) => {
       const q = await this.questionRow(trx, p.organizationId, id, true);
       if ((q.status === 'archived') === archived) return;
@@ -424,12 +602,24 @@ export class QuestionsService {
           );
         }
       } else {
-        const bank = await trx.selectFrom('question_banks').select('archived_at').where('id', '=', q.bank_id).executeTakeFirstOrThrow();
-        if (bank.archived_at) throw new PreconditionError('BANK_ARCHIVED', 'This question belongs to an archived bank. Restore the bank first.');
+        const bank = await trx
+          .selectFrom('question_banks')
+          .select('archived_at')
+          .where('id', '=', q.bank_id)
+          .executeTakeFirstOrThrow();
+        if (bank.archived_at)
+          throw new PreconditionError(
+            'BANK_ARCHIVED',
+            'This question belongs to an archived bank. Restore the bank first.',
+          );
       }
       await trx
         .updateTable('questions')
-        .set({ status: archived ? 'archived' : 'active', archived_at: archived ? new Date() : null, updated_by: p.userId })
+        .set({
+          status: archived ? 'archived' : 'active',
+          archived_at: archived ? new Date() : null,
+          updated_by: p.userId,
+        })
         .where('id', '=', id)
         .execute();
       if (archived) await this.assertPublishedPoolsStillSatisfied(trx, p.organizationId, q.bank_id);
@@ -446,17 +636,33 @@ export class QuestionsService {
   }
 
   /** Published assessments must stay startable: their pools still need enough active questions. */
-  private async assertPublishedPoolsStillSatisfied(trx: Trx, organizationId: string, bankId: string): Promise<void> {
+  private async assertPublishedPoolsStillSatisfied(
+    trx: Trx,
+    organizationId: string,
+    bankId: string,
+  ): Promise<void> {
     const affected = await trx
       .selectFrom('assessments as a')
       .select(['a.id', 'a.title'])
       .where('a.organization_id', '=', organizationId)
       .where('a.status', '=', 'published')
-      .where((eb) => eb.exists(eb.selectFrom('assessment_items as i').select('i.id').whereRef('i.assessment_id', '=', 'a.id').where('i.pool_bank_id', '=', bankId)))
+      .where((eb) =>
+        eb.exists(
+          eb
+            .selectFrom('assessment_items as i')
+            .select('i.id')
+            .whereRef('i.assessment_id', '=', 'a.id')
+            .where('i.pool_bank_id', '=', bankId),
+        ),
+      )
       .execute();
     const broken: string[] = [];
     for (const a of affected) {
-      const items = await trx.selectFrom('assessment_items').selectAll().where('assessment_id', '=', a.id).execute();
+      const items = await trx
+        .selectFrom('assessment_items')
+        .selectAll()
+        .where('assessment_id', '=', a.id)
+        .execute();
       const plan = await planItems(trx, organizationId, items);
       if (plan.issues.length) broken.push(a.title);
     }

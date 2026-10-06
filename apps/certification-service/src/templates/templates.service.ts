@@ -2,7 +2,14 @@ import { Injectable } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import { certification } from '@a5/contracts';
 import { isUniqueViolation, likePattern, paginate, type Page } from '@a5/database';
-import { ConflictError, EventBus, ForbiddenError, InjectDb, NotFoundError, PreconditionError } from '@a5/nest-kit';
+import {
+  ConflictError,
+  EventBus,
+  ForbiddenError,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+} from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import type { Db, DbOrTrx, Trx } from '../database/index.js';
 import { assertDesignAssets } from '../common/artwork-repo.js';
@@ -23,7 +30,10 @@ interface ListFilters {
 }
 
 /** Custom placeholders a design uses that a certification does not define. */
-export function missingCustomVariables(design: TemplateDesign, customVariables: ReadonlyArray<{ key: string }>): string[] {
+export function missingCustomVariables(
+  design: TemplateDesign,
+  customVariables: ReadonlyArray<{ key: string }>,
+): string[] {
   const defined = new Set(customVariables.map((v) => v.key));
   return certification.customPlaceholdersOf(design).filter((k) => !defined.has(k));
 }
@@ -36,19 +46,40 @@ export class TemplatesService {
   ) {}
 
   starters() {
-    return (Object.keys(STARTER_DESIGNS) as Array<keyof typeof STARTER_DESIGNS>).map((key) => ({ key, ...STARTER_DESIGNS[key] }));
+    return (Object.keys(STARTER_DESIGNS) as Array<keyof typeof STARTER_DESIGNS>).map((key) => ({
+      key,
+      ...STARTER_DESIGNS[key],
+    }));
   }
 
   async list(p: Principal, f: ListFilters): Promise<Page<TemplateSummary>> {
     let q = this.db
       .selectFrom('certificate_templates as t')
-      .innerJoin('certificate_template_versions as v', (j) => j.onRef('v.template_id', '=', 't.id').onRef('v.version', '=', 't.current_version'))
-      .select(['t.id', 't.name', 't.description', 't.status', 't.is_default', 't.current_version', 't.cloned_from_id', 't.updated_at', 'v.design'])
+      .innerJoin('certificate_template_versions as v', (j) =>
+        j.onRef('v.template_id', '=', 't.id').onRef('v.version', '=', 't.current_version'),
+      )
+      .select([
+        't.id',
+        't.name',
+        't.description',
+        't.status',
+        't.is_default',
+        't.current_version',
+        't.cloned_from_id',
+        't.updated_at',
+        'v.design',
+      ])
       .where('t.organization_id', '=', p.organizationId)
       .where('t.status', 'in', f.status?.length ? f.status : ['active']);
     if (f.q) q = q.where('t.name', 'ilike', likePattern(f.q));
-    const page = await paginate(q.orderBy('t.is_default', 'desc').orderBy('t.name').orderBy('t.id'), f);
-    const usage = await this.usage(this.db, page.items.map((t) => t.id));
+    const page = await paginate(
+      q.orderBy('t.is_default', 'desc').orderBy('t.name').orderBy('t.id'),
+      f,
+    );
+    const usage = await this.usage(
+      this.db,
+      page.items.map((t) => t.id),
+    );
     return {
       ...page,
       items: page.items.map((t) => ({
@@ -85,7 +116,11 @@ export class TemplatesService {
   }
 
   private async load(db: DbOrTrx, p: Principal, id: string, forUpdate = false) {
-    let q = db.selectFrom('certificate_templates').selectAll().where('id', '=', id).where('organization_id', '=', p.organizationId);
+    let q = db
+      .selectFrom('certificate_templates')
+      .selectAll()
+      .where('id', '=', id)
+      .where('organization_id', '=', p.organizationId);
     if (forUpdate) q = q.forUpdate();
     const row = await q.executeTakeFirst();
     if (!row) throw new NotFoundError('Certificate template');
@@ -96,7 +131,15 @@ export class TemplatesService {
     return db
       .selectFrom('certificate_template_versions as v')
       .innerJoin('certificate_templates as t', 't.id', 'v.template_id')
-      .select(['v.id', 'v.version', 'v.design', 'v.change_note', 'v.created_at', 'v.created_by', 'v.created_by_name'])
+      .select([
+        'v.id',
+        'v.version',
+        'v.design',
+        'v.change_note',
+        'v.created_at',
+        'v.created_by',
+        'v.created_by_name',
+      ])
       .whereRef('v.version', '=', 't.current_version')
       .where('v.template_id', '=', templateId)
       .executeTakeFirstOrThrow();
@@ -167,7 +210,13 @@ export class TemplatesService {
   private async insertTemplate(
     trx: Trx,
     p: Principal,
-    input: { name: string; description: string | null; design: TemplateDesign; clonedFromId: string | null; changeNote: string | null },
+    input: {
+      name: string;
+      description: string | null;
+      design: TemplateDesign;
+      clonedFromId: string | null;
+      changeNote: string | null;
+    },
   ): Promise<string> {
     const id = uuidv7();
     const existing = await trx
@@ -212,7 +261,12 @@ export class TemplatesService {
 
   async create(
     p: Principal,
-    input: { name: string; description?: string | null; starter?: 'classic' | 'modern'; design?: TemplateDesign },
+    input: {
+      name: string;
+      description?: string | null;
+      starter?: 'classic' | 'modern';
+      design?: TemplateDesign;
+    },
   ): Promise<TemplateDetail> {
     const design = input.design ?? STARTER_DESIGNS[input.starter ?? 'classic'].design;
     await assertDesignAssets(this.db, p.organizationId, design);
@@ -223,7 +277,10 @@ export class TemplatesService {
           description: input.description ?? null,
           design,
           clonedFromId: null,
-          changeNote: input.starter || !input.design ? `Created from the ${STARTER_DESIGNS[input.starter ?? 'classic'].name} starter design` : null,
+          changeNote:
+            input.starter || !input.design
+              ? `Created from the ${STARTER_DESIGNS[input.starter ?? 'classic'].name} starter design`
+              : null,
         });
         await this.events.audit(trx, {
           action: 'certificate_template.created',
@@ -264,11 +321,20 @@ export class TemplatesService {
   }
 
   /** Every design change creates a new immutable version; issued certificates keep theirs. */
-  async updateDesign(p: Principal, id: string, design: TemplateDesign, changeNote: string | null): Promise<TemplateDetail> {
+  async updateDesign(
+    p: Principal,
+    id: string,
+    design: TemplateDesign,
+    changeNote: string | null,
+  ): Promise<TemplateDetail> {
     await assertDesignAssets(this.db, p.organizationId, design);
     await this.db.transaction().execute(async (trx) => {
       const t = await this.load(trx, p, id, true);
-      if (t.status === 'archived') throw new PreconditionError('TEMPLATE_ARCHIVED', 'Archived templates cannot be edited. Clone it to start a new design.');
+      if (t.status === 'archived')
+        throw new PreconditionError(
+          'TEMPLATE_ARCHIVED',
+          'Archived templates cannot be edited. Clone it to start a new design.',
+        );
       const current = await this.currentVersion(trx, id);
       if (canonicalJson(current.design) === canonicalJson(design)) return;
       const definitions = await trx
@@ -291,7 +357,15 @@ export class TemplatesService {
       const version = t.current_version + 1;
       await trx
         .insertInto('certificate_template_versions')
-        .values({ id: uuidv7(), template_id: id, version, design, change_note: changeNote, created_by: p.userId, created_by_name: p.displayName })
+        .values({
+          id: uuidv7(),
+          template_id: id,
+          version,
+          design,
+          change_note: changeNote,
+          created_by: p.userId,
+          created_by_name: p.displayName,
+        })
         .execute();
       await trx
         .updateTable('certificate_templates')
@@ -310,7 +384,11 @@ export class TemplatesService {
     return this.get(p, id);
   }
 
-  async update(p: Principal, id: string, input: { name?: string; description?: string | null }): Promise<TemplateDetail> {
+  async update(
+    p: Principal,
+    id: string,
+    input: { name?: string; description?: string | null },
+  ): Promise<TemplateDetail> {
     await this.withNameGuard(() =>
       this.db.transaction().execute(async (trx) => {
         const t = await this.load(trx, p, id, true);
@@ -341,7 +419,11 @@ export class TemplatesService {
     await this.db.transaction().execute(async (trx) => {
       const t = await this.load(trx, p, id, true);
       if (t.status === 'archived') return;
-      if (t.is_default) throw new PreconditionError('TEMPLATE_IS_DEFAULT', 'Choose another default template before archiving this one.');
+      if (t.is_default)
+        throw new PreconditionError(
+          'TEMPLATE_IS_DEFAULT',
+          'Choose another default template before archiving this one.',
+        );
       const used = (await this.usage(trx, [id])).get(id) ?? [];
       if (used.length) {
         throw new PreconditionError(
@@ -351,10 +433,20 @@ export class TemplatesService {
       }
       await trx
         .updateTable('certificate_templates')
-        .set({ status: 'archived', archived_at: new Date(), updated_by: p.userId, updated_by_name: p.displayName })
+        .set({
+          status: 'archived',
+          archived_at: new Date(),
+          updated_by: p.userId,
+          updated_by_name: p.displayName,
+        })
         .where('id', '=', id)
         .execute();
-      await this.events.audit(trx, { action: 'certificate_template.archived', resourceType: 'certificate_template', resourceId: id, actorDisplay: p.displayName });
+      await this.events.audit(trx, {
+        action: 'certificate_template.archived',
+        resourceType: 'certificate_template',
+        resourceId: id,
+        actorDisplay: p.displayName,
+      });
     });
     return this.get(p, id);
   }
@@ -362,7 +454,11 @@ export class TemplatesService {
   async setDefault(p: Principal, id: string): Promise<TemplateDetail> {
     await this.db.transaction().execute(async (trx) => {
       const t = await this.load(trx, p, id, true);
-      if (t.status !== 'active') throw new PreconditionError('TEMPLATE_ARCHIVED', 'Only active templates can be the default.');
+      if (t.status !== 'active')
+        throw new PreconditionError(
+          'TEMPLATE_ARCHIVED',
+          'Only active templates can be the default.',
+        );
       if (t.is_default) return;
       await trx
         .updateTable('certificate_templates')
@@ -370,18 +466,31 @@ export class TemplatesService {
         .where('organization_id', '=', p.organizationId)
         .where('is_default', '=', true)
         .execute();
-      await trx.updateTable('certificate_templates').set({ is_default: true, updated_by: p.userId, updated_by_name: p.displayName }).where('id', '=', id).execute();
-      await this.events.audit(trx, { action: 'certificate_template.default_set', resourceType: 'certificate_template', resourceId: id, actorDisplay: p.displayName });
+      await trx
+        .updateTable('certificate_templates')
+        .set({ is_default: true, updated_by: p.userId, updated_by_name: p.displayName })
+        .where('id', '=', id)
+        .execute();
+      await this.events.audit(trx, {
+        action: 'certificate_template.default_set',
+        resourceType: 'certificate_template',
+        resourceId: id,
+        actorDisplay: p.displayName,
+      });
     });
     return this.get(p, id);
   }
 
   /** Assign this template to certifications (requires certifications.update as well). */
   async assign(p: Principal, id: string, certificationIds: string[]): Promise<TemplateDetail> {
-    if (!p.can('certifications.update')) throw new ForbiddenError('Assigning templates also requires permission to update certifications.');
+    if (!p.can('certifications.update'))
+      throw new ForbiddenError(
+        'Assigning templates also requires permission to update certifications.',
+      );
     await this.db.transaction().execute(async (trx) => {
       const t = await this.load(trx, p, id, true);
-      if (t.status !== 'active') throw new PreconditionError('TEMPLATE_ARCHIVED', 'Archived templates cannot be assigned.');
+      if (t.status !== 'active')
+        throw new PreconditionError('TEMPLATE_ARCHIVED', 'Archived templates cannot be assigned.');
       const version = await this.currentVersion(trx, id);
       const definitions = await trx
         .selectFrom('certification_definitions')
@@ -390,9 +499,11 @@ export class TemplatesService {
         .where('id', 'in', certificationIds)
         .forUpdate()
         .execute();
-      if (definitions.length !== new Set(certificationIds).size) throw new NotFoundError('Certification');
+      if (definitions.length !== new Set(certificationIds).size)
+        throw new NotFoundError('Certification');
       for (const d of definitions) {
-        if (d.status === 'archived') throw new PreconditionError('CERTIFICATION_ARCHIVED', `"${d.name}" is archived.`);
+        if (d.status === 'archived')
+          throw new PreconditionError('CERTIFICATION_ARCHIVED', `"${d.name}" is archived.`);
         const missing = missingCustomVariables(version.design, d.custom_variables);
         if (missing.length) {
           throw new PreconditionError(
@@ -405,7 +516,12 @@ export class TemplatesService {
       }
       await trx
         .updateTable('certification_definitions')
-        .set((eb) => ({ template_id: id, revision: eb('revision', '+', 1), updated_by: p.userId, updated_by_name: p.displayName }))
+        .set((eb) => ({
+          template_id: id,
+          revision: eb('revision', '+', 1),
+          updated_by: p.userId,
+          updated_by_name: p.displayName,
+        }))
         .where('id', 'in', certificationIds)
         .execute();
       for (const d of definitions) {
@@ -423,10 +539,18 @@ export class TemplatesService {
   }
 
   /** An active certification must stay issuable with the design (signatories, signatures, stamp). */
-  private async assertIssuable(db: DbOrTrx, def: { id: string; name: string; stamp_id: string | null }, design: TemplateDesign): Promise<void> {
+  private async assertIssuable(
+    db: DbOrTrx,
+    def: { id: string; name: string; stamp_id: string | null },
+    design: TemplateDesign,
+  ): Promise<void> {
     const problems = await artworkProblems(db, def, design);
     if (problems.length) {
-      throw new PreconditionError('TEMPLATE_BREAKS_CERTIFICATION', `${problems[0]} Fix this on the certification first, then use the design.`, { problems });
+      throw new PreconditionError(
+        'TEMPLATE_BREAKS_CERTIFICATION',
+        `${problems[0]} Fix this on the certification first, then use the design.`,
+        { problems },
+      );
     }
   }
 
@@ -435,7 +559,10 @@ export class TemplatesService {
       return await fn();
     } catch (err) {
       if (isUniqueViolation(err, 'certificate_templates_org_name_uq')) {
-        throw new ConflictError('TEMPLATE_NAME_TAKEN', 'Another active template already uses this name. Choose a different name.');
+        throw new ConflictError(
+          'TEMPLATE_NAME_TAKEN',
+          'Another active template already uses this name. Choose a different name.',
+        );
       }
       throw err;
     }

@@ -4,7 +4,14 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { audit } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { LogsService } from './logs.service.js';
 
 const resourceTypeParam = z.string().trim().min(1).max(100);
@@ -19,7 +26,10 @@ export class LogsController {
   /** Filtered entries, newest first, with keyset pagination (`nextCursor`). */
   @Get('logs')
   @ZResponse(audit.auditLogPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(audit.listAuditLogsQuerySchema) q: audit.ListAuditLogsQuery) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(audit.listAuditLogsQuerySchema) q: audit.ListAuditLogsQuery,
+  ) {
     return this.logs.list(p, q);
   }
 
@@ -44,14 +54,21 @@ export class LogsController {
   /** Distinct actions, resource types and services (with counts) for building filters. */
   @Get('facets')
   @ZResponse(audit.auditFacetsSchema)
-  facets(@CurrentPrincipal() p: Principal, @ZQuery(audit.auditFacetsQuerySchema) q: audit.AuditFacetsQuery) {
+  facets(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(audit.auditFacetsQuerySchema) q: audit.AuditFacetsQuery,
+  ) {
     return this.logs.facets(p, q);
   }
 
   /** Stream the filtered entries as CSV (bounded; the export is itself recorded). */
   @Get('export')
   @ApiProduces('text/csv')
-  async export(@CurrentPrincipal() p: Principal, @ZQuery(audit.auditFilterSchema) q: audit.AuditFilter, @Res() res: Response): Promise<void> {
+  async export(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(audit.auditFilterSchema) q: audit.AuditFilter,
+    @Res() res: Response,
+  ): Promise<void> {
     await this.logs.exportCsv(p, q, res);
   }
 }

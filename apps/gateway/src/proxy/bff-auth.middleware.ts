@@ -22,11 +22,19 @@ export class BffAuthMiddleware implements NestMiddleware {
     try {
       const principal = await this.authenticator.authenticate(req.header('authorization'));
       patchContext({ userId: principal.userId, organizationId: principal.organizationId });
-      req.headers[PRINCIPAL_HEADER] = await signPrincipalToken(principal, this.config.internalAuthSecret, 60);
+      req.headers[PRINCIPAL_HEADER] = await signPrincipalToken(
+        principal,
+        this.config.internalAuthSecret,
+        60,
+      );
       next();
     } catch (err) {
       if (err instanceof AppError) {
-        res.status(err.status).json({ error: { code: err.code, message: err.message, requestId: getContext()?.requestId } });
+        res
+          .status(err.status)
+          .json({
+            error: { code: err.code, message: err.message, requestId: getContext()?.requestId },
+          });
         return;
       }
       next(err);

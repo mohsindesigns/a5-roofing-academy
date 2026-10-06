@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { checklist, describeRule, evaluateRule, ruleSchema, unmetLeaves, type Rule } from './index.js';
+import {
+  checklist,
+  describeRule,
+  evaluateRule,
+  ruleSchema,
+  unmetLeaves,
+  type Rule,
+} from './index.js';
 
 const W1 = '0190a3b2-0000-7000-8000-000000000001';
 const QUIZ = '0190a3b2-0000-7000-8000-000000000002';
@@ -65,16 +72,24 @@ describe('evaluateRule', () => {
   it('averages AI scores over the most recent N sessions', () => {
     const sessions = [90, 90, 50, 50].map((score) => ({ scenarioId: SCEN, score }));
     expect(
-      evaluateRule({ type: 'ai_average_score', minScore: 80, lastN: 2 }, { aiSessions: () => sessions })
-        .satisfied,
+      evaluateRule(
+        { type: 'ai_average_score', minScore: 80, lastN: 2 },
+        { aiSessions: () => sessions },
+      ).satisfied,
     ).toBe(true);
     expect(
-      evaluateRule({ type: 'ai_average_score', minScore: 80 }, { aiSessions: () => sessions }).satisfied,
+      evaluateRule({ type: 'ai_average_score', minScore: 80 }, { aiSessions: () => sessions })
+        .satisfied,
     ).toBe(false);
   });
 
   it('does not satisfy program assessment rules when the program has no assessments', () => {
-    const rule: Rule = { type: 'program_assessments_score', programId: PROGRAM, minPercent: 80, kinds: ['quiz'] };
+    const rule: Rule = {
+      type: 'program_assessments_score',
+      programId: PROGRAM,
+      minPercent: 80,
+      kinds: ['quiz'],
+    };
     expect(evaluateRule(rule, { programAssessments: () => [] }).satisfied).toBe(false);
     expect(
       evaluateRule(rule, {
@@ -102,8 +117,12 @@ describe('evaluateRule', () => {
   it('days since enrollment uses the injected clock', () => {
     const rule: Rule = { type: 'days_since_enrollment', days: 7 };
     const enrolledAt = () => new Date('2026-01-01T00:00:00Z');
-    expect(evaluateRule(rule, { enrolledAt, now: () => new Date('2026-01-05T00:00:00Z') }).satisfied).toBe(false);
-    expect(evaluateRule(rule, { enrolledAt, now: () => new Date('2026-01-08T00:00:00Z') }).satisfied).toBe(true);
+    expect(
+      evaluateRule(rule, { enrolledAt, now: () => new Date('2026-01-05T00:00:00Z') }).satisfied,
+    ).toBe(false);
+    expect(
+      evaluateRule(rule, { enrolledAt, now: () => new Date('2026-01-08T00:00:00Z') }).satisfied,
+    ).toBe(true);
   });
 
   it('builds a checklist from a root all-group', () => {

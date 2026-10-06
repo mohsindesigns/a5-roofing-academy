@@ -6,14 +6,19 @@ import { InjectDb, NotFoundError } from '@a5/nest-kit';
 import type { Db } from '../database/index.js';
 import { round2 } from '../engine/question-types.js';
 
-const num = (v: unknown): number | null => (v === null || v === undefined ? null : round2(Number(v)));
+const num = (v: unknown): number | null =>
+  v === null || v === undefined ? null : round2(Number(v));
 
 /** Assessment analytics computed from attempts (effective scores include overrides). */
 @Injectable()
 export class StatsService {
   constructor(@InjectDb() private readonly db: Db) {}
 
-  async stats(p: Principal, assessmentId: string, hardestLimit = 10): Promise<assessment.AssessmentStats> {
+  async stats(
+    p: Principal,
+    assessmentId: string,
+    hardestLimit = 10,
+  ): Promise<assessment.AssessmentStats> {
     const exists = await this.db
       .selectFrom('assessments')
       .select('id')
@@ -118,7 +123,11 @@ export class StatsService {
       medianScorePercent: num(s.median),
       averageDurationSeconds: s.avg_duration === null ? null : Math.round(Number(s.avg_duration)),
       // Buckets are [from, to); the last one includes 100.
-      scoreDistribution: Array.from({ length: 10 }, (_, i) => ({ from: i * 10, to: (i + 1) * 10, count: byBucket.get(i + 1) ?? 0 })),
+      scoreDistribution: Array.from({ length: 10 }, (_, i) => ({
+        from: i * 10,
+        to: (i + 1) * 10,
+        count: byBucket.get(i + 1) ?? 0,
+      })),
       hardestQuestions: hardest.rows.map((h) => ({
         questionId: h.question_id,
         prompt: h.prompt,

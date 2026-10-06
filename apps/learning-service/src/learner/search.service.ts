@@ -29,7 +29,13 @@ export class SearchService {
         .selectFrom('programs')
         .select(['id', 'title', 'summary', 'status'])
         .where('organization_id', '=', p.organizationId)
-        .where((eb) => eb.or([eb('title', 'ilike', pattern), eb('summary', 'ilike', pattern), eb('category', 'ilike', pattern)]))
+        .where((eb) =>
+          eb.or([
+            eb('title', 'ilike', pattern),
+            eb('summary', 'ilike', pattern),
+            eb('category', 'ilike', pattern),
+          ]),
+        )
         .orderBy(sql`case when status = 'archived' then 1 else 0 end`)
         .orderBy(sql`lower(title)`)
         .limit(limit)
@@ -39,7 +45,15 @@ export class SearchService {
         .innerJoin('programs as pr', 'pr.id', 'l.program_id')
         .innerJoin('program_modules as m', 'm.id', 'l.module_id')
         .innerJoin('program_phases as ph', 'ph.id', 'm.phase_id')
-        .select(['l.id', 'l.title', 'l.type', 'l.status', 'l.program_id', 'pr.title as program_title', 'ph.title as phase_title'])
+        .select([
+          'l.id',
+          'l.title',
+          'l.type',
+          'l.status',
+          'l.program_id',
+          'pr.title as program_title',
+          'ph.title as phase_title',
+        ])
         .where('l.organization_id', '=', p.organizationId)
         .where((eb) => eb.or([eb('l.title', 'ilike', pattern), eb('l.summary', 'ilike', pattern)]))
         .orderBy(sql`case when l.status = 'archived' then 1 else 0 end`)
@@ -63,7 +77,8 @@ export class SearchService {
 
   private async learner(p: Principal, q: string, limit: number): Promise<learning.SearchResult> {
     const needle = q.toLocaleLowerCase('en-US');
-    const matches = (...texts: Array<string | null>) => texts.some((t) => t?.toLocaleLowerCase('en-US').includes(needle));
+    const matches = (...texts: Array<string | null>) =>
+      texts.some((t) => t?.toLocaleLowerCase('en-US').includes(needle));
     const enrolled = await this.db
       .selectFrom('enrollments as e')
       .innerJoin('programs as pr', 'pr.id', 'e.program_id')
@@ -77,7 +92,13 @@ export class SearchService {
     for (const { program_id } of enrolled) {
       const tree = await this.trees.published(program_id);
       if (!tree) continue;
-      if (matches(tree.title, tree.summary)) result.programs.push({ id: tree.programId, title: tree.title, summary: tree.summary, status: 'published' });
+      if (matches(tree.title, tree.summary))
+        result.programs.push({
+          id: tree.programId,
+          title: tree.title,
+          summary: tree.summary,
+          status: 'published',
+        });
       for (const { lesson, phase } of orderedLessons(tree)) {
         if (matches(lesson.title, lesson.summary)) {
           result.lessons.push({

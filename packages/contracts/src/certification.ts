@@ -1,11 +1,22 @@
 // API contracts for the certification domain. Shared by the service and the web app.
 import { z } from 'zod';
 import { ruleSchema, type Rule } from '@a5/rules';
-import { isoDate, isoDateTime, nameString, optionalText, pageQuerySchema, pageSchema, personRefSchema, queryList } from './common.js';
+import {
+  isoDate,
+  isoDateTime,
+  nameString,
+  optionalText,
+  pageQuerySchema,
+  pageSchema,
+  personRefSchema,
+  queryList,
+} from './common.js';
 
 // ------------------------------------------------------------------ primitives
 
-export const hexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a 6-digit hex color such as #1F2937');
+export const hexColorSchema = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, 'Use a 6-digit hex color such as #1F2937');
 
 const percent = z.number().min(0).max(100);
 
@@ -35,7 +46,12 @@ export const BUILT_IN_PLACEHOLDERS = [
 export type BuiltInPlaceholder = (typeof BUILT_IN_PLACEHOLDERS)[number];
 
 /** Placeholders that stand for an image (only valid on qr/signature/stamp elements). */
-export const IMAGE_PLACEHOLDERS = ['qr_code', 'signatory_1_signature', 'signatory_2_signature', 'organization_stamp'] as const;
+export const IMAGE_PLACEHOLDERS = [
+  'qr_code',
+  'signatory_1_signature',
+  'signatory_2_signature',
+  'organization_stamp',
+] as const;
 
 export const PLACEHOLDER_LABELS: Record<BuiltInPlaceholder, string> = {
   certificate_name: 'Certification name',
@@ -76,7 +92,10 @@ export function extractPlaceholders(text: string): string[] {
 }
 
 /** Replace `{{key}}` with values. Unknown keys resolve to an empty string. */
-export function resolvePlaceholders(text: string, values: Readonly<Record<string, string>>): string {
+export function resolvePlaceholders(
+  text: string,
+  values: Readonly<Record<string, string>>,
+): string {
   return text.replace(PLACEHOLDER_RE, (_m, key: string) => values[key] ?? '');
 }
 
@@ -105,11 +124,14 @@ export function numberPatternProblems(pattern: string): string[] {
   let codeCount = 0;
   const literal = pattern.replace(TOKEN_RE, (_m, token: string, width: string | undefined) => {
     if (!(NUMBER_PATTERN_TOKENS as readonly string[]).includes(token)) {
-      problems.push(`Unknown token {${token}}. Use ${NUMBER_PATTERN_TOKENS.map((t) => (t === 'SEQ' ? '{SEQ:n}' : `{${t}}`)).join(', ')}.`);
+      problems.push(
+        `Unknown token {${token}}. Use ${NUMBER_PATTERN_TOKENS.map((t) => (t === 'SEQ' ? '{SEQ:n}' : `{${t}}`)).join(', ')}.`,
+      );
     } else if (token === 'SEQ') {
       seqCount++;
       const n = width === undefined ? NaN : Number(width);
-      if (!Number.isInteger(n) || n < 3 || n > 10) problems.push('{SEQ:n} needs a width between 3 and 10, for example {SEQ:6}.');
+      if (!Number.isInteger(n) || n < 3 || n > 10)
+        problems.push('{SEQ:n} needs a width between 3 and 10, for example {SEQ:6}.');
     } else if (width !== undefined) {
       problems.push(`{${token}} does not take a width.`);
     }
@@ -117,9 +139,13 @@ export function numberPatternProblems(pattern: string): string[] {
     return '';
   });
   if (/[{}]/.test(literal)) problems.push('Braces are only allowed around tokens such as {CODE}.');
-  if (!/^[A-Za-z0-9\-_/.]*$/.test(literal)) problems.push('Only letters, digits and - _ / . are allowed between tokens.');
+  if (!/^[A-Za-z0-9\-_/.]*$/.test(literal))
+    problems.push('Only letters, digits and - _ / . are allowed between tokens.');
   if (seqCount !== 1) problems.push('The pattern must contain exactly one {SEQ:n} token.');
-  if (codeCount !== 1) problems.push('The pattern must contain exactly one {CODE} token so numbers stay unique across certifications.');
+  if (codeCount !== 1)
+    problems.push(
+      'The pattern must contain exactly one {CODE} token so numbers stay unique across certifications.',
+    );
   return problems;
 }
 
@@ -167,14 +193,22 @@ export const fontFamilySchema = z.enum(['serif', 'sans', 'display']);
 export type DesignFontFamily = z.infer<typeof fontFamilySchema>;
 
 /** Page sizes in PDF points (1/72 inch), portrait orientation. */
-export const PAGE_SIZES_PT: Record<z.infer<typeof pageSizeSchema>, { width: number; height: number }> = {
+export const PAGE_SIZES_PT: Record<
+  z.infer<typeof pageSizeSchema>,
+  { width: number; height: number }
+> = {
   LETTER: { width: 612, height: 792 },
   A4: { width: 595.28, height: 841.89 },
 };
 
-export function pageDimensions(page: { size: z.infer<typeof pageSizeSchema>; orientation: z.infer<typeof pageOrientationSchema> }) {
+export function pageDimensions(page: {
+  size: z.infer<typeof pageSizeSchema>;
+  orientation: z.infer<typeof pageOrientationSchema>;
+}) {
   const base = PAGE_SIZES_PT[page.size];
-  return page.orientation === 'landscape' ? { width: base.height, height: base.width } : { width: base.width, height: base.height };
+  return page.orientation === 'landscape'
+    ? { width: base.height, height: base.width }
+    : { width: base.width, height: base.height };
 }
 
 export const designPageSchema = z.object({
@@ -199,12 +233,22 @@ export const designThemeSchema = z.object({
   fontFamily: fontFamilySchema,
 });
 
-export const designElementTypeSchema = z.enum(['text', 'image', 'qr', 'signature', 'stamp', 'line', 'logo']);
+export const designElementTypeSchema = z.enum([
+  'text',
+  'image',
+  'qr',
+  'signature',
+  'stamp',
+  'line',
+  'logo',
+]);
 export type DesignElementType = z.infer<typeof designElementTypeSchema>;
 
 export const designElementSchema = z
   .object({
-    id: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/, 'Use lowercase letters, digits, - or _ (max 40)'),
+    id: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9_-]{0,39}$/, 'Use lowercase letters, digits, - or _ (max 40)'),
     type: designElementTypeSchema,
     /** Text with {{placeholders}}; for qr/signature/stamp elements the image placeholder it shows. */
     content: z.string().max(600).default(''),
@@ -231,25 +275,47 @@ export const designElementSchema = z
     const { min, max } = DESIGN_SAFE_AREA;
     const r = (n: number) => Math.round(n * 1000) / 1000;
     if (el.x < min || el.y < min || r(el.x + el.width) > max || r(el.y + el.height) > max) {
-      ctx.addIssue({ code: 'custom', path: ['x'], message: `Keep the element inside the printable area (${min}%–${max}% of the page).` });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['x'],
+        message: `Keep the element inside the printable area (${min}%–${max}% of the page).`,
+      });
     }
     const placeholders = extractPlaceholders(el.content);
     for (const key of placeholders) {
-      if (!PLACEHOLDER_KEY.test(key)) ctx.addIssue({ code: 'custom', path: ['content'], message: `"{{${key}}}" is not a valid placeholder name.` });
+      if (!PLACEHOLDER_KEY.test(key))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['content'],
+          message: `"{{${key}}}" is not a valid placeholder name.`,
+        });
     }
     const imagePlaceholder = (allowed: readonly string[]) => {
       const value = el.content.trim();
       const key = placeholders[0];
       if (placeholders.length !== 1 || !key || !allowed.includes(key) || value !== `{{${key}}}`) {
-        ctx.addIssue({ code: 'custom', path: ['content'], message: `Set the content to ${allowed.map((a) => `{{${a}}}`).join(' or ')}.` });
+        ctx.addIssue({
+          code: 'custom',
+          path: ['content'],
+          message: `Set the content to ${allowed.map((a) => `{{${a}}}`).join(' or ')}.`,
+        });
       }
     };
     switch (el.type) {
       case 'text':
-        if (!el.content.trim()) ctx.addIssue({ code: 'custom', path: ['content'], message: 'Text elements need content.' });
+        if (!el.content.trim())
+          ctx.addIssue({
+            code: 'custom',
+            path: ['content'],
+            message: 'Text elements need content.',
+          });
         for (const key of placeholders) {
           if ((IMAGE_PLACEHOLDERS as readonly string[]).includes(key)) {
-            ctx.addIssue({ code: 'custom', path: ['content'], message: `{{${key}}} is an image; use a ${key === 'qr_code' ? 'QR' : key.endsWith('signature') ? 'signature' : 'stamp'} element instead.` });
+            ctx.addIssue({
+              code: 'custom',
+              path: ['content'],
+              message: `{{${key}}} is an image; use a ${key === 'qr_code' ? 'QR' : key.endsWith('signature') ? 'signature' : 'stamp'} element instead.`,
+            });
           }
         }
         break;
@@ -264,7 +330,12 @@ export const designElementSchema = z
         break;
       case 'image':
       case 'logo':
-        if (!el.assetId) ctx.addIssue({ code: 'custom', path: ['assetId'], message: 'Upload or choose an image for this element.' });
+        if (!el.assetId)
+          ctx.addIssue({
+            code: 'custom',
+            path: ['assetId'],
+            message: 'Upload or choose an image for this element.',
+          });
         break;
       case 'line':
         break;
@@ -282,7 +353,12 @@ export const templateDesignSchema = z
   .superRefine((design, ctx) => {
     const seen = new Set<string>();
     design.elements.forEach((el, i) => {
-      if (seen.has(el.id)) ctx.addIssue({ code: 'custom', path: ['elements', i, 'id'], message: `Element id "${el.id}" is used twice.` });
+      if (seen.has(el.id))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['elements', i, 'id'],
+          message: `Element id "${el.id}" is used twice.`,
+        });
       seen.add(el.id);
     });
   });
@@ -293,7 +369,8 @@ export type TemplateDesignInput = z.input<typeof templateDesignSchema>;
 export function customPlaceholdersOf(design: Pick<TemplateDesign, 'elements'>): string[] {
   const keys = new Set<string>();
   for (const el of design.elements) {
-    for (const key of extractPlaceholders(el.content)) if (!isBuiltInPlaceholder(key)) keys.add(key);
+    for (const key of extractPlaceholders(el.content))
+      if (!isBuiltInPlaceholder(key)) keys.add(key);
   }
   return [...keys].sort();
 }
@@ -302,7 +379,8 @@ export function customPlaceholdersOf(design: Pick<TemplateDesign, 'elements'>): 
 export function designAssetIds(design: TemplateDesign): string[] {
   const ids = new Set<string>();
   if (design.theme.backgroundImageAssetId) ids.add(design.theme.backgroundImageAssetId);
-  for (const el of design.elements) if (el.assetId && (el.type === 'image' || el.type === 'logo')) ids.add(el.assetId);
+  for (const el of design.elements)
+    if (el.assetId && (el.type === 'image' || el.type === 'logo')) ids.add(el.assetId);
   return [...ids];
 }
 
@@ -349,18 +427,30 @@ export const customVariableSchema = z.object({
 });
 export type CustomVariable = z.infer<typeof customVariableSchema>;
 
-export const signatorySlotSchema = z.object({ slot: z.union([z.literal(1), z.literal(2)]), signatoryId: z.uuid() });
+export const signatorySlotSchema = z.object({
+  slot: z.union([z.literal(1), z.literal(2)]),
+  signatoryId: z.uuid(),
+});
 
 const signatorySlots = z
   .array(signatorySlotSchema)
   .max(2)
-  .refine((slots) => new Set(slots.map((s) => s.slot)).size === slots.length, 'Each signatory slot can be used once')
-  .refine((slots) => new Set(slots.map((s) => s.signatoryId)).size === slots.length, 'Choose two different signatories');
+  .refine(
+    (slots) => new Set(slots.map((s) => s.slot)).size === slots.length,
+    'Each signatory slot can be used once',
+  )
+  .refine(
+    (slots) => new Set(slots.map((s) => s.signatoryId)).size === slots.length,
+    'Choose two different signatories',
+  );
 
 const customVariables = z
   .array(customVariableSchema)
   .max(20)
-  .refine((vars) => new Set(vars.map((v) => v.key)).size === vars.length, 'Custom variable names must be unique');
+  .refine(
+    (vars) => new Set(vars.map((v) => v.key)).size === vars.length,
+    'Custom variable names must be unique',
+  );
 
 export const certificationCodeSchema = z
   .string()
@@ -395,7 +485,11 @@ export const createCertificationRequestSchema = z.object({
   publicDescription: certificationFields.publicDescription,
   programIds: certificationFields.programIds.default([]),
   validity: certificationFields.validity.default({ kind: 'none' }),
-  renewal: renewalPolicySchema.default({ windowDays: 90, reminderOffsets: DEFAULT_REMINDER_OFFSETS, requirements: EMPTY_RULE }),
+  renewal: renewalPolicySchema.default({
+    windowDays: 90,
+    reminderOffsets: DEFAULT_REMINDER_OFFSETS,
+    requirements: EMPTY_RULE,
+  }),
   eligibilityRule: ruleSchema.default(EMPTY_RULE),
   approvalPolicy: approvalPolicySchema.default('none'),
   automaticIssuance: z.boolean().default(true),
@@ -418,7 +512,11 @@ export const requirementDescriptionSchema = z.object({
   description: z.string(),
 });
 
-export const certificationRefSchema = z.object({ id: z.uuid(), name: z.string(), code: z.string() });
+export const certificationRefSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  code: z.string(),
+});
 
 export const certificationSummarySchema = z.object({
   id: z.uuid(),
@@ -433,7 +531,12 @@ export const certificationSummarySchema = z.object({
   programIds: z.array(z.uuid()),
   badge: badgeSchema,
   requirementCount: z.int(),
-  counts: z.object({ active: z.int(), inProgress: z.int(), pendingApproval: z.int(), eligible: z.int() }),
+  counts: z.object({
+    active: z.int(),
+    inProgress: z.int(),
+    pendingApproval: z.int(),
+    eligible: z.int(),
+  }),
   updatedAt: isoDateTime,
 });
 export type CertificationSummary = z.infer<typeof certificationSummarySchema>;
@@ -448,7 +551,15 @@ export const certificationDetailSchema = certificationSummarySchema.extend({
   numberPattern: z.string(),
   numberPreview: z.string(),
   template: z.object({ id: z.uuid(), name: z.string(), currentVersion: z.int() }).nullable(),
-  signatories: z.array(z.object({ slot: z.int(), id: z.uuid(), name: z.string(), title: z.string(), active: z.boolean() })),
+  signatories: z.array(
+    z.object({
+      slot: z.int(),
+      id: z.uuid(),
+      name: z.string(),
+      title: z.string(),
+      active: z.boolean(),
+    }),
+  ),
   stamp: z.object({ id: z.uuid(), name: z.string(), active: z.boolean() }).nullable(),
   customVariables: z.array(customVariableSchema),
   programs: z.array(z.object({ id: z.uuid(), title: z.string().nullable() })),
@@ -467,7 +578,14 @@ export const listCertificationsQuerySchema = pageQuerySchema.extend({
 
 // ------------------------------------------------------------------ eligibility & progress
 
-export const candidateStatusSchema = z.enum(['in_progress', 'eligible', 'pending_approval', 'approved', 'rejected', 'issued']);
+export const candidateStatusSchema = z.enum([
+  'in_progress',
+  'eligible',
+  'pending_approval',
+  'approved',
+  'rejected',
+  'issued',
+]);
 export type CandidateStatus = z.infer<typeof candidateStatusSchema>;
 
 export const requirementProgressSchema = z.object({
@@ -538,8 +656,15 @@ export const approvalSchema = z.object({
   decidedBy: personRefSchema.nullable(),
   comment: z.string().nullable(),
   definition: certificationRefSchema,
-  user: personRefSchema.extend({ employeeId: z.string().nullable(), jobTitle: z.string().nullable() }),
-  progress: z.object({ metCount: z.int(), totalCount: z.int(), requirements: z.array(requirementItemSchema) }),
+  user: personRefSchema.extend({
+    employeeId: z.string().nullable(),
+    jobTitle: z.string().nullable(),
+  }),
+  progress: z.object({
+    metCount: z.int(),
+    totalCount: z.int(),
+    requirements: z.array(requirementItemSchema),
+  }),
   certificateId: z.uuid().nullable(),
 });
 export type Approval = z.infer<typeof approvalSchema>;
@@ -609,20 +734,39 @@ export const certificateDetailSchema = certificateSummarySchema.extend({
   pdfGeneratedAt: isoDateTime.nullable(),
   pdfSha256: z.string().nullable(),
   revocation: z
-    .object({ revokedAt: isoDateTime, reason: z.string(), publicNote: z.string().nullable(), revokedBy: personRefSchema.nullable() })
+    .object({
+      revokedAt: isoDateTime,
+      reason: z.string(),
+      publicNote: z.string().nullable(),
+      revokedBy: personRefSchema.nullable(),
+    })
     .nullable(),
-  replaces: z.object({ id: z.uuid(), certificateNumber: z.string(), reasonCode: reissueReasonSchema, note: z.string() }).nullable(),
+  replaces: z
+    .object({
+      id: z.uuid(),
+      certificateNumber: z.string(),
+      reasonCode: reissueReasonSchema,
+      note: z.string(),
+    })
+    .nullable(),
   replacedBy: z
-    .object({ id: z.uuid(), certificateNumber: z.string(), kind: z.enum(['reissue', 'renewal']), at: isoDateTime })
+    .object({
+      id: z.uuid(),
+      certificateNumber: z.string(),
+      kind: z.enum(['reissue', 'renewal']),
+      at: isoDateTime,
+    })
     .nullable(),
   renewal: certificateRenewalSchema.nullable(),
 });
 export type CertificateDetail = z.infer<typeof certificateDetailSchema>;
 
 /** Owner view: no internal override reasons or revocation notes beyond the public note. */
-export const ownCertificateDetailSchema = certificateDetailSchema.omit({ overrideReason: true, issuedBy: true }).extend({
-  revocation: z.object({ revokedAt: isoDateTime, publicNote: z.string().nullable() }).nullable(),
-});
+export const ownCertificateDetailSchema = certificateDetailSchema
+  .omit({ overrideReason: true, issuedBy: true })
+  .extend({
+    revocation: z.object({ revokedAt: isoDateTime, publicNote: z.string().nullable() }).nullable(),
+  });
 
 export const listCertificatesQuerySchema = pageQuerySchema.extend({
   status: queryList(certificateStatusSchema),
@@ -638,7 +782,15 @@ export const issueCertificateRequestSchema = z.object({
   definitionId: z.uuid(),
   userId: z.uuid(),
   /** Issue although requirements are not met. Requires certifications.update. */
-  override: z.object({ reason: z.string().trim().min(10, 'Explain why the requirements are being overridden').max(1000) }).optional(),
+  override: z
+    .object({
+      reason: z
+        .string()
+        .trim()
+        .min(10, 'Explain why the requirements are being overridden')
+        .max(1000),
+    })
+    .optional(),
 });
 
 export const reissueCertificateRequestSchema = z.object({
@@ -658,7 +810,11 @@ export function revocationPhrase(certificateNumber: string): string {
   return `REVOKE ${certificateNumber}`;
 }
 
-export const downloadLinkSchema = z.object({ url: z.string(), expiresAt: isoDateTime, fileName: z.string() });
+export const downloadLinkSchema = z.object({
+  url: z.string(),
+  expiresAt: isoDateTime,
+  fileName: z.string(),
+});
 
 export const certificateEventSchema = z.object({
   id: z.uuid(),
@@ -678,10 +834,14 @@ export const revocationListItemSchema = z.object({
 
 export const renewalListItemSchema = certificateRenewalSchema.extend({
   certificate: certificateSummarySchema,
-  progress: z.object({ status: candidateStatusSchema, metCount: z.int(), totalCount: z.int() }).nullable(),
+  progress: z
+    .object({ status: candidateStatusSchema, metCount: z.int(), totalCount: z.int() })
+    .nullable(),
 });
 
-export const listRevocationsQuerySchema = pageQuerySchema.extend({ definitionId: z.uuid().optional() });
+export const listRevocationsQuerySchema = pageQuerySchema.extend({
+  definitionId: z.uuid().optional(),
+});
 
 export const listRenewalsQuerySchema = pageQuerySchema.extend({
   status: queryList(z.enum(['open', 'completed', 'lapsed', 'cancelled'])),
@@ -690,7 +850,15 @@ export const listRenewalsQuerySchema = pageQuerySchema.extend({
 
 // ------------------------------------------------------------------ team & dashboard
 
-export const teamFilterSchema = z.enum(['certified', 'not_certified', 'eligible', 'pending_approval', 'expiring', 'expired', 'revoked']);
+export const teamFilterSchema = z.enum([
+  'certified',
+  'not_certified',
+  'eligible',
+  'pending_approval',
+  'expiring',
+  'expired',
+  'revoked',
+]);
 export type TeamFilter = z.infer<typeof teamFilterSchema>;
 export const teamStateSchema = z.enum([
   'certified',
@@ -713,14 +881,23 @@ export const teamStatusQuerySchema = pageQuerySchema.extend({
 });
 
 export const teamStatusRowSchema = z.object({
-  user: personRefSchema.extend({ employeeId: z.string().nullable(), jobTitle: z.string().nullable() }),
+  user: personRefSchema.extend({
+    employeeId: z.string().nullable(),
+    jobTitle: z.string().nullable(),
+  }),
   definition: certificationRefSchema,
   state: teamStateSchema,
   candidateStatus: candidateStatusSchema.nullable(),
   metCount: z.int(),
   totalCount: z.int(),
   certificate: z
-    .object({ id: z.uuid(), certificateNumber: z.string(), status: certificateStatusSchema, issuedAt: isoDateTime, expiresAt: isoDateTime.nullable() })
+    .object({
+      id: z.uuid(),
+      certificateNumber: z.string(),
+      status: certificateStatusSchema,
+      issuedAt: isoDateTime,
+      expiresAt: isoDateTime.nullable(),
+    })
     .nullable(),
 });
 
@@ -754,7 +931,10 @@ export const myCertificationStateSchema = z.enum([
 export const myCertificationsSchema = z.object({
   items: z.array(
     z.object({
-      definition: certificationRefSchema.extend({ publicDescription: z.string().nullable(), badge: badgeSchema }),
+      definition: certificationRefSchema.extend({
+        publicDescription: z.string().nullable(),
+        badge: badgeSchema,
+      }),
       state: myCertificationStateSchema,
       certificate: certificateSummarySchema.nullable(),
       progress: progressSchema.nullable(),
@@ -819,7 +999,9 @@ export const templateVersionSchema = z.object({
   createdAt: isoDateTime,
   createdBy: personRefSchema.nullable(),
 });
-export const templateVersionDetailSchema = templateVersionSchema.extend({ design: templateDesignSchema });
+export const templateVersionDetailSchema = templateVersionSchema.extend({
+  design: templateDesignSchema,
+});
 
 export const templateStarterSchema = z.object({
   key: templateStarterKeySchema,
@@ -828,7 +1010,9 @@ export const templateStarterSchema = z.object({
   design: templateDesignSchema,
 });
 
-export const listTemplatesQuerySchema = pageQuerySchema.extend({ status: queryList(templateStatusSchema) });
+export const listTemplatesQuerySchema = pageQuerySchema.extend({
+  status: queryList(templateStatusSchema),
+});
 
 export const createTemplateRequestSchema = z
   .object({
@@ -837,12 +1021,23 @@ export const createTemplateRequestSchema = z
     starter: templateStarterKeySchema.optional(),
     design: templateDesignSchema.optional(),
   })
-  .refine((v) => !(v.starter && v.design), { path: ['design'], message: 'Choose a starter design or provide a design, not both' });
+  .refine((v) => !(v.starter && v.design), {
+    path: ['design'],
+    message: 'Choose a starter design or provide a design, not both',
+  });
 
-export const updateTemplateRequestSchema = z.object({ name: nameString(120).optional(), description: optionalText(500) });
-export const updateTemplateDesignRequestSchema = z.object({ design: templateDesignSchema, changeNote: optionalText(300) });
+export const updateTemplateRequestSchema = z.object({
+  name: nameString(120).optional(),
+  description: optionalText(500),
+});
+export const updateTemplateDesignRequestSchema = z.object({
+  design: templateDesignSchema,
+  changeNote: optionalText(300),
+});
 export const cloneTemplateRequestSchema = z.object({ name: nameString(120) });
-export const assignTemplateRequestSchema = z.object({ certificationIds: z.array(z.uuid()).min(1).max(50) });
+export const assignTemplateRequestSchema = z.object({
+  certificationIds: z.array(z.uuid()).min(1).max(50),
+});
 
 export const previewTemplateRequestSchema = z.object({
   /** Unsaved design from the designer; defaults to the current version. */
@@ -877,7 +1072,12 @@ export const resolvedElementSchema = z.object({
 export const templatePreviewSchema = z.object({
   pdfUrl: z.string(),
   expiresAt: isoDateTime,
-  page: z.object({ size: pageSizeSchema, orientation: pageOrientationSchema, widthPt: z.number(), heightPt: z.number() }),
+  page: z.object({
+    size: pageSizeSchema,
+    orientation: pageOrientationSchema,
+    widthPt: z.number(),
+    heightPt: z.number(),
+  }),
   theme: designThemeSchema.extend({ backgroundImageUrl: z.string().nullable() }),
   elements: z.array(resolvedElementSchema),
   sampleValues: z.record(z.string(), z.string()),
@@ -990,10 +1190,14 @@ export const updateStampRequestSchema = dateRange({
   allowedCertificationIds: z.array(z.uuid()).max(100).optional(),
 });
 
-export const listSignatoriesQuerySchema = pageQuerySchema.extend({ active: z.enum(['true', 'false']).optional() });
+export const listSignatoriesQuerySchema = pageQuerySchema.extend({
+  active: z.enum(['true', 'false']).optional(),
+});
 
 export const assetPurposeSchema = z.enum(['background', 'logo', 'badge', 'signature', 'stamp']);
-export const uploadImageQuerySchema = z.object({ purpose: z.enum(['background', 'logo', 'badge']) });
+export const uploadImageQuerySchema = z.object({
+  purpose: z.enum(['background', 'logo', 'badge']),
+});
 
 export const assetSchema = z.object({
   id: z.uuid(),
@@ -1009,18 +1213,72 @@ export const assetSchema = z.object({
 
 /** Upload limits per purpose. Uploads are PNG or JPEG only (no SVG). */
 export const IMAGE_UPLOAD_RULES = {
-  signature: { maxBytes: 2 * 1024 * 1024, minWidth: 200, minHeight: 60, maxWidth: 4000, maxHeight: 2000, minAspect: 1.2, maxAspect: 10 },
-  stamp: { maxBytes: 2 * 1024 * 1024, minWidth: 150, minHeight: 150, maxWidth: 3000, maxHeight: 3000, minAspect: 0.5, maxAspect: 2 },
-  background: { maxBytes: 10 * 1024 * 1024, minWidth: 600, minHeight: 600, maxWidth: 4000, maxHeight: 4000, minAspect: 0.4, maxAspect: 2.5 },
-  logo: { maxBytes: 2 * 1024 * 1024, minWidth: 64, minHeight: 64, maxWidth: 4000, maxHeight: 4000, minAspect: 0.2, maxAspect: 8 },
-  badge: { maxBytes: 2 * 1024 * 1024, minWidth: 64, minHeight: 64, maxWidth: 2000, maxHeight: 2000, minAspect: 0.5, maxAspect: 2 },
-} as const satisfies Record<z.infer<typeof assetPurposeSchema>, { maxBytes: number; minWidth: number; minHeight: number; maxWidth: number; maxHeight: number; minAspect: number; maxAspect: number }>;
+  signature: {
+    maxBytes: 2 * 1024 * 1024,
+    minWidth: 200,
+    minHeight: 60,
+    maxWidth: 4000,
+    maxHeight: 2000,
+    minAspect: 1.2,
+    maxAspect: 10,
+  },
+  stamp: {
+    maxBytes: 2 * 1024 * 1024,
+    minWidth: 150,
+    minHeight: 150,
+    maxWidth: 3000,
+    maxHeight: 3000,
+    minAspect: 0.5,
+    maxAspect: 2,
+  },
+  background: {
+    maxBytes: 10 * 1024 * 1024,
+    minWidth: 600,
+    minHeight: 600,
+    maxWidth: 4000,
+    maxHeight: 4000,
+    minAspect: 0.4,
+    maxAspect: 2.5,
+  },
+  logo: {
+    maxBytes: 2 * 1024 * 1024,
+    minWidth: 64,
+    minHeight: 64,
+    maxWidth: 4000,
+    maxHeight: 4000,
+    minAspect: 0.2,
+    maxAspect: 8,
+  },
+  badge: {
+    maxBytes: 2 * 1024 * 1024,
+    minWidth: 64,
+    minHeight: 64,
+    maxWidth: 2000,
+    maxHeight: 2000,
+    minAspect: 0.5,
+    maxAspect: 2,
+  },
+} as const satisfies Record<
+  z.infer<typeof assetPurposeSchema>,
+  {
+    maxBytes: number;
+    minWidth: number;
+    minHeight: number;
+    maxWidth: number;
+    maxHeight: number;
+    minAspect: number;
+    maxAspect: number;
+  }
+>;
 
 // ------------------------------------------------------------------ settings
 
 export const certificationSettingsSchema = z.object({
   /** Value of the {ORG} numbering token. Null derives it from the issuing organization name. */
-  organizationCode: z.string().regex(/^[A-Z0-9]{1,10}$/).nullable(),
+  organizationCode: z
+    .string()
+    .regex(/^[A-Z0-9]{1,10}$/)
+    .nullable(),
   /** Base URL printed on certificates and encoded in QR codes; null uses the web app URL. */
   verificationBaseUrl: z.url().nullable(),
   effectiveVerificationBaseUrl: z.string(),

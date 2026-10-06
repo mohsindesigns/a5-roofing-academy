@@ -32,7 +32,10 @@ export class ProgressStore {
    * Persist one buffered key. The dirty flag is cleared before reading, so a heartbeat arriving
    * during the flush marks it dirty again; on failure the key is put back for the next run.
    */
-  async flushKey(key: string, { alreadyPopped = false }: { alreadyPopped?: boolean } = {}): Promise<PersistedProgress | null> {
+  async flushKey(
+    key: string,
+    { alreadyPopped = false }: { alreadyPopped?: boolean } = {},
+  ): Promise<PersistedProgress | null> {
     if (!alreadyPopped) await this.buffer.removeDirty(key);
     const state = await this.buffer.load(key);
     if (!state) return null;
@@ -41,7 +44,11 @@ export class ProgressStore {
       await this.buffer.markPersisted(key, persisted);
       return persisted;
     } catch (err) {
-      await this.buffer.addDirty(key).catch((e: unknown) => this.logger.error({ err: e, key }, 'could not re-mark watch progress as dirty'));
+      await this.buffer
+        .addDirty(key)
+        .catch((e: unknown) =>
+          this.logger.error({ err: e, key }, 'could not re-mark watch progress as dirty'),
+        );
       throw err;
     }
   }
@@ -70,7 +77,9 @@ export class ProgressStore {
           completed_at: null,
           milestones_emitted: [],
         })
-        .onConflict((oc) => oc.columns(['user_id', 'asset_id', 'context_type', 'context_id']).doNothing())
+        .onConflict((oc) =>
+          oc.columns(['user_id', 'asset_id', 'context_type', 'context_id']).doNothing(),
+        )
         .returning('id')
         .executeTakeFirst();
       const row = await trx
@@ -107,8 +116,18 @@ export class ProgressStore {
         .where('id', '=', row.id)
         .execute();
 
-      const ref = { assetId: state.assetId, userId: state.userId, contextType: state.contextType, contextId: state.contextId };
-      const watch = { ...ref, watchedPercent: percent, watchedSeconds, durationSeconds: state.durationSeconds };
+      const ref = {
+        assetId: state.assetId,
+        userId: state.userId,
+        contextType: state.contextType,
+        contextId: state.contextId,
+      };
+      const watch = {
+        ...ref,
+        watchedPercent: percent,
+        watchedSeconds,
+        durationSeconds: state.durationSeconds,
+      };
       const options = {
         organizationId: state.organizationId,
         subject: { type: 'video_progress', id: row.id },

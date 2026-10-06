@@ -14,14 +14,30 @@ export interface FactsSubject {
  */
 @Injectable()
 export class FactsService {
-  async load(db: DbOrTrx, tree: ProgramTree, subject: FactsSubject, now: Date = new Date()): Promise<LearnerFacts> {
+  async load(
+    db: DbOrTrx,
+    tree: ProgramTree,
+    subject: FactsSubject,
+    now: Date = new Date(),
+  ): Promise<LearnerFacts> {
     const facts = emptyFacts(now);
     facts.enrolledAt = subject.enrollment?.enrolled_at ?? null;
     const refs = ruleReferences(treeRules(tree));
-    const needsSessions = refs.ruleTypes.has('ai_sessions_count') || refs.ruleTypes.has('ai_average_score');
+    const needsSessions =
+      refs.ruleTypes.has('ai_sessions_count') || refs.ruleTypes.has('ai_average_score');
     const enrollmentId = subject.enrollment?.id;
 
-    const [program, progress, assessments, aiScores, aiSessions, approvals, enrollments, prerequisites, phases] = await Promise.all([
+    const [
+      program,
+      progress,
+      assessments,
+      aiScores,
+      aiSessions,
+      approvals,
+      enrollments,
+      prerequisites,
+      phases,
+    ] = await Promise.all([
       db
         .selectFrom('programs')
         .select(['availability_starts_at', 'availability_ends_at'])
@@ -30,12 +46,28 @@ export class FactsService {
       enrollmentId
         ? db
             .selectFrom('lesson_progress')
-            .select(['lesson_id', 'status', 'percent', 'started_at', 'completed_at', 'completion_source', 'data'])
+            .select([
+              'lesson_id',
+              'status',
+              'percent',
+              'started_at',
+              'completed_at',
+              'completion_source',
+              'data',
+            ])
             .where('enrollment_id', '=', enrollmentId)
             .execute()
         : Promise.resolve([]),
-      db.selectFrom('learner_assessment_scores').selectAll().where('user_id', '=', subject.userId).execute(),
-      db.selectFrom('learner_ai_scores').selectAll().where('user_id', '=', subject.userId).execute(),
+      db
+        .selectFrom('learner_assessment_scores')
+        .selectAll()
+        .where('user_id', '=', subject.userId)
+        .execute(),
+      db
+        .selectFrom('learner_ai_scores')
+        .selectAll()
+        .where('user_id', '=', subject.userId)
+        .execute(),
       needsSessions
         ? db
             .selectFrom('learner_ai_sessions')
@@ -69,7 +101,11 @@ export class FactsService {
         .orderBy('p.title')
         .execute(),
       enrollmentId
-        ? db.selectFrom('phase_completions').select(['phase_id', 'completed_at']).where('enrollment_id', '=', enrollmentId).execute()
+        ? db
+            .selectFrom('phase_completions')
+            .select(['phase_id', 'completed_at'])
+            .where('enrollment_id', '=', enrollmentId)
+            .execute()
         : Promise.resolve([]),
     ]);
 
@@ -108,7 +144,10 @@ export class FactsService {
         lastAt: s.last_session_at,
       });
     }
-    facts.aiSessions = aiSessions.map((s) => ({ scenarioId: s.scenario_id, score: Number(s.score) }));
+    facts.aiSessions = aiSessions.map((s) => ({
+      scenarioId: s.scenario_id,
+      score: Number(s.score),
+    }));
     for (const a of approvals) {
       // Manager sign-offs satisfy "manager approval"; reviewed assignments satisfy trainer / manual review.
       if (a.kind === 'manager_approval') facts.approvals.add('manager');
@@ -118,7 +157,10 @@ export class FactsService {
       }
     }
     for (const e of enrollments) {
-      facts.programProgress.set(e.program_id, e.status === 'completed' ? 100 : Number(e.progress_percent));
+      facts.programProgress.set(
+        e.program_id,
+        e.status === 'completed' ? 100 : Number(e.progress_percent),
+      );
       facts.programTitles.set(e.program_id, e.title);
     }
     facts.prerequisites = prerequisites.map((p) => {
@@ -127,9 +169,15 @@ export class FactsService {
       facts.programTitles.set(p.id, p.title);
       return { programId: p.id, title: p.title, percent, completed };
     });
-    const unknownPrograms = refs.programIds.filter((id) => id !== tree.programId && !facts.programTitles.has(id));
+    const unknownPrograms = refs.programIds.filter(
+      (id) => id !== tree.programId && !facts.programTitles.has(id),
+    );
     if (unknownPrograms.length) {
-      const rows = await db.selectFrom('programs').select(['id', 'title']).where('id', 'in', unknownPrograms).execute();
+      const rows = await db
+        .selectFrom('programs')
+        .select(['id', 'title'])
+        .where('id', 'in', unknownPrograms)
+        .execute();
       for (const r of rows) facts.programTitles.set(r.id, r.title);
     }
     for (const p of phases) facts.phaseCompletedAt.set(p.phase_id, p.completed_at);

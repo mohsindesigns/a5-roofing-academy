@@ -26,7 +26,11 @@ export class PreferencesService {
         .select(['notification_type', 'channels', 'enabled'])
         .where('organization_id', '=', p.organizationId)
         .execute(),
-      this.db.selectFrom('notification_preferences').select(['type', 'channel', 'enabled']).where('user_id', '=', p.userId).execute(),
+      this.db
+        .selectFrom('notification_preferences')
+        .select(['type', 'channel', 'enabled'])
+        .where('user_id', '=', p.userId)
+        .execute(),
     ]);
     const ruleByType = new Map(rules.map((r) => [r.notification_type, r]));
     const prefByKey = new Map(prefs.map((r) => [`${r.type}:${r.channel}`, r.enabled]));
@@ -48,20 +52,34 @@ export class PreferencesService {
         label: def.label,
         description: def.description,
         category: def.category,
-        channels: channels.map((channel) => ({ channel, enabled: prefByKey.get(`${def.key}:${channel}`) ?? true })),
+        channels: channels.map((channel) => ({
+          channel,
+          enabled: prefByKey.get(`${def.key}:${channel}`) ?? true,
+        })),
       });
     }
     return { items };
   }
 
-  async update(p: Principal, input: notification.UpdatePreferencesRequest): Promise<notification.PreferencesResponse> {
+  async update(
+    p: Principal,
+    input: notification.UpdatePreferencesRequest,
+  ): Promise<notification.PreferencesResponse> {
     const fields: Array<{ path: string; message: string }> = [];
     input.preferences.forEach((pref, i) => {
       const def = getTypeDef(pref.type);
-      if (!def) fields.push({ path: `preferences.${i}.type`, message: 'Unknown notification type' });
-      else if (def.mandatory) fields.push({ path: `preferences.${i}.type`, message: `${def.label} messages are always sent for account security` });
+      if (!def)
+        fields.push({ path: `preferences.${i}.type`, message: 'Unknown notification type' });
+      else if (def.mandatory)
+        fields.push({
+          path: `preferences.${i}.type`,
+          message: `${def.label} messages are always sent for account security`,
+        });
       else if (!def.channels.includes(pref.channel)) {
-        fields.push({ path: `preferences.${i}.channel`, message: `${def.label} is not sent by ${pref.channel === 'email' ? 'email' : 'in-app notification'}` });
+        fields.push({
+          path: `preferences.${i}.channel`,
+          message: `${def.label} is not sent by ${pref.channel === 'email' ? 'email' : 'in-app notification'}`,
+        });
       }
     });
     if (fields.length) throw new ValidationError(fields);
@@ -79,7 +97,12 @@ export class PreferencesService {
         })),
       )
       .onConflict((oc) =>
-        oc.columns(['user_id', 'type', 'channel']).doUpdateSet((eb) => ({ enabled: eb.ref('excluded.enabled'), updated_at: sql<Date>`now()` })),
+        oc
+          .columns(['user_id', 'type', 'channel'])
+          .doUpdateSet((eb) => ({
+            enabled: eb.ref('excluded.enabled'),
+            updated_at: sql<Date>`now()`,
+          })),
       )
       .execute();
     return this.list(p);
@@ -87,7 +110,11 @@ export class PreferencesService {
 }
 
 /** Opted-out (user, channel) pairs for a type among the given users. */
-export async function optOuts(db: DbOrTrx, type: string, userIds: readonly string[]): Promise<Set<string>> {
+export async function optOuts(
+  db: DbOrTrx,
+  type: string,
+  userIds: readonly string[],
+): Promise<Set<string>> {
   if (userIds.length === 0) return new Set();
   const rows = await db
     .selectFrom('notification_preferences')

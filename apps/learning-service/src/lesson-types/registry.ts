@@ -41,7 +41,10 @@ export class LessonTypeRegistry {
     const result = this.get(type).configSchema.safeParse(raw ?? {});
     if (!result.success) {
       throw new ValidationError(
-        result.error.issues.map((i) => ({ path: ['config', ...i.path.map(String)].join('.'), message: i.message })),
+        result.error.issues.map((i) => ({
+          path: ['config', ...i.path.map(String)].join('.'),
+          message: i.message,
+        })),
       );
     }
     return result.data;

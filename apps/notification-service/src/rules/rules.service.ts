@@ -2,9 +2,21 @@ import { Injectable } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import type { notification } from '@a5/contracts';
 import type { Selectable } from '@a5/database';
-import { EventBus, InjectDb, NotFoundError, PreconditionError, ValidationError, type FieldError } from '@a5/nest-kit';
+import {
+  EventBus,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+  ValidationError,
+  type FieldError,
+} from '@a5/nest-kit';
 import { DefaultsService } from '../catalog/defaults.js';
-import { NOTIFICATION_TYPE_DEFS, allowedRecipientKinds, getTypeDef, type NotificationTypeDef } from '../catalog/notification-types.js';
+import {
+  NOTIFICATION_TYPE_DEFS,
+  allowedRecipientKinds,
+  getTypeDef,
+  type NotificationTypeDef,
+} from '../catalog/notification-types.js';
 import { json, type Db, type NotificationRulesTable } from '../database/index.js';
 
 type RuleRow = Selectable<NotificationRulesTable> & { updated_by_name: string | null };
@@ -29,7 +41,12 @@ export class RulesService {
     let query = this.baseQuery(p.organizationId);
     if (q.eventType) query = query.where('r.event_type', '=', q.eventType);
     if (q.enabled !== undefined) query = query.where('r.enabled', '=', q.enabled);
-    if (q.category) query = query.where('r.notification_type', 'in', NOTIFICATION_TYPE_DEFS.filter((d) => d.category === q.category).map((d) => d.key));
+    if (q.category)
+      query = query.where(
+        'r.notification_type',
+        'in',
+        NOTIFICATION_TYPE_DEFS.filter((d) => d.category === q.category).map((d) => d.key),
+      );
     const rows = await query.execute();
     const items = rows.flatMap((r) => {
       const dto = this.toDto(r);
@@ -44,9 +61,20 @@ export class RulesService {
     return this.toDto(row)!;
   }
 
-  async update(p: Principal, id: string, input: notification.UpdateRuleRequest, action = 'notification_rule.updated'): Promise<RuleDto> {
+  async update(
+    p: Principal,
+    id: string,
+    input: notification.UpdateRuleRequest,
+    action = 'notification_rule.updated',
+  ): Promise<RuleDto> {
     const { row, def } = await this.load(p, id);
-    if (def.mandatory && (input.enabled === false || input.recipients !== undefined || input.channels !== undefined || input.conditions !== undefined)) {
+    if (
+      def.mandatory &&
+      (input.enabled === false ||
+        input.recipients !== undefined ||
+        input.channels !== undefined ||
+        input.conditions !== undefined)
+    ) {
       throw new PreconditionError(
         'RULE_LOCKED',
         `${def.label} emails always go to the person by email for account security. You can change their wording in the template.`,
@@ -99,20 +127,35 @@ export class RulesService {
   }
 
   setEnabled(p: Principal, id: string, enabled: boolean): Promise<RuleDto> {
-    return this.update(p, id, { enabled }, enabled ? 'notification_rule.enabled' : 'notification_rule.disabled');
+    return this.update(
+      p,
+      id,
+      { enabled },
+      enabled ? 'notification_rule.enabled' : 'notification_rule.disabled',
+    );
   }
 
-  private validate(def: NotificationTypeDef, recipients: readonly string[], channels: readonly string[]): FieldError[] {
+  private validate(
+    def: NotificationTypeDef,
+    recipients: readonly string[],
+    channels: readonly string[],
+  ): FieldError[] {
     const errors: FieldError[] = [];
     const allowed = allowedRecipientKinds(def.eventType);
     recipients.forEach((r, i) => {
       if (!r.startsWith('role:') && !allowed.includes(r)) {
-        errors.push({ path: `recipients.${i}`, message: `${r} cannot receive ${def.label}. Choose from ${allowed.join(', ')}.` });
+        errors.push({
+          path: `recipients.${i}`,
+          message: `${r} cannot receive ${def.label}. Choose from ${allowed.join(', ')}.`,
+        });
       }
     });
     channels.forEach((c, i) => {
       if (!def.channels.includes(c as never)) {
-        errors.push({ path: `channels.${i}`, message: `${def.label} is only sent by ${def.channels.map(channelName).join(' or ')}.` });
+        errors.push({
+          path: `channels.${i}`,
+          message: `${def.label} is only sent by ${def.channels.map(channelName).join(' or ')}.`,
+        });
       }
     });
     return errors;
@@ -127,7 +170,10 @@ export class RulesService {
       .where('r.organization_id', '=', organizationId);
   }
 
-  private async load(p: Principal, id: string): Promise<{ row: RuleRow; def: NotificationTypeDef }> {
+  private async load(
+    p: Principal,
+    id: string,
+  ): Promise<{ row: RuleRow; def: NotificationTypeDef }> {
     const row = await this.baseQuery(p.organizationId).where('r.id', '=', id).executeTakeFirst();
     const def = row ? getTypeDef(row.notification_type) : undefined;
     if (!row || !def) throw new NotFoundError('Notification rule');
@@ -156,7 +202,9 @@ export class RulesService {
       enabled: row.enabled,
       mandatory: def.mandatory,
       updatedAt: row.updated_at.toISOString(),
-      updatedBy: row.updated_by ? { id: row.updated_by, displayName: row.updated_by_name ?? 'Former team member' } : null,
+      updatedBy: row.updated_by
+        ? { id: row.updated_by, displayName: row.updated_by_name ?? 'Former team member' }
+        : null,
     };
   }
 }

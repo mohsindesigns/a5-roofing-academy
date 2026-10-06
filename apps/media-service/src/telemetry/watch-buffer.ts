@@ -105,8 +105,17 @@ export class WatchBuffer {
   }
 
   /** Record what PostgreSQL now holds (no-op if the buffer expired meanwhile). */
-  async markPersisted(key: string, persisted: { milestones: number[]; completedAt: number | null }): Promise<void> {
-    await this.redis.eval(MARK_PERSISTED, 1, key, JSON.stringify(persisted.milestones), persisted.completedAt === null ? '' : String(persisted.completedAt));
+  async markPersisted(
+    key: string,
+    persisted: { milestones: number[]; completedAt: number | null },
+  ): Promise<void> {
+    await this.redis.eval(
+      MARK_PERSISTED,
+      1,
+      key,
+      JSON.stringify(persisted.milestones),
+      persisted.completedAt === null ? '' : String(persisted.completedAt),
+    );
   }
 
   async popDirty(count: number): Promise<string[]> {

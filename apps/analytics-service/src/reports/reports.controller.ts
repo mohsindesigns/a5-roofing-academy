@@ -44,7 +44,11 @@ export class ReportFilesController {
     const local = this.files.local;
     if (!local) throw new NotFoundError('File');
     if (!q.key.startsWith('reports/') || !local.verify(q.key, q.expires, q.sig, q.download ?? '')) {
-      throw new AppError(403, 'LINK_INVALID', 'This download link is invalid or has expired. Request a new link from your exports.');
+      throw new AppError(
+        403,
+        'LINK_INVALID',
+        'This download link is invalid or has expired. Request a new link from your exports.',
+      );
     }
     const head = await local.headObject(q.key);
     if (!head) throw new NotFoundError('File');
@@ -55,7 +59,10 @@ export class ReportFilesController {
     res.setHeader('content-length', String(object.size));
     res.setHeader('cache-control', 'private, no-store');
     res.setHeader('x-content-type-options', 'nosniff');
-    res.setHeader('content-disposition', `attachment; filename="${name}"; filename*=UTF-8''${encodeURIComponent(name)}`);
+    res.setHeader(
+      'content-disposition',
+      `attachment; filename="${name}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+    );
     object.body.pipe(res);
   }
 }
@@ -68,14 +75,20 @@ export class ReportExportsController {
   @HttpCode(202)
   @RequirePermissions('reports.export')
   @ZResponse(analytics.exportJobSchema, 'Export queued')
-  create(@CurrentPrincipal() p: Principal, @ZBody(analytics.createExportRequestSchema) body: analytics.CreateExportRequest) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(analytics.createExportRequestSchema) body: analytics.CreateExportRequest,
+  ) {
     return this.exports.create(p, body);
   }
 
   @Get()
   @RequirePermissions('reports.export')
   @ZResponse(analytics.exportPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(analytics.exportListQuerySchema) q: { page: number; pageSize: number }) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(analytics.exportListQuerySchema) q: { page: number; pageSize: number },
+  ) {
     return this.exports.list(p, q.page, q.pageSize);
   }
 
@@ -117,6 +130,11 @@ export class ReportsController {
     @ZQuery(analytics.reportQuerySchema) query: ReportQuery,
   ) {
     const ctx = await this.scope.context(p, 'reports.view', query);
-    return this.reports.page(ctx, report, { page: query.page, pageSize: query.pageSize, sort: query.sort, q: query.q });
+    return this.reports.page(ctx, report, {
+      page: query.page,
+      pageSize: query.pageSize,
+      sort: query.sort,
+      q: query.q,
+    });
   }
 }

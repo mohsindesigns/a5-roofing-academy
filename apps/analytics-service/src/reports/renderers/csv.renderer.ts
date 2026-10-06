@@ -1,7 +1,13 @@
 import type { Writable } from 'node:stream';
 import type { analytics } from '@a5/contracts';
 import type { ReportRow } from '../reports.service.js';
-import { finish, write, type RenderInput, type RenderResult, type ReportRenderer } from './renderer.js';
+import {
+  finish,
+  write,
+  type RenderInput,
+  type RenderResult,
+  type ReportRenderer,
+} from './renderer.js';
 
 const BOM = '﻿';
 

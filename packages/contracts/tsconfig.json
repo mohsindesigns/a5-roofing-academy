@@ -6,12 +6,8 @@
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
     "types": []
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "src/**/*.test.ts"
-  ],
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"],
   "references": [
     {
       "path": "../permissions"

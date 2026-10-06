@@ -47,7 +47,10 @@ export async function loadFacts(db: DbOrTrx, scope: FactsScope): Promise<RuleFac
       return q.execute();
     })(),
     (() => {
-      let q = db.selectFrom('learner_milestones').select(['kind', 'ref_id']).where('user_id', '=', userId);
+      let q = db
+        .selectFrom('learner_milestones')
+        .select(['kind', 'ref_id'])
+        .where('user_id', '=', userId);
       if (since) q = q.where('completed_at', '>=', since);
       return q.execute();
     })(),
@@ -70,15 +73,22 @@ export async function loadFacts(db: DbOrTrx, scope: FactsScope): Promise<RuleFac
   ]);
 
   const programRows = new Map(programs.map((p) => [p.program_id, p]));
-  const best = new Map(assessments.map((a) => [a.assessment_id, a.best === null ? null : Number(a.best)]));
+  const best = new Map(
+    assessments.map((a) => [a.assessment_id, a.best === null ? null : Number(a.best)]),
+  );
   const lessonsDone = new Set(milestones.filter((m) => m.kind === 'lesson').map((m) => m.ref_id));
   const phasesDone = new Set(milestones.filter((m) => m.kind === 'phase').map((m) => m.ref_id));
   const approved = new Set(approvals.map((a) => a.kind));
   const heldDefinitions = new Set(held.map((h) => h.definition_id));
-  const sessions = aiResults.map((r) => ({ scenarioId: r.scenario_id, score: Number(r.overall_score) }));
+  const sessions = aiResults.map((r) => ({
+    scenarioId: r.scenario_id,
+    score: Number(r.overall_score),
+  }));
 
   // Program assessment requirement maps are loaded lazily per program (rarely more than one).
-  const programAssessments = await loadProgramAssessments(db, [...new Set([...programRows.keys(), ...scope.referencedProgramIds])]);
+  const programAssessments = await loadProgramAssessments(db, [
+    ...new Set([...programRows.keys(), ...scope.referencedProgramIds]),
+  ]);
 
   return {
     programProgress(programId) {
@@ -95,14 +105,19 @@ export async function loadFacts(db: DbOrTrx, scope: FactsScope): Promise<RuleFac
     programAssessments(programId, kinds: readonly AssessmentKind[]) {
       return (programAssessments.get(programId) ?? [])
         .filter((a) => a.required && kinds.includes(a.kind))
-        .map((a) => ({ assessmentId: a.assessment_id, bestScore: best.get(a.assessment_id) ?? null }));
+        .map((a) => ({
+          assessmentId: a.assessment_id,
+          bestScore: best.get(a.assessment_id) ?? null,
+        }));
     },
     aiScenarioBestScore(scenarioId) {
       const scores = sessions.filter((s) => s.scenarioId === scenarioId).map((s) => s.score);
       return scores.length ? Math.max(...scores) : null;
     },
     aiSessions(scenarioIds) {
-      return scenarioIds && scenarioIds.length ? sessions.filter((s) => scenarioIds.includes(s.scenarioId)) : sessions;
+      return scenarioIds && scenarioIds.length
+        ? sessions.filter((s) => scenarioIds.includes(s.scenarioId))
+        : sessions;
     },
     approval: (kind) => approved.has(kind),
     certificationHeld: (definitionId) => heldDefinitions.has(definitionId),
@@ -111,10 +126,14 @@ export async function loadFacts(db: DbOrTrx, scope: FactsScope): Promise<RuleFac
     enrolledAt() {
       const dates = scope.programIds
         .map((id) => programRows.get(id))
-        .filter((r): r is NonNullable<typeof r> => Boolean(r && r.status !== 'withdrawn' && r.enrolled_at))
+        .filter((r): r is NonNullable<typeof r> =>
+          Boolean(r && r.status !== 'withdrawn' && r.enrolled_at),
+        )
         .map((r) => r.enrolled_at!.getTime());
       if (dates.length === 0) {
-        const all = programs.filter((r) => r.enrolled_at && r.status !== 'withdrawn').map((r) => r.enrolled_at!.getTime());
+        const all = programs
+          .filter((r) => r.enrolled_at && r.status !== 'withdrawn')
+          .map((r) => r.enrolled_at!.getTime());
         return all.length ? new Date(Math.min(...all)) : null;
       }
       return new Date(Math.min(...dates));
@@ -124,7 +143,10 @@ export async function loadFacts(db: DbOrTrx, scope: FactsScope): Promise<RuleFac
 }
 
 async function loadProgramAssessments(db: DbOrTrx, programIds: string[]) {
-  const map = new Map<string, Array<{ assessment_id: string; kind: AssessmentKind; required: boolean }>>();
+  const map = new Map<
+    string,
+    Array<{ assessment_id: string; kind: AssessmentKind; required: boolean }>
+  >();
   if (programIds.length === 0) return map;
   const rows = await db
     .selectFrom('program_assessments')

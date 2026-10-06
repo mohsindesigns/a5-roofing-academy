@@ -2,7 +2,16 @@ import { Get, Injectable } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import { notification } from '@a5/contracts';
 import { likePattern, paginate, type Page, type Selectable } from '@a5/database';
-import { ApiController, CurrentPrincipal, InjectDb, NotFoundError, RequirePermissions, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  InjectDb,
+  NotFoundError,
+  RequirePermissions,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import type { Db, EmailDeliveriesTable } from '../database/index.js';
 
 type DeliveryRow = Selectable<EmailDeliveriesTable>;
@@ -33,7 +42,10 @@ function toDto(row: DeliveryRow): notification.EmailDelivery {
 export class DeliveriesService {
   constructor(@InjectDb() private readonly db: Db) {}
 
-  async list(p: Principal, q: notification.ListEmailDeliveriesQuery): Promise<Page<notification.EmailDelivery>> {
+  async list(
+    p: Principal,
+    q: notification.ListEmailDeliveriesQuery,
+  ): Promise<Page<notification.EmailDelivery>> {
     let query = this.db
       .selectFrom('email_deliveries')
       .select([
@@ -63,12 +75,23 @@ export class DeliveriesService {
     if (q.userId) query = query.where('user_id', '=', q.userId);
     if (q.q) {
       const pattern = likePattern(q.q);
-      query = query.where((eb) => eb.or([eb('to_address', 'ilike', pattern), eb('to_name', 'ilike', pattern), eb('subject', 'ilike', pattern)]));
+      query = query.where((eb) =>
+        eb.or([
+          eb('to_address', 'ilike', pattern),
+          eb('to_name', 'ilike', pattern),
+          eb('subject', 'ilike', pattern),
+        ]),
+      );
     }
-    const page = await paginate(query.orderBy('created_at', 'desc').orderBy('id', 'desc'), { page: q.page, pageSize: q.pageSize });
+    const page = await paginate(query.orderBy('created_at', 'desc').orderBy('id', 'desc'), {
+      page: q.page,
+      pageSize: q.pageSize,
+    });
     return {
       ...page,
-      items: page.items.map((r) => toDto({ ...r, body_text: null, body_html: null, sealed_content: null } as DeliveryRow)),
+      items: page.items.map((r) =>
+        toDto({ ...r, body_text: null, body_html: null, sealed_content: null } as DeliveryRow),
+      ),
     };
   }
 
@@ -80,7 +103,11 @@ export class DeliveriesService {
       .where('organization_id', '=', p.organizationId)
       .executeTakeFirst();
     if (!row) throw new NotFoundError('Email delivery');
-    return { ...toDto(row), text: row.sensitive ? null : row.body_text, html: row.sensitive ? null : row.body_html };
+    return {
+      ...toDto(row),
+      text: row.sensitive ? null : row.body_text,
+      html: row.sensitive ? null : row.body_html,
+    };
   }
 }
 
@@ -91,7 +118,10 @@ export class DeliveriesController {
 
   @Get()
   @ZResponse(notification.emailDeliveryPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(notification.listEmailDeliveriesQuerySchema) q: notification.ListEmailDeliveriesQuery) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(notification.listEmailDeliveriesQuerySchema) q: notification.ListEmailDeliveriesQuery,
+  ) {
     return this.deliveries.list(p, q);
   }
 

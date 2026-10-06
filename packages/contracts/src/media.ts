@@ -1,6 +1,14 @@
 // API contracts for the media domain. Shared by media-service and the web app.
 import { z } from 'zod';
-import { isoDateTime, nameString, optionalText, pageQuerySchema, pageSchema, queryBoolean, queryList } from './common.js';
+import {
+  isoDateTime,
+  nameString,
+  optionalText,
+  pageQuerySchema,
+  pageSchema,
+  queryBoolean,
+  queryList,
+} from './common.js';
 
 // ------------------------------------------------------------------ enums
 
@@ -124,7 +132,9 @@ export const createCaptionUploadRequestSchema = z.object({
 });
 export type CreateCaptionUploadRequest = z.infer<typeof createCaptionUploadRequestSchema>;
 
-export const createCaptionUploadResponseSchema = createUploadResponseSchema.extend({ captionId: z.uuid() });
+export const createCaptionUploadResponseSchema = createUploadResponseSchema.extend({
+  captionId: z.uuid(),
+});
 
 // ------------------------------------------------------------------ library
 
@@ -188,7 +198,10 @@ export const transcriptSegmentSchema = z
     text: z.string().trim().min(1).max(2_000),
     speaker: z.string().trim().max(80).nullable().optional(),
   })
-  .refine((s) => s.endSeconds > s.startSeconds, { path: ['endSeconds'], message: 'Must be after the start' });
+  .refine((s) => s.endSeconds > s.startSeconds, {
+    path: ['endSeconds'],
+    message: 'Must be after the start',
+  });
 export type TranscriptSegment = z.infer<typeof transcriptSegmentSchema>;
 
 export const transcriptSchema = z.object({
@@ -211,7 +224,13 @@ export const mediaAssetDetailSchema = mediaAssetSummarySchema.extend({
 });
 export type MediaAssetDetail = z.infer<typeof mediaAssetDetailSchema>;
 
-export const MEDIA_SORTS = ['title', 'createdAt', 'updatedAt', 'sizeBytes', 'durationSeconds'] as const;
+export const MEDIA_SORTS = [
+  'title',
+  'createdAt',
+  'updatedAt',
+  'sizeBytes',
+  'durationSeconds',
+] as const;
 
 export const listMediaQuerySchema = pageQuerySchema.extend({
   kind: queryList(mediaKindSchema),
@@ -225,7 +244,9 @@ export const mediaPageSchema = pageSchema(mediaAssetSummarySchema);
 
 export const updateMediaRequestSchema = z
   .object({ title: nameString(200).optional(), description: optionalText(2000) })
-  .refine((v) => v.title !== undefined || v.description !== undefined, { message: 'Nothing to update' });
+  .refine((v) => v.title !== undefined || v.description !== undefined, {
+    message: 'Nothing to update',
+  });
 export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 
 const startSeconds = z.number().min(0, 'Must be zero or more').max(86_400);
@@ -235,14 +256,18 @@ export type CreateChapterRequest = z.infer<typeof createChapterRequestSchema>;
 
 export const updateChapterRequestSchema = z
   .object({ startSeconds: startSeconds.optional(), title: nameString(120).optional() })
-  .refine((v) => v.startSeconds !== undefined || v.title !== undefined, { message: 'Nothing to update' });
+  .refine((v) => v.startSeconds !== undefined || v.title !== undefined, {
+    message: 'Nothing to update',
+  });
 export type UpdateChapterRequest = z.infer<typeof updateChapterRequestSchema>;
 
 export const chapterListSchema = z.object({ items: z.array(chapterSchema) });
 
 export const updateCaptionRequestSchema = z
   .object({ label: nameString(80).optional(), isDefault: z.boolean().optional() })
-  .refine((v) => v.label !== undefined || v.isDefault !== undefined, { message: 'Nothing to update' });
+  .refine((v) => v.label !== undefined || v.isDefault !== undefined, {
+    message: 'Nothing to update',
+  });
 export type UpdateCaptionRequest = z.infer<typeof updateCaptionRequestSchema>;
 
 export const setTranscriptRequestSchema = z.object({

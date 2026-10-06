@@ -32,7 +32,12 @@ export function isPassing(percent: number, passingPercent: number): boolean {
  */
 export function answersRevealed(
   policy: assessment.RevealPolicy,
-  state: { closed: boolean; passed: boolean | null; attemptsUsed: number; maxAttempts: number | null },
+  state: {
+    closed: boolean;
+    passed: boolean | null;
+    attemptsUsed: number;
+    maxAttempts: number | null;
+  },
 ): boolean {
   if (!state.closed) return false;
   switch (policy) {

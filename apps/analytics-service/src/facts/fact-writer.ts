@@ -37,7 +37,11 @@ export class FactWriter {
     if (!org) return;
     const p = e.payload;
     const at = new Date(e.occurredAt);
-    const existing = await trx.selectFrom('dim_programs').select('version').where('id', '=', p.programId).executeTakeFirst();
+    const existing = await trx
+      .selectFrom('dim_programs')
+      .select('version')
+      .where('id', '=', p.programId)
+      .executeTakeFirst();
     if (existing && existing.version >= p.version) return;
 
     await trx
@@ -65,9 +69,21 @@ export class FactWriter {
     for (const phase of p.phases) {
       await trx
         .insertInto('dim_phases')
-        .values({ id: phase.phaseId, organization_id: org, program_id: p.programId, title: phase.title, position: phase.position })
+        .values({
+          id: phase.phaseId,
+          organization_id: org,
+          program_id: p.programId,
+          title: phase.title,
+          position: phase.position,
+        })
         .onConflict((oc) =>
-          oc.column('id').doUpdateSet({ title: sql`excluded.title`, position: sql`excluded.position`, program_id: sql`excluded.program_id` }),
+          oc
+            .column('id')
+            .doUpdateSet({
+              title: sql`excluded.title`,
+              position: sql`excluded.position`,
+              program_id: sql`excluded.program_id`,
+            }),
         )
         .execute();
     }
@@ -107,13 +123,23 @@ export class FactWriter {
         .updateTable('dim_lessons')
         .set({ in_program: false })
         .where('program_id', '=', p.programId)
-        .where('id', 'not in', p.lessons.map((l) => l.lessonId))
+        .where(
+          'id',
+          'not in',
+          p.lessons.map((l) => l.lessonId),
+        )
         .execute();
     } else if (required.size) {
       for (const lessonId of required) {
         await trx
           .insertInto('dim_lessons')
-          .values({ id: lessonId, organization_id: org, program_id: p.programId, required: true, in_program: true })
+          .values({
+            id: lessonId,
+            organization_id: org,
+            program_id: p.programId,
+            required: true,
+            in_program: true,
+          })
           .onConflict((oc) => oc.column('id').doUpdateSet({ required: true, in_program: true }))
           .execute();
       }
@@ -153,7 +179,13 @@ export class FactWriter {
     for (const s of p.aiScenarios) {
       await trx
         .insertInto('dim_scenarios')
-        .values({ id: s.scenarioId, organization_id: org, program_id: p.programId, lesson_id: s.lessonId, min_score: s.minScore })
+        .values({
+          id: s.scenarioId,
+          organization_id: org,
+          program_id: p.programId,
+          lesson_id: s.lessonId,
+          min_score: s.minScore,
+        })
         .onConflict((oc) =>
           oc.column('id').doUpdateSet({
             program_id: sql`excluded.program_id`,
@@ -166,7 +198,11 @@ export class FactWriter {
   }
 
   async programArchived(trx: Trx, e: Envelope<'program.archived'>): Promise<void> {
-    await trx.updateTable('dim_programs').set({ archived: true }).where('id', '=', e.payload.programId).execute();
+    await trx
+      .updateTable('dim_programs')
+      .set({ archived: true })
+      .where('id', '=', e.payload.programId)
+      .execute();
   }
 
   async enrolled(trx: Trx, e: Envelope<'program.enrolled'>): Promise<void> {
@@ -206,7 +242,14 @@ export class FactWriter {
       .execute();
     await trx
       .insertInto('dim_programs')
-      .values({ id: p.programId, organization_id: org, title: p.programTitle, version: 0, archived: false, published_at: null })
+      .values({
+        id: p.programId,
+        organization_id: org,
+        title: p.programTitle,
+        version: 0,
+        archived: false,
+        published_at: null,
+      })
       .onConflict((oc) =>
         oc.column('id').doUpdateSet({
           title: sql`case when dim_programs.version = 0 then excluded.title else dim_programs.title end`,
@@ -336,8 +379,20 @@ export class FactWriter {
       .execute();
     await trx
       .insertInto('dim_lessons')
-      .values({ id: p.lessonId, organization_id: org, program_id: p.programId, lesson_type: p.lessonType, in_program: true })
-      .onConflict((oc) => oc.column('id').doUpdateSet({ lesson_type: sql`coalesce(dim_lessons.lesson_type, excluded.lesson_type)` }))
+      .values({
+        id: p.lessonId,
+        organization_id: org,
+        program_id: p.programId,
+        lesson_type: p.lessonType,
+        in_program: true,
+      })
+      .onConflict((oc) =>
+        oc
+          .column('id')
+          .doUpdateSet({
+            lesson_type: sql`coalesce(dim_lessons.lesson_type, excluded.lesson_type)`,
+          }),
+      )
       .execute();
     await this.markDirty(trx, org, [at]);
   }
@@ -449,7 +504,13 @@ export class FactWriter {
       .execute();
     await trx
       .insertInto('dim_phases')
-      .values({ id: p.phaseId, organization_id: org, program_id: p.programId, title: p.phaseTitle, position: null })
+      .values({
+        id: p.phaseId,
+        organization_id: org,
+        program_id: p.programId,
+        title: p.phaseTitle,
+        position: null,
+      })
       .onConflict((oc) => oc.column('id').doNothing())
       .execute();
     await this.feed(
@@ -524,7 +585,9 @@ export class FactWriter {
         .execute();
       await trx.deleteFrom('fact_question_results').where('attempt_id', '=', p.attemptId).execute();
       const seen = new Set<string>();
-      const results = p.questionResults.filter((q) => (seen.has(q.questionId) ? false : (seen.add(q.questionId), true)));
+      const results = p.questionResults.filter((q) =>
+        seen.has(q.questionId) ? false : (seen.add(q.questionId), true),
+      );
       if (results.length) {
         await trx
           .insertInto('fact_question_results')
@@ -611,7 +674,13 @@ export class FactWriter {
 
     await this.touchLearner(trx, org, p.userId, gradedAt);
     if (ctx.enrollmentId && ctx.programId) {
-      await this.ensureEnrollment(trx, org, { enrollmentId: ctx.enrollmentId, programId: ctx.programId, userId: p.userId }, gradedAt, gradedAt);
+      await this.ensureEnrollment(
+        trx,
+        org,
+        { enrollmentId: ctx.enrollmentId, programId: ctx.programId, userId: p.userId },
+        gradedAt,
+        gradedAt,
+      );
     }
     await this.markDirty(trx, org, [gradedAt, existing?.graded_at ?? null]);
   }
@@ -665,9 +734,14 @@ export class FactWriter {
           }),
         )
         .execute();
-      await trx.deleteFrom('fact_ai_category_scores').where('session_id', '=', p.sessionId).execute();
+      await trx
+        .deleteFrom('fact_ai_category_scores')
+        .where('session_id', '=', p.sessionId)
+        .execute();
       const seen = new Set<string>();
-      const categories = p.categoryScores.filter((c) => (seen.has(c.key) ? false : (seen.add(c.key), true)));
+      const categories = p.categoryScores.filter((c) =>
+        seen.has(c.key) ? false : (seen.add(c.key), true),
+      );
       if (categories.length) {
         await trx
           .insertInto('fact_ai_category_scores')
@@ -725,7 +799,13 @@ export class FactWriter {
       .execute();
     await this.touchLearner(trx, org, p.userId, at);
     if (ctx.enrollmentId && ctx.programId) {
-      await this.ensureEnrollment(trx, org, { enrollmentId: ctx.enrollmentId, programId: ctx.programId, userId: p.userId }, at, at);
+      await this.ensureEnrollment(
+        trx,
+        org,
+        { enrollmentId: ctx.enrollmentId, programId: ctx.programId, userId: p.userId },
+        at,
+        at,
+      );
     }
     await this.markDirty(trx, org, [at, existing?.evaluated_at ?? null]);
   }
@@ -759,7 +839,10 @@ export class FactWriter {
     await this.markDirty(trx, org, [at]);
   }
 
-  async certificateApprovalRequested(trx: Trx, e: Envelope<'certificate.approval_requested'>): Promise<void> {
+  async certificateApprovalRequested(
+    trx: Trx,
+    e: Envelope<'certificate.approval_requested'>,
+  ): Promise<void> {
     const org = e.organizationId;
     if (!org) return;
     const p = e.payload;
@@ -848,7 +931,11 @@ export class FactWriter {
     if (!org) return;
     const p = e.payload;
     const at = new Date(e.occurredAt);
-    await this.certificateTransition(trx, org, p, 'revoked', at, { revoked_at: at, revoke_reason: p.reason, certificate_number: p.certificateNumber });
+    await this.certificateTransition(trx, org, p, 'revoked', at, {
+      revoked_at: at,
+      revoke_reason: p.reason,
+      certificate_number: p.certificateNumber,
+    });
     await this.feed(trx, {
       id: stableId('certificate_revoked', p.certificateId),
       organization_id: org,
@@ -893,7 +980,11 @@ export class FactWriter {
         status_at: at,
         replaces_certificate_id: p.originalCertificateId,
       })
-      .onConflict((oc) => oc.column('certificate_id').doUpdateSet({ replaces_certificate_id: sql`excluded.replaces_certificate_id` }))
+      .onConflict((oc) =>
+        oc
+          .column('certificate_id')
+          .doUpdateSet({ replaces_certificate_id: sql`excluded.replaces_certificate_id` }),
+      )
       .execute();
     await this.certificateTransition(
       trx,
@@ -913,7 +1004,13 @@ export class FactWriter {
     p: { certificateId: string; userId: string; definitionId: string; definitionName: string },
     status: 'revoked' | 'expired' | 'superseded',
     at: Date,
-    extra: { revoked_at?: Date; revoke_reason?: string; expired_at?: Date; superseded_at?: Date; certificate_number?: string },
+    extra: {
+      revoked_at?: Date;
+      revoke_reason?: string;
+      expired_at?: Date;
+      superseded_at?: Date;
+      certificate_number?: string;
+    },
   ): Promise<void> {
     await this.certification(trx, org, p.definitionId, p.definitionName);
     await trx
@@ -951,7 +1048,13 @@ export class FactWriter {
   }
 
   /** Creates a placeholder enrollment when facts arrive before `program.enrolled`. */
-  private async ensureEnrollment(trx: Trx, org: string, ref: EnrollmentRef, at: Date, activityAt: Date | null): Promise<void> {
+  private async ensureEnrollment(
+    trx: Trx,
+    org: string,
+    ref: EnrollmentRef,
+    at: Date,
+    activityAt: Date | null,
+  ): Promise<void> {
     await trx
       .insertInto('fact_enrollments')
       .values({
@@ -978,7 +1081,12 @@ export class FactWriter {
   private async touchLearner(trx: Trx, org: string, userId: string, at: Date): Promise<void> {
     await trx
       .insertInto('learner_activity')
-      .values({ user_id: userId, organization_id: org, first_activity_at: at, last_activity_at: at })
+      .values({
+        user_id: userId,
+        organization_id: org,
+        first_activity_at: at,
+        last_activity_at: at,
+      })
       .onConflict((oc) =>
         oc.column('user_id').doUpdateSet({
           first_activity_at: sql`least(learner_activity.first_activity_at, excluded.first_activity_at)`,
@@ -1013,7 +1121,13 @@ export class FactWriter {
       await query.onConflict((oc) => oc.column('id').doNothing()).execute();
     } else if (mode === 'earliest') {
       await query
-        .onConflict((oc) => oc.column('id').doUpdateSet({ occurred_at: sql`least(fact_activity.occurred_at, excluded.occurred_at)` }))
+        .onConflict((oc) =>
+          oc
+            .column('id')
+            .doUpdateSet({
+              occurred_at: sql`least(fact_activity.occurred_at, excluded.occurred_at)`,
+            }),
+        )
         .execute();
     } else {
       await query

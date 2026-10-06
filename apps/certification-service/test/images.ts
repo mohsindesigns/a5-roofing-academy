@@ -11,7 +11,11 @@ function chunk(type: string, data: Buffer): Buffer {
 }
 
 /** A valid RGBA PNG filled with one colour. */
-export function solidPng(width: number, height: number, rgba: [number, number, number, number] = [27, 42, 85, 255]): Buffer {
+export function solidPng(
+  width: number,
+  height: number,
+  rgba: [number, number, number, number] = [27, 42, 85, 255],
+): Buffer {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(width, 0);
   header.writeUInt32BE(height, 4);

@@ -1,6 +1,12 @@
 import type { Principal } from '@a5/auth';
 import { ForbiddenError } from '@a5/nest-kit';
-import { getPermission, isPermissionKey, scopeRank, type DataScope, type PermissionKey } from '@a5/permissions';
+import {
+  getPermission,
+  isPermissionKey,
+  scopeRank,
+  type DataScope,
+  type PermissionKey,
+} from '@a5/permissions';
 
 /** Widest data scope the actor holds through any permission. */
 export function actorMaxScope(actor: Principal): DataScope {
@@ -32,16 +38,26 @@ function ungrantable(actor: Principal, permissions: readonly string[], scope: Da
  * - you cannot create roles with a wider data scope than your own.
  */
 export const AccessPolicy = {
-  assertCanChangePermissions(actor: Principal, changed: readonly string[], roleScope: DataScope): void {
+  assertCanChangePermissions(
+    actor: Principal,
+    changed: readonly string[],
+    roleScope: DataScope,
+  ): void {
     const missing = ungrantable(actor, changed, roleScope);
     if (missing.length) {
-      throw new ForbiddenError('You can only grant or remove permissions that you hold yourself, at the same scope.', {
-        permissions: missing,
-      });
+      throw new ForbiddenError(
+        'You can only grant or remove permissions that you hold yourself, at the same scope.',
+        {
+          permissions: missing,
+        },
+      );
     }
     const platform = changed.filter((p) => isPermissionKey(p) && getPermission(p).platform);
     if (platform.length && actorMaxScope(actor) !== 'platform') {
-      throw new ForbiddenError('Platform permissions can only be changed by a platform administrator.', { permissions: platform });
+      throw new ForbiddenError(
+        'Platform permissions can only be changed by a platform administrator.',
+        { permissions: platform },
+      );
     }
   },
 
@@ -54,7 +70,10 @@ export const AccessPolicy = {
   assertPlatformPermissionsMatchScope(permissions: readonly string[], scope: DataScope): void {
     const platform = permissions.filter((p) => isPermissionKey(p) && getPermission(p).platform);
     if (platform.length && scope !== 'platform') {
-      throw new ForbiddenError('Platform permissions can only be granted to platform-scope roles.', { permissions: platform });
+      throw new ForbiddenError(
+        'Platform permissions can only be granted to platform-scope roles.',
+        { permissions: platform },
+      );
     }
   },
 
@@ -65,14 +84,19 @@ export const AccessPolicy = {
   ): void {
     for (const role of roles) {
       if (scopeRank(role.data_scope) > scopeRank(actorMaxScope(actor))) {
-        throw new ForbiddenError(`You cannot assign "${role.name}" because its data scope is wider than yours.`);
+        throw new ForbiddenError(
+          `You cannot assign "${role.name}" because its data scope is wider than yours.`,
+        );
       }
       const missing = ungrantable(actor, role.permissions, role.data_scope);
       if (missing.length) {
-        throw new ForbiddenError(`You cannot assign "${role.name}" because it grants permissions you do not hold.`, {
-          role: role.name,
-          permissions: missing,
-        });
+        throw new ForbiddenError(
+          `You cannot assign "${role.name}" because it grants permissions you do not hold.`,
+          {
+            role: role.name,
+            permissions: missing,
+          },
+        );
       }
     }
   },

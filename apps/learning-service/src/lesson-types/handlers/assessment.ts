@@ -15,7 +15,10 @@ function assessmentLessonType(
     configSchema: learning.assessmentLessonConfigSchema,
     completion: 'assessment',
     learnerCompletion() {
-      return { allowed: false, reason: 'This lesson completes automatically when you pass the assessment.' };
+      return {
+        allowed: false,
+        reason: 'This lesson completes automatically when you pass the assessment.',
+      };
     },
     completionHint() {
       return 'Completes automatically when you pass the assessment.';
@@ -30,4 +33,8 @@ function assessmentLessonType(
 }
 
 export const quizLesson = assessmentLessonType('quiz', 'Quiz', 'quiz');
-export const finalAssessmentLesson = assessmentLessonType('final_assessment', 'Final assessment', 'final');
+export const finalAssessmentLesson = assessmentLessonType(
+  'final_assessment',
+  'Final assessment',
+  'final',
+);

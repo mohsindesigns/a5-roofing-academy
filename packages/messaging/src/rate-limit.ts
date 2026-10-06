@@ -16,10 +16,20 @@ export class RateLimiter {
     private readonly ns: RedisNamespace,
   ) {}
 
-  async hit(bucket: string, subject: string, limit: number, windowSeconds: number): Promise<RateLimitResult> {
+  async hit(
+    bucket: string,
+    subject: string,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<RateLimitResult> {
     const window = Math.floor(Date.now() / 1000 / windowSeconds);
     const key = this.ns.key('rl', bucket, subject, window);
-    const results = await this.redis.multi().incr(key).expire(key, windowSeconds, 'NX').ttl(key).exec();
+    const results = await this.redis
+      .multi()
+      .incr(key)
+      .expire(key, windowSeconds, 'NX')
+      .ttl(key)
+      .exec();
     const count = Number(results?.[0]?.[1] ?? 0);
     const ttl = Number(results?.[2]?.[1] ?? windowSeconds);
     return {

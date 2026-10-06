@@ -30,15 +30,26 @@ export const analyticsFilterShape = {
   userId: z.uuid().optional(),
 };
 
-function dateRangeIssues(v: { from?: string | undefined; to?: string | undefined }, ctx: z.RefinementCtx): void {
+function dateRangeIssues(
+  v: { from?: string | undefined; to?: string | undefined },
+  ctx: z.RefinementCtx,
+): void {
   if (v.from && v.to) {
     if (v.from > v.to) {
-      ctx.addIssue({ code: 'custom', path: ['to'], message: 'End date must be on or after the start date' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['to'],
+        message: 'End date must be on or after the start date',
+      });
       return;
     }
     const days = (Date.parse(`${v.to}T00:00:00Z`) - Date.parse(`${v.from}T00:00:00Z`)) / 86_400_000;
     if (days > MAX_RANGE_DAYS) {
-      ctx.addIssue({ code: 'custom', path: ['from'], message: 'Choose a date range of at most three years' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['from'],
+        message: 'Choose a date range of at most three years',
+      });
     }
   }
 }
@@ -308,13 +319,18 @@ export const categoryTrendSchema = z.object({
   interval: trendIntervalSchema,
   from: isoDate,
   to: isoDate,
-  series: z.array(z.object({ key: z.string(), label: z.string(), points: z.array(trendPointSchema) })),
+  series: z.array(
+    z.object({ key: z.string(), label: z.string(), points: z.array(trendPointSchema) }),
+  ),
 });
 
 export const companyDashboardSchema = z.object({
   meta: dashboardMetaSchema,
   kpis: companyKpisSchema,
-  breakdowns: z.object({ byLocation: z.array(breakdownRowSchema), byTeam: z.array(breakdownRowSchema) }),
+  breakdowns: z.object({
+    byLocation: z.array(breakdownRowSchema),
+    byTeam: z.array(breakdownRowSchema),
+  }),
   dropOffLessons: z.array(dropOffLessonSchema),
   hardestQuestions: z.array(hardQuestionSchema),
   mostFailedObjections: z.array(failedObjectionSchema),
@@ -369,7 +385,13 @@ export const learnerSummarySchema = z.object({
       enrollmentId: z.uuid(),
       programTitle: z.string(),
       requiredTotal: z.int().nullable(),
-      points: z.array(z.object({ date: isoDate, completedLessons: z.int(), progressPercent: z.number().nullable() })),
+      points: z.array(
+        z.object({
+          date: isoDate,
+          completedLessons: z.int(),
+          progressPercent: z.number().nullable(),
+        }),
+      ),
     })
     .nullable(),
   quizScores: z.array(
@@ -380,7 +402,14 @@ export const learnerSummarySchema = z.object({
       passingPercent: z.number(),
       bestScore: z.number(),
       passed: z.boolean(),
-      attempts: z.array(z.object({ attemptNumber: z.int(), scorePercent: z.number(), passed: z.boolean(), gradedAt: isoDateTime })),
+      attempts: z.array(
+        z.object({
+          attemptNumber: z.int(),
+          scorePercent: z.number(),
+          passed: z.boolean(),
+          gradedAt: isoDateTime,
+        }),
+      ),
       /** Average of peers' best scores (anonymised); null when the cohort is too small. */
       cohortAverage: z.number().nullable(),
     }),
@@ -475,7 +504,15 @@ export const REPORT_KEYS = [
 export const reportKeySchema = z.enum(REPORT_KEYS);
 export type ReportKey = z.infer<typeof reportKeySchema>;
 
-export const reportColumnTypeSchema = z.enum(['string', 'integer', 'number', 'percent', 'date', 'datetime', 'boolean']);
+export const reportColumnTypeSchema = z.enum([
+  'string',
+  'integer',
+  'number',
+  'percent',
+  'date',
+  'datetime',
+  'boolean',
+]);
 
 export const reportColumnSchema = z.object({
   key: z.string(),

@@ -2,7 +2,15 @@ import { Delete, Get, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import type { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { assessment, okSchema } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { AssessmentsService } from './assessments.service.js';
 import { StatsService } from './stats.service.js';
 
@@ -16,14 +24,22 @@ export class AssessmentsController {
   @Get()
   @RequirePermissions('assessments.view')
   @ZResponse(assessment.assessmentPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(assessment.listAssessmentsQuerySchema) q: z.infer<typeof assessment.listAssessmentsQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(assessment.listAssessmentsQuerySchema)
+    q: z.infer<typeof assessment.listAssessmentsQuerySchema>,
+  ) {
     return this.assessments.list(p, q);
   }
 
   @Post()
   @RequirePermissions('assessments.create')
   @ZResponse(assessment.assessmentDetailSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(assessment.createAssessmentRequestSchema) body: z.infer<typeof assessment.createAssessmentRequestSchema>) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(assessment.createAssessmentRequestSchema)
+    body: z.infer<typeof assessment.createAssessmentRequestSchema>,
+  ) {
     return this.assessments.create(p, body);
   }
 
@@ -40,7 +56,8 @@ export class AssessmentsController {
   update(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(assessment.updateAssessmentRequestSchema) body: z.infer<typeof assessment.updateAssessmentRequestSchema>,
+    @ZBody(assessment.updateAssessmentRequestSchema)
+    body: z.infer<typeof assessment.updateAssessmentRequestSchema>,
   ) {
     return this.assessments.update(p, id, body);
   }
@@ -59,7 +76,8 @@ export class AssessmentsController {
   duplicate(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(assessment.duplicateAssessmentRequestSchema) body: z.infer<typeof assessment.duplicateAssessmentRequestSchema>,
+    @ZBody(assessment.duplicateAssessmentRequestSchema)
+    body: z.infer<typeof assessment.duplicateAssessmentRequestSchema>,
   ) {
     return this.assessments.duplicate(p, id, body.title);
   }
@@ -111,7 +129,8 @@ export class AssessmentsController {
   replaceItems(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(assessment.replaceAssessmentItemsRequestSchema) body: z.infer<typeof assessment.replaceAssessmentItemsRequestSchema>,
+    @ZBody(assessment.replaceAssessmentItemsRequestSchema)
+    body: z.infer<typeof assessment.replaceAssessmentItemsRequestSchema>,
   ) {
     return this.assessments.replaceItems(p, id, body.items);
   }
@@ -122,7 +141,8 @@ export class AssessmentsController {
   addItem(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(assessment.addAssessmentItemRequestSchema) body: z.infer<typeof assessment.addAssessmentItemRequestSchema>,
+    @ZBody(assessment.addAssessmentItemRequestSchema)
+    body: z.infer<typeof assessment.addAssessmentItemRequestSchema>,
   ) {
     return this.assessments.addItem(p, id, body);
   }
@@ -134,7 +154,8 @@ export class AssessmentsController {
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
     @ZParam('itemId') itemId: string,
-    @ZBody(assessment.updateAssessmentItemRequestSchema) body: z.infer<typeof assessment.updateAssessmentItemRequestSchema>,
+    @ZBody(assessment.updateAssessmentItemRequestSchema)
+    body: z.infer<typeof assessment.updateAssessmentItemRequestSchema>,
   ) {
     return this.assessments.updateItem(p, id, itemId, body);
   }
@@ -142,7 +163,11 @@ export class AssessmentsController {
   @Delete(':id/items/:itemId')
   @RequirePermissions('assessments.update')
   @ZResponse(assessment.assessmentDetailSchema)
-  deleteItem(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('itemId') itemId: string) {
+  deleteItem(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('itemId') itemId: string,
+  ) {
     return this.assessments.deleteItem(p, id, itemId);
   }
 }

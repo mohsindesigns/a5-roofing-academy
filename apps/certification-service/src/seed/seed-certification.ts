@@ -61,8 +61,17 @@ export function seededEligibilityRule(): Rule {
     type: 'all',
     rules: [
       { type: 'program_completed', programId: PROGRAM.id, minPercent: 100 },
-      { type: 'program_assessments_score', programId: PROGRAM.id, minPercent: CERTIFICATION.quizMinimum, kinds: ['quiz'] },
-      { type: 'assessment_score', assessmentId: ASSESSMENTS.find((a) => a.key === 'final')!.id, minPercent: CERTIFICATION.finalMinimum },
+      {
+        type: 'program_assessments_score',
+        programId: PROGRAM.id,
+        minPercent: CERTIFICATION.quizMinimum,
+        kinds: ['quiz'],
+      },
+      {
+        type: 'assessment_score',
+        assessmentId: ASSESSMENTS.find((a) => a.key === 'final')!.id,
+        minPercent: CERTIFICATION.finalMinimum,
+      },
       { type: 'ai_sessions_count', minCount: CERTIFICATION.requiredAiSessions },
       { type: 'ai_average_score', minScore: CERTIFICATION.aiAverage },
       { type: 'approval', kind: 'manager' },
@@ -83,11 +92,20 @@ function seededRenewalRule(): Rule {
 async function putAsset(
   db: Db,
   storage: ObjectStorage,
-  asset: { id: string; purpose: 'signature' | 'stamp'; png: Buffer; filename: string; by: { id: string; name: string } },
+  asset: {
+    id: string;
+    purpose: 'signature' | 'stamp';
+    png: Buffer;
+    filename: string;
+    by: { id: string; name: string };
+  },
 ): Promise<void> {
   const image = await validateCertificateImage(asset.png, 'image/png', asset.purpose);
   const key = storageKeys.asset(ORG, asset.id, 'png');
-  await storage.putObject(key, asset.png, { contentType: 'image/png', contentLength: asset.png.length });
+  await storage.putObject(key, asset.png, {
+    contentType: 'image/png',
+    contentLength: asset.png.length,
+  });
   await db
     .insertInto('certification_assets')
     .values({
@@ -123,11 +141,18 @@ function managerOf(person: PersonKey): PersonKey {
  * facts for every journey, issued certificates with real PDFs, and a pending approval.
  * Idempotent: every step either upserts deterministic rows or skips work that already exists.
  */
-export async function seedCertification(deps: SeedDeps, options: SeedOptions = {}): Promise<{ created: boolean }> {
+export async function seedCertification(
+  deps: SeedDeps,
+  options: SeedOptions = {},
+): Promise<{ created: boolean }> {
   const { db, storage } = deps;
   const log = options.log ?? (() => undefined);
   const now = options.now ?? SEED_NOW;
-  const alreadySeeded = await db.selectFrom('certification_definitions').select('id').where('id', '=', CERTIFICATION.id).executeTakeFirst();
+  const alreadySeeded = await db
+    .selectFrom('certification_definitions')
+    .select('id')
+    .where('id', '=', CERTIFICATION.id)
+    .executeTakeFirst();
 
   // ------------------------------------------------------------ directory projection
   await db.transaction().execute(async (trx) => {
@@ -172,7 +197,12 @@ export async function seedCertification(deps: SeedDeps, options: SeedOptions = {
   await putAsset(db, storage, {
     id: sealAssetId,
     purpose: 'stamp',
-    png: await renderSeal({ topText: ORGANIZATION.legalName.toUpperCase(), bottomText: 'OFFICIAL SEAL', monogram: 'A5', caption: 'SALES ACADEMY' }),
+    png: await renderSeal({
+      topText: ORGANIZATION.legalName.toUpperCase(),
+      bottomText: 'OFFICIAL SEAL',
+      monogram: 'A5',
+      caption: 'SALES ACADEMY',
+    }),
     filename: 'company-seal.png',
     by: priya,
   });
@@ -268,7 +298,14 @@ export async function seedCertification(deps: SeedDeps, options: SeedOptions = {
       .execute();
     await trx
       .insertInto('stamp_images')
-      .values({ id: seedId('stamp-image:company-seal:1'), stamp_id: stampSeed.id, version: 1, asset_id: sealAssetId, created_by: priya.id, created_by_name: priya.name })
+      .values({
+        id: seedId('stamp-image:company-seal:1'),
+        stamp_id: stampSeed.id,
+        version: 1,
+        asset_id: sealAssetId,
+        created_by: priya.id,
+        created_by_name: priya.name,
+      })
       .onConflict((oc) => oc.column('id').doNothing())
       .execute();
 
@@ -284,7 +321,11 @@ export async function seedCertification(deps: SeedDeps, options: SeedOptions = {
           'Awarded to sales representatives who completed the A5 New Hire Sales Academy, passed every knowledge check and the final readiness assessment, practiced with the AI homeowner and were signed off by their manager.',
         status: 'active',
         validity_policy: { kind: 'months', months: CERTIFICATION.validityMonths },
-        renewal_policy: { windowDays: 90, reminderOffsets: certification.DEFAULT_REMINDER_OFFSETS, requirements: seededRenewalRule() },
+        renewal_policy: {
+          windowDays: 90,
+          reminderOffsets: certification.DEFAULT_REMINDER_OFFSETS,
+          requirements: seededRenewalRule(),
+        },
         eligibility_rule: seededEligibilityRule(),
         approval_policy: 'manager',
         automatic_issuance: true,
@@ -304,13 +345,27 @@ export async function seedCertification(deps: SeedDeps, options: SeedOptions = {
       })
       .onConflict((oc) => oc.column('id').doNothing())
       .execute();
-    await trx.insertInto('certification_programs').values({ definition_id: CERTIFICATION.id, program_id: PROGRAM.id }).onConflict((oc) => oc.doNothing()).execute();
     await trx
-      .insertInto('certification_signatory_slots')
-      .values(SIGNATORIES.map((s, i) => ({ definition_id: CERTIFICATION.id, slot: i + 1, signatory_id: s.id })))
+      .insertInto('certification_programs')
+      .values({ definition_id: CERTIFICATION.id, program_id: PROGRAM.id })
       .onConflict((oc) => oc.doNothing())
       .execute();
-    await trx.insertInto('certificate_number_sequences').values({ definition_id: CERTIFICATION.id }).onConflict((oc) => oc.column('definition_id').doNothing()).execute();
+    await trx
+      .insertInto('certification_signatory_slots')
+      .values(
+        SIGNATORIES.map((s, i) => ({
+          definition_id: CERTIFICATION.id,
+          slot: i + 1,
+          signatory_id: s.id,
+        })),
+      )
+      .onConflict((oc) => oc.doNothing())
+      .execute();
+    await trx
+      .insertInto('certificate_number_sequences')
+      .values({ definition_id: CERTIFICATION.id })
+      .onConflict((oc) => oc.column('definition_id').doNothing())
+      .execute();
 
     // ---------------------------------------------------------- program catalogue projection
     await trx
@@ -361,18 +416,32 @@ export async function seedCertification(deps: SeedDeps, options: SeedOptions = {
   }
 
   // Real PDFs through the worker logic (no events: this is historical data).
-  const pending = await db.selectFrom('issued_certificates').select('id').where('pdf_status', '=', 'pending').execute();
+  const pending = await db
+    .selectFrom('issued_certificates')
+    .select('id')
+    .where('pdf_status', '=', 'pending')
+    .execute();
   for (const c of pending) await generateCertificatePdf(db, storage, c.id, undefined, now);
 
-  log(`certification: ${alreadySeeded ? 'verified' : 'seeded'} ${issued} certificates, ${windows} renewal windows, ${reminders} reminders`);
+  log(
+    `certification: ${alreadySeeded ? 'verified' : 'seeded'} ${issued} certificates, ${windows} renewal windows, ${reminders} reminders`,
+  );
   return { created: !alreadySeeded };
 }
 
 async function seedLearnerFacts(db: Db, now: Date): Promise<void> {
   const lessons = allLessons();
   const requiredLessons = lessons.filter((l) => l.required);
-  const phaseDone = (keys: Set<string>) => PHASES.filter((p) => p.modules.every((m) => m.lessons.filter((l) => l.required).every((l) => keys.has(l.key))));
-  const dayOffset: Record<string, number> = { 'quiz-w1': 6, 'quiz-w2': 13, 'quiz-w3': 20, final: 30 };
+  const phaseDone = (keys: Set<string>) =>
+    PHASES.filter((p) =>
+      p.modules.every((m) => m.lessons.filter((l) => l.required).every((l) => keys.has(l.key))),
+    );
+  const dayOffset: Record<string, number> = {
+    'quiz-w1': 6,
+    'quiz-w2': 13,
+    'quiz-w3': 20,
+    final: 30,
+  };
 
   for (const j of JOURNEYS) {
     const user = PEOPLE[j.person];
@@ -380,8 +449,19 @@ async function seedLearnerFacts(db: Db, now: Date): Promise<void> {
     const completedKeys = new Set(completedLessonKeys(j.stage));
     const complete = j.stage === 'certified' || j.stage === 'awaiting_approval';
     const firstIssued = j.certificates?.[0] ? new Date(j.certificates[0].issuedAt) : null;
-    const completedAt = j.stage === 'certified' && firstIssued ? new Date(firstIssued.getTime() - DAY) : j.stage === 'awaiting_approval' ? daysAgo(8, now) : null;
-    const percent = complete ? 100 : Math.round((requiredLessons.filter((l) => completedKeys.has(l.key)).length / requiredLessons.length) * 10000) / 100;
+    const completedAt =
+      j.stage === 'certified' && firstIssued
+        ? new Date(firstIssued.getTime() - DAY)
+        : j.stage === 'awaiting_approval'
+          ? daysAgo(8, now)
+          : null;
+    const percent = complete
+      ? 100
+      : Math.round(
+          (requiredLessons.filter((l) => completedKeys.has(l.key)).length /
+            requiredLessons.length) *
+            10000,
+        ) / 100;
 
     await db
       .insertInto('learner_program_status')
@@ -411,7 +491,9 @@ async function seedLearnerFacts(db: Db, now: Date): Promise<void> {
             ref_id: l.id,
             program_id: PROGRAM.id,
             title: l.title,
-            completed_at: new Date(enrolledAt.getTime() + Math.round((span * (i + 1)) / (done.length + 1))),
+            completed_at: new Date(
+              enrolledAt.getTime() + Math.round((span * (i + 1)) / (done.length + 1)),
+            ),
           })),
         )
         .onConflict((oc) => oc.columns(['user_id', 'kind', 'ref_id']).doNothing())
@@ -435,22 +517,29 @@ async function seedLearnerFacts(db: Db, now: Date): Promise<void> {
       }
     }
 
-    const results = (Object.entries(j.attempts) as Array<[string, number[]]>).flatMap(([key, scores]) => {
-      const assessment = ASSESSMENTS.find((a) => a.key === key)!;
-      return scores.map((score, i) => ({
-        attempt_id: seedId(`attempt:${j.person}:${key}:${i + 1}`),
-        user_id: user.id,
-        organization_id: ORG,
-        assessment_id: assessment.id,
-        kind: assessment.kind,
-        title: assessment.title,
-        score_percent: score,
-        passed: score >= assessment.passingPercent,
-        program_id: PROGRAM.id,
-        graded_at: new Date(enrolledAt.getTime() + ((dayOffset[key] ?? 20) + i) * DAY),
-      }));
-    });
-    if (results.length) await db.insertInto('learner_assessment_results').values(results).onConflict((oc) => oc.column('attempt_id').doNothing()).execute();
+    const results = (Object.entries(j.attempts) as Array<[string, number[]]>).flatMap(
+      ([key, scores]) => {
+        const assessment = ASSESSMENTS.find((a) => a.key === key)!;
+        return scores.map((score, i) => ({
+          attempt_id: seedId(`attempt:${j.person}:${key}:${i + 1}`),
+          user_id: user.id,
+          organization_id: ORG,
+          assessment_id: assessment.id,
+          kind: assessment.kind,
+          title: assessment.title,
+          score_percent: score,
+          passed: score >= assessment.passingPercent,
+          program_id: PROGRAM.id,
+          graded_at: new Date(enrolledAt.getTime() + ((dayOffset[key] ?? 20) + i) * DAY),
+        }));
+      },
+    );
+    if (results.length)
+      await db
+        .insertInto('learner_assessment_results')
+        .values(results)
+        .onConflict((oc) => oc.column('attempt_id').doNothing())
+        .execute();
 
     const sessions = j.aiSessions.map((s, i) => {
       const scenario = SCENARIOS.find((x) => x.key === s.scenario)!;
@@ -466,7 +555,12 @@ async function seedLearnerFacts(db: Db, now: Date): Promise<void> {
         evaluated_at: daysAgo(s.daysAgo, now),
       };
     });
-    if (sessions.length) await db.insertInto('learner_ai_results').values(sessions).onConflict((oc) => oc.column('session_id').doNothing()).execute();
+    if (sessions.length)
+      await db
+        .insertInto('learner_ai_results')
+        .values(sessions)
+        .onConflict((oc) => oc.column('session_id').doNothing())
+        .execute();
   }
 }
 
@@ -556,19 +650,46 @@ async function seedCertificates(deps: SeedDeps): Promise<number> {
       .onConflict((oc) => oc.columns(['candidate_id', 'cycle']).doNothing())
       .execute();
 
-    const cert = await db.selectFrom('certification_definitions').selectAll().where('id', '=', CERTIFICATION.id).executeTakeFirstOrThrow();
-    const outcome = await eligibility.compute(db, cert, user.id, await db.selectFrom('certification_candidates').selectAll().where('id', '=', candidate.id).executeTakeFirstOrThrow(), firstIssuedAt);
+    const cert = await db
+      .selectFrom('certification_definitions')
+      .selectAll()
+      .where('id', '=', CERTIFICATION.id)
+      .executeTakeFirstOrThrow();
+    const outcome = await eligibility.compute(
+      db,
+      cert,
+      user.id,
+      await db
+        .selectFrom('certification_candidates')
+        .selectAll()
+        .where('id', '=', candidate.id)
+        .executeTakeFirstOrThrow(),
+      firstIssuedAt,
+    );
     if (!outcome.satisfied) {
-      throw new Error(`Seed journey for ${j.person} does not satisfy the certification requirements: ${outcome.requirements.filter((r) => !r.satisfied).map((r) => r.description).join('; ')}`);
+      throw new Error(
+        `Seed journey for ${j.person} does not satisfy the certification requirements: ${outcome.requirements
+          .filter((r) => !r.satisfied)
+          .map((r) => r.description)
+          .join('; ')}`,
+      );
     }
     await db
       .updateTable('certification_candidates')
-      .set({ requirements: jsonb(outcome.requirements), met_count: outcome.metCount, total_count: outcome.totalCount, evaluated_at: firstIssuedAt })
+      .set({
+        requirements: jsonb(outcome.requirements),
+        met_count: outcome.metCount,
+        total_count: outcome.totalCount,
+        evaluated_at: firstIssuedAt,
+      })
       .where('id', '=', candidate.id)
       .execute();
 
     // Destiny's first certificate carried a misspelled name that was later corrected by a reissue.
-    const misspelled = rest.length > 0 && first!.reissueReason ? `${user.firstName} ${user.lastName.replace(/s$/, 'z')}` : undefined;
+    const misspelled =
+      rest.length > 0 && first!.reissueReason
+        ? `${user.firstName} ${user.lastName.replace(/s$/, 'z')}`
+        : undefined;
     const original = await issuance.issue({
       definitionId: CERTIFICATION.id,
       userId: user.id,
@@ -588,7 +709,11 @@ async function seedCertificates(deps: SeedDeps): Promise<number> {
         actor: { userId: PEOPLE.grant.id, displayName: fullName('grant') },
         issuedAt: new Date(next.issuedAt),
         recipient: recipientFor(),
-        reissue: { originalCertificateId: original.certificateId, reasonCode: 'corrected_name', note: first!.reissueReason ?? 'Corrected recipient details' },
+        reissue: {
+          originalCertificateId: original.certificateId,
+          reasonCode: 'corrected_name',
+          note: first!.reissueReason ?? 'Corrected recipient details',
+        },
         silent: true,
       });
       issued++;

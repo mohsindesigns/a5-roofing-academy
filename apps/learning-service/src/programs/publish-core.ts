@@ -27,7 +27,13 @@ export class PublishCore {
 
   async publish(
     trx: Trx,
-    input: { organizationId: string; programId: string; changeNote: string; actor: PublishActor; at?: Date },
+    input: {
+      organizationId: string;
+      programId: string;
+      changeNote: string;
+      actor: PublishActor;
+      at?: Date;
+    },
   ): Promise<number> {
     const at = input.at ?? new Date();
     const program = await trx
@@ -38,8 +44,12 @@ export class PublishCore {
       .forUpdate()
       .executeTakeFirst();
     if (!program) throw new NotFoundError('Program');
-    if (program.status === 'archived') throw new PreconditionError('PROGRAM_ARCHIVED', 'Restore the program before publishing it.');
-    if (program.published_version > 0 && Number(program.published_revision) === Number(program.revision)) {
+    if (program.status === 'archived')
+      throw new PreconditionError('PROGRAM_ARCHIVED', 'Restore the program before publishing it.');
+    if (
+      program.published_version > 0 &&
+      Number(program.published_revision) === Number(program.revision)
+    ) {
       throw new PreconditionError('NO_CHANGES', 'There are no unpublished changes to publish.');
     }
 
@@ -58,12 +68,20 @@ export class PublishCore {
     const phaseIds = snapshot.phases.map((ph) => ph.id);
     const moduleIds = snapshot.phases.flatMap((ph) => ph.modules.map((m) => m.id));
     const lessonIds = orderedLessons(snapshot).map((l) => l.lesson.id);
-    const publishNodes = async (table: 'program_phases' | 'program_modules' | 'lessons', ids: string[]) => {
+    const publishNodes = async (
+      table: 'program_phases' | 'program_modules' | 'lessons',
+      ids: string[],
+    ) => {
       if (ids.length) {
         await trx
           .updateTable(table)
           .set((eb) => ({
-            status: eb.case().when('status', '=', 'draft').then('published' as const).else(eb.ref('status')).end(),
+            status: eb
+              .case()
+              .when('status', '=', 'draft')
+              .then('published' as const)
+              .else(eb.ref('status'))
+              .end(),
             first_published_at: eb.fn.coalesce('first_published_at', eb.val(at)),
             unpublished_changes: false,
           }))
@@ -71,7 +89,12 @@ export class PublishCore {
           .execute();
       }
       // Archivals go live with this version as well.
-      await trx.updateTable(table).set({ unpublished_changes: false }).where('program_id', '=', input.programId).where('status', '=', 'archived').execute();
+      await trx
+        .updateTable(table)
+        .set({ unpublished_changes: false })
+        .where('program_id', '=', input.programId)
+        .where('status', '=', 'archived')
+        .execute();
     };
     await publishNodes('program_phases', phaseIds);
     await publishNodes('program_modules', moduleIds);
@@ -113,7 +136,11 @@ export class PublishCore {
         programId: input.programId,
         title: snapshot.title,
         version,
-        phases: map.phases.map((ph) => ({ phaseId: ph.phaseId, title: ph.title, position: ph.position })),
+        phases: map.phases.map((ph) => ({
+          phaseId: ph.phaseId,
+          title: ph.title,
+          position: ph.position,
+        })),
         requiredLessonIds: map.requiredLessonIds,
         assessments: map.assessments,
         aiScenarios: map.aiScenarios,
@@ -142,7 +169,8 @@ export class PublishCore {
       .orderBy('id')
       .forUpdate()
       .execute();
-    for (const enrollment of enrollments) await this.progress.sync(trx, enrollment, snapshot, { at });
+    for (const enrollment of enrollments)
+      await this.progress.sync(trx, enrollment, snapshot, { at });
     return version;
   }
 }

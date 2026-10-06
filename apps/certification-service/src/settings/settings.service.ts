@@ -38,8 +38,12 @@ export class SettingsService {
         .insertInto('certification_settings')
         .values({
           organization_id: p.organizationId,
-          organization_code: input.organizationCode !== undefined ? input.organizationCode : before.organizationCode,
-          verification_base_url: input.verificationBaseUrl !== undefined ? input.verificationBaseUrl : before.verificationBaseUrl,
+          organization_code:
+            input.organizationCode !== undefined ? input.organizationCode : before.organizationCode,
+          verification_base_url:
+            input.verificationBaseUrl !== undefined
+              ? input.verificationBaseUrl
+              : before.verificationBaseUrl,
           recipient_name_display: input.recipientNameDisplay ?? before.recipientNameDisplay,
           show_certificate_number: input.showCertificateNumber ?? before.showCertificateNumber,
           show_expiration_date: input.showExpirationDate ?? before.showExpirationDate,

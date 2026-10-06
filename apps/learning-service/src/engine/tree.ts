@@ -98,7 +98,9 @@ export function parseSettings(raw: unknown): learning.ProgramSettings {
 }
 
 const byPosition = <T extends { position: number; created_at: Date; id: string }>(a: T, b: T) =>
-  a.position - b.position || a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id);
+  a.position - b.position ||
+  a.created_at.getTime() - b.created_at.getTime() ||
+  a.id.localeCompare(b.id);
 
 /**
  * Assemble the learner-facing tree from working-copy rows. Archived nodes (and everything below
@@ -106,12 +108,18 @@ const byPosition = <T extends { position: number; created_at: Date; id: string }
  */
 export function assembleTree(
   program: ProgramRow,
-  rows: { phases: PhaseRow[]; modules: ModuleRow[]; lessons: LessonRow[]; resources: ResourceRow[] },
+  rows: {
+    phases: PhaseRow[];
+    modules: ModuleRow[];
+    lessons: LessonRow[];
+    resources: ResourceRow[];
+  },
   version: number,
 ): ProgramTree {
   const live = <T extends { status: string }>(r: T) => r.status !== 'archived';
   const resources = new Map<string, ResourceRow[]>();
-  for (const r of rows.resources) resources.set(r.lesson_id, [...(resources.get(r.lesson_id) ?? []), r]);
+  for (const r of rows.resources)
+    resources.set(r.lesson_id, [...(resources.get(r.lesson_id) ?? []), r]);
 
   const phases = rows.phases.filter(live).sort(byPosition);
   return {
@@ -155,7 +163,9 @@ export function assembleTree(
               title: lesson.title,
               summary: lesson.summary,
               body: lesson.body,
-              config: lessonTypes.has(lesson.type) ? lessonTypes.readConfig(lesson.type, lesson.config) : lesson.config,
+              config: lessonTypes.has(lesson.type)
+                ? lessonTypes.readConfig(lesson.type, lesson.config)
+                : lesson.config,
               isRequired: lesson.is_required,
               estimatedMinutes: lesson.estimated_minutes,
               unlockRule: lesson.unlock_rule,
@@ -200,7 +210,8 @@ export function orderedLessons(tree: ProgramTree): IndexedLesson[] {
   const out: IndexedLesson[] = [];
   tree.phases.forEach((phase, phaseIndex) => {
     for (const module of phase.modules) {
-      for (const lesson of module.lessons) out.push({ lesson, module, phase, phaseIndex, order: out.length });
+      for (const lesson of module.lessons)
+        out.push({ lesson, module, phase, phaseIndex, order: out.length });
     }
   });
   return out;
@@ -223,11 +234,20 @@ export function phaseRef(
   if (!tree || !phaseId) return null;
   const index = tree.phases.findIndex((p) => p.id === phaseId);
   if (index === -1) return null;
-  return { id: phaseId, title: tree.phases[index]!.title, label: phaseLabel(tree, index), position: index + 1 };
+  return {
+    id: phaseId,
+    title: tree.phases[index]!.title,
+    label: phaseLabel(tree, index),
+    position: index + 1,
+  };
 }
 
 /** "Week 2: Roofing & Insurance Fundamentals" */
-export function phaseName(tree: Pick<ProgramTree, 'phaseLabel'>, phaseIndex: number, title: string): string {
+export function phaseName(
+  tree: Pick<ProgramTree, 'phaseLabel'>,
+  phaseIndex: number,
+  title: string,
+): string {
   return `${phaseLabel(tree, phaseIndex)}: ${title}`;
 }
 
@@ -240,7 +260,13 @@ export function completionSet<T extends { isRequired: boolean }>(lessons: readon
 export interface PublishedRequirementMap {
   requiredLessonIds: string[];
   phases: Array<{ phaseId: string; title: string; position: number; requiredLessonIds: string[] }>;
-  assessments: Array<{ assessmentId: string; lessonId: string; kind: 'quiz' | 'exam' | 'final' | 'practice'; required: boolean; title: string }>;
+  assessments: Array<{
+    assessmentId: string;
+    lessonId: string;
+    kind: 'quiz' | 'exam' | 'final' | 'practice';
+    required: boolean;
+    title: string;
+  }>;
   aiScenarios: Array<{ scenarioId: string; lessonId: string; minScore: number | null }>;
 }
 
@@ -260,10 +286,17 @@ export function requirementMap(tree: ProgramTree): PublishedRequirementMap {
         title: lesson.title,
       });
     }
-    if (refs.aiScenario) aiScenarios.push({ scenarioId: refs.aiScenario.scenarioId, lessonId: lesson.id, minScore: refs.aiScenario.minScore });
+    if (refs.aiScenario)
+      aiScenarios.push({
+        scenarioId: refs.aiScenario.scenarioId,
+        lessonId: lesson.id,
+        minScore: refs.aiScenario.minScore,
+      });
   }
   return {
-    requiredLessonIds: completionSet(lessons.map((l) => ({ id: l.lesson.id, isRequired: l.lesson.isRequired }))).map((l) => l.id),
+    requiredLessonIds: completionSet(
+      lessons.map((l) => ({ id: l.lesson.id, isRequired: l.lesson.isRequired })),
+    ).map((l) => l.id),
     phases: tree.phases.map((p) => ({
       phaseId: p.id,
       title: p.title,
@@ -275,7 +308,13 @@ export function requirementMap(tree: ProgramTree): PublishedRequirementMap {
   };
 }
 
-export function treeStats(tree: ProgramTree): { phases: number; modules: number; lessons: number; requiredLessons: number; estimatedMinutes: number } {
+export function treeStats(tree: ProgramTree): {
+  phases: number;
+  modules: number;
+  lessons: number;
+  requiredLessons: number;
+  estimatedMinutes: number;
+} {
   const lessons = orderedLessons(tree).map((l) => l.lesson);
   return {
     phases: tree.phases.length,

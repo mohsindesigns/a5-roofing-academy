@@ -41,8 +41,16 @@ export class ExpirySweeper implements OnModuleInit {
 
   async schedule(): Promise<void> {
     await this.queues
-      .queue(EXPIRY_QUEUE, { attempts: 3, removeOnComplete: { count: 100 }, removeOnFail: { count: 500 } })
-      .upsertJobScheduler(SCHEDULER_ID, { every: this.config.attempts.expirySweepSeconds * 1000 }, { name: 'sweep', data: {} });
+      .queue(EXPIRY_QUEUE, {
+        attempts: 3,
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 500 },
+      })
+      .upsertJobScheduler(
+        SCHEDULER_ID,
+        { every: this.config.attempts.expirySweepSeconds * 1000 },
+        { name: 'sweep', data: {} },
+      );
   }
 
   /** Enqueue a one-off sweep (operations and tests). */

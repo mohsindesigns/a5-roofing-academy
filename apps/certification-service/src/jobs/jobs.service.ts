@@ -41,17 +41,37 @@ export class JobsService implements OnModuleInit, OnApplicationShutdown {
           return { outcome };
         } catch (err) {
           const attempts = job.opts.attempts ?? 1;
-          await this.pdf.recordFailure(job.data.certificateId, err, job.attemptsMade + 1 >= attempts);
+          await this.pdf.recordFailure(
+            job.data.certificateId,
+            err,
+            job.attemptsMade + 1 >= attempts,
+          );
           throw err;
         }
       },
       { concurrency: this.config.certification.pdfConcurrency },
     );
     this.queues.worker(QUEUES.expiry, async () => this.lifecycle.runDaily(), { concurrency: 1 });
-    this.queues.worker(QUEUES.reminders, async () => ({ reminders: await this.lifecycle.sendReminders() }), { concurrency: 1 });
+    this.queues.worker(
+      QUEUES.reminders,
+      async () => ({ reminders: await this.lifecycle.sendReminders() }),
+      { concurrency: 1 },
+    );
     try {
-      await this.queues.queue(QUEUES.expiry).upsertJobScheduler('daily', { pattern: this.config.certification.lifecycleCron, tz: 'UTC' }, { name: 'run', data: {} });
-      await this.queues.queue(QUEUES.reminders).upsertJobScheduler('daily', { pattern: this.config.certification.remindersCron, tz: 'UTC' }, { name: 'run', data: {} });
+      await this.queues
+        .queue(QUEUES.expiry)
+        .upsertJobScheduler(
+          'daily',
+          { pattern: this.config.certification.lifecycleCron, tz: 'UTC' },
+          { name: 'run', data: {} },
+        );
+      await this.queues
+        .queue(QUEUES.reminders)
+        .upsertJobScheduler(
+          'daily',
+          { pattern: this.config.certification.remindersCron, tz: 'UTC' },
+          { name: 'run', data: {} },
+        );
     } catch (err) {
       this.logger.error({ err }, 'could not register certification schedulers');
     }
@@ -70,7 +90,9 @@ export class JobsService implements OnModuleInit, OnApplicationShutdown {
     this.sweeping = true;
     try {
       const evaluated = await this.eligibility.processDirty({ limit: 200 });
-      const cutoff = new Date(now.getTime() - this.config.certification.pdfStuckAfterSeconds * 1000);
+      const cutoff = new Date(
+        now.getTime() - this.config.certification.pdfStuckAfterSeconds * 1000,
+      );
       const stuck = await this.db
         .selectFrom('issued_certificates')
         .select('id')
@@ -98,7 +120,14 @@ export class JobsService implements OnModuleInit, OnApplicationShutdown {
     const existing = await queue.getJob(certificateId);
     if (existing) {
       const state = await existing.getState();
-      if (state === 'active' || state === 'waiting' || state === 'delayed' || state === 'prioritized' || state === 'waiting-children') return false;
+      if (
+        state === 'active' ||
+        state === 'waiting' ||
+        state === 'delayed' ||
+        state === 'prioritized' ||
+        state === 'waiting-children'
+      )
+        return false;
       await existing.remove().catch(() => undefined);
     }
     await this.issuance.enqueuePdf(certificateId);

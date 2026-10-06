@@ -20,7 +20,11 @@ import { VerificationModule } from './verification/verification.module.js';
 @Module({})
 export class AppModule {
   /** `storage` overrides the configured driver (tests inject a temp-dir local storage). */
-  static register(config: CertificationConfig, logger: Logger, options: { storage?: ObjectStorage } = {}): DynamicModule {
+  static register(
+    config: CertificationConfig,
+    logger: Logger,
+    options: { storage?: ObjectStorage } = {},
+  ): DynamicModule {
     return {
       module: AppModule,
       imports: [

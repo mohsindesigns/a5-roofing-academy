@@ -8,7 +8,10 @@ export interface AudienceSubject {
 }
 
 /** Does a person belong to any of the audience entries? An empty audience matches nobody. */
-export function inAudience(audiences: ReadonlyArray<Pick<learning.Audience, 'kind' | 'ref'>>, subject: AudienceSubject): boolean {
+export function inAudience(
+  audiences: ReadonlyArray<Pick<learning.Audience, 'kind' | 'ref'>>,
+  subject: AudienceSubject,
+): boolean {
   return audiences.some((a) => {
     switch (a.kind) {
       case 'role':

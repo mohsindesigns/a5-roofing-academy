@@ -49,9 +49,23 @@ export function parseAttributes(list: string): Record<string, string> {
 }
 
 /** Variant streams declared in a master playlist. */
-export function parseMasterPlaylist(text: string): Array<{ uri: string; bandwidth: number; width: number | null; height: number | null; codecs: string | null }> {
+export function parseMasterPlaylist(
+  text: string,
+): Array<{
+  uri: string;
+  bandwidth: number;
+  width: number | null;
+  height: number | null;
+  codecs: string | null;
+}> {
   const lines = text.split(/\r?\n/).map((l) => l.trim());
-  const variants: Array<{ uri: string; bandwidth: number; width: number | null; height: number | null; codecs: string | null }> = [];
+  const variants: Array<{
+    uri: string;
+    bandwidth: number;
+    width: number | null;
+    height: number | null;
+    codecs: string | null;
+  }> = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     if (!line.startsWith('#EXT-X-STREAM-INF:')) continue;
@@ -83,7 +97,9 @@ export class FfmpegHlsTranscoder implements Transcoder {
       ));
     } catch (err) {
       if (err instanceof ProcessError && err.exitCode !== null) {
-        throw new InvalidMediaError(`The file could not be read as media (${lastLine(err.stderrTail) || 'unknown format'}).`);
+        throw new InvalidMediaError(
+          `The file could not be read as media (${lastLine(err.stderrTail) || 'unknown format'}).`,
+        );
       }
       throw err;
     }
@@ -93,11 +109,19 @@ export class FfmpegHlsTranscoder implements Transcoder {
     const a = streams.find((s) => s.codec_type === 'audio');
     let video: MediaProbe['video'] = null;
     if (v) {
-      const rotation = Number(v.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? v.tags?.rotate ?? 0);
+      const rotation = Number(
+        v.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? v.tags?.rotate ?? 0,
+      );
       const quarter = Math.abs(rotation) % 180 === 90;
-      video = { width: quarter ? v.height! : v.width!, height: quarter ? v.width! : v.height!, codec: v.codec_name ?? 'unknown' };
+      video = {
+        width: quarter ? v.height! : v.width!,
+        height: quarter ? v.width! : v.height!,
+        codec: v.codec_name ?? 'unknown',
+      };
     }
-    const durations = [json.format?.duration, v?.duration].map(Number).filter((d) => Number.isFinite(d) && d > 0);
+    const durations = [json.format?.duration, v?.duration]
+      .map(Number)
+      .filter((d) => Number.isFinite(d) && d > 0);
     return {
       formatName: json.format?.format_name ?? 'unknown',
       durationSeconds: durations.length ? Math.round(durations[0]! * 1000) / 1000 : null,
@@ -106,14 +130,22 @@ export class FfmpegHlsTranscoder implements Transcoder {
     };
   }
 
-  async transcodeToHls(inputPath: string, outputDir: string, probe: MediaProbe): Promise<HlsOutput> {
-    if (!probe.video) throw new InvalidMediaError('The file does not contain a playable video track.');
+  async transcodeToHls(
+    inputPath: string,
+    outputDir: string,
+    probe: MediaProbe,
+  ): Promise<HlsOutput> {
+    if (!probe.video)
+      throw new InvalidMediaError('The file does not contain a playable video track.');
     const plan = planLadder(probe.video.width, probe.video.height);
     const landscape = probe.video.width >= probe.video.height;
     const n = plan.length;
     const filter = [
       `[0:v]split=${n}${plan.map((_, i) => `[v${i}]`).join('')}`,
-      ...plan.map((r, i) => `[v${i}]scale=${landscape ? `-2:${r.size}` : `${r.size}:-2`},setsar=1,format=yuv420p[v${i}o]`),
+      ...plan.map(
+        (r, i) =>
+          `[v${i}]scale=${landscape ? `-2:${r.size}` : `${r.size}:-2`},setsar=1,format=yuv420p[v${i}o]`,
+      ),
     ].join(';');
 
     const args = ['-hide_banner', '-nostdin', '-y', '-i', inputPath, '-filter_complex', filter];
@@ -137,7 +169,9 @@ export class FfmpegHlsTranscoder implements Transcoder {
       args.push('-c:a', 'aac', '-ac', '2', '-ar', '48000');
       plan.forEach((r, i) => args.push(`-b:a:${i}`, `${r.audioKbps}k`));
     }
-    const streamMap = plan.map((r, i) => (probe.audio ? `v:${i},a:${i},name:${r.name}` : `v:${i},name:${r.name}`)).join(' ');
+    const streamMap = plan
+      .map((r, i) => (probe.audio ? `v:${i},a:${i},name:${r.name}` : `v:${i},name:${r.name}`))
+      .join(' ');
     args.push(
       '-f',
       'hls',
@@ -163,8 +197,14 @@ export class FfmpegHlsTranscoder implements Transcoder {
     try {
       await runProcess(this.options.ffmpegPath, args, { timeoutMs: this.options.timeoutMs });
     } catch (err) {
-      if (err instanceof ProcessError && err.exitCode !== null && /Invalid data|could not find codec|does not contain any stream/i.test(err.stderrTail)) {
-        throw new InvalidMediaError(`The video could not be decoded (${lastLine(err.stderrTail)}).`);
+      if (
+        err instanceof ProcessError &&
+        err.exitCode !== null &&
+        /Invalid data|could not find codec|does not contain any stream/i.test(err.stderrTail)
+      ) {
+        throw new InvalidMediaError(
+          `The video could not be decoded (${lastLine(err.stderrTail)}).`,
+        );
       }
       throw err;
     }
@@ -175,7 +215,8 @@ export class FfmpegHlsTranscoder implements Transcoder {
     const renditions: HlsRenditionOutput[] = plan.map((r) => {
       const playlistFile = `${r.name}.m3u8`;
       const variant = variants.find((v) => v.uri === playlistFile);
-      if (!variant || !files.includes(playlistFile)) throw new Error(`ffmpeg did not produce the ${r.name} rendition`);
+      if (!variant || !files.includes(playlistFile))
+        throw new Error(`ffmpeg did not produce the ${r.name} rendition`);
       return {
         name: r.name,
         width: variant.width ?? r.width,
@@ -186,7 +227,8 @@ export class FfmpegHlsTranscoder implements Transcoder {
       };
     });
     for (const f of files) {
-      if (f.endsWith('.m3u8') && !HLS_PLAYLIST_FILE.test(f)) throw new Error(`Unexpected HLS output file ${f}`);
+      if (f.endsWith('.m3u8') && !HLS_PLAYLIST_FILE.test(f))
+        throw new Error(`Unexpected HLS output file ${f}`);
     }
     return { masterFile: 'master.m3u8', renditions, files };
   }
@@ -219,7 +261,8 @@ export class FfmpegHlsTranscoder implements Transcoder {
       // Seeking past the last decodable frame writes nothing; fall back to the first frame.
       await grab(0);
       const retry = await stat(outputPath).catch(() => null);
-      if (!retry || retry.size === 0) throw new InvalidMediaError('A poster frame could not be extracted from the video.');
+      if (!retry || retry.size === 0)
+        throw new InvalidMediaError('A poster frame could not be extracted from the video.');
     }
   }
 }

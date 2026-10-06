@@ -31,7 +31,12 @@ export class IdentityInternalController {
         .select(['id', 'expires_at', 'revoked_at', 'user_id'])
         .where('id', '=', q.sessionId)
         .executeTakeFirst();
-      const active = Boolean(session && !session.revoked_at && session.expires_at > new Date() && session.user_id === userId);
+      const active = Boolean(
+        session &&
+        !session.revoked_at &&
+        session.expires_at > new Date() &&
+        session.user_id === userId,
+      );
       if (!active) return { principal: null, sessionActive: false };
       await this.cache.markSessionActive(session!.id, session!.expires_at);
     }
@@ -40,11 +45,32 @@ export class IdentityInternalController {
   }
 
   @Get('users')
-  async users(@ZQuery(z.object({ ids: z.string().transform((v) => v.split(',').filter(Boolean)).pipe(z.array(z.uuid()).max(500)) })) q: { ids: string[] }) {
+  async users(
+    @ZQuery(
+      z.object({
+        ids: z
+          .string()
+          .transform((v) => v.split(',').filter(Boolean))
+          .pipe(z.array(z.uuid()).max(500)),
+      }),
+    )
+    q: {
+      ids: string[];
+    },
+  ) {
     if (q.ids.length === 0) return { items: [] };
     const rows = await this.db
       .selectFrom('users')
-      .select(['id', 'organization_id', 'email', 'first_name', 'last_name', 'employee_id', 'job_title', 'status'])
+      .select([
+        'id',
+        'organization_id',
+        'email',
+        'first_name',
+        'last_name',
+        'employee_id',
+        'job_title',
+        'status',
+      ])
       .where('id', 'in', q.ids)
       .execute();
     return {
@@ -70,7 +96,14 @@ export class IdentityInternalController {
       .where('id', '=', id)
       .executeTakeFirst();
     if (!org) throw new NotFoundError('Organization');
-    return { id: org.id, slug: org.slug, name: org.name, legalName: org.legal_name, timezone: org.timezone, branding: org.branding };
+    return {
+      id: org.id,
+      slug: org.slug,
+      name: org.name,
+      legalName: org.legal_name,
+      timezone: org.timezone,
+      branding: org.branding,
+    };
   }
 
   @Get('organizations/:id/feature-flags')

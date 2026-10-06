@@ -18,15 +18,29 @@ const gatewayEnv = z.object({
 export function loadGatewayConfig(source?: Record<string, string | undefined>) {
   const config = loadServiceConfig('gateway', 4000, gatewayEnv, { database: false, source });
   const e = config.env;
-  const publicKey = e.AUTH_JWT_PUBLIC_KEY?.replace(/\\n/g, '\n') ?? (e.AUTH_JWT_PUBLIC_KEY_FILE ? readFileSync(e.AUTH_JWT_PUBLIC_KEY_FILE, 'utf8') : undefined);
+  const publicKey =
+    e.AUTH_JWT_PUBLIC_KEY?.replace(/\\n/g, '\n') ??
+    (e.AUTH_JWT_PUBLIC_KEY_FILE ? readFileSync(e.AUTH_JWT_PUBLIC_KEY_FILE, 'utf8') : undefined);
   if (!publicKey) {
-    throw new Error('Invalid configuration:\n  - AUTH_JWT_PUBLIC_KEY (or AUTH_JWT_PUBLIC_KEY_FILE) is required. Run `pnpm keys:generate`.');
+    throw new Error(
+      'Invalid configuration:\n  - AUTH_JWT_PUBLIC_KEY (or AUTH_JWT_PUBLIC_KEY_FILE) is required. Run `pnpm keys:generate`.',
+    );
   }
   const missing = Object.entries(config.serviceUrls)
     .filter(([, url]) => !url)
     .map(([name]) => name);
   if (missing.length && config.nodeEnv !== 'test') {
-    throw new Error(`Invalid configuration:\n${missing.map((m) => `  - ${m.toUpperCase().replace(/-SERVICE$/, '').replace(/-/g, '_')}_SERVICE_URL is required`).join('\n')}`);
+    throw new Error(
+      `Invalid configuration:\n${missing
+        .map(
+          (m) =>
+            `  - ${m
+              .toUpperCase()
+              .replace(/-SERVICE$/, '')
+              .replace(/-/g, '_')}_SERVICE_URL is required`,
+        )
+        .join('\n')}`,
+    );
   }
   return {
     ...config,

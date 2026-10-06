@@ -10,7 +10,17 @@ import type { AnalyticsFilters, QueryContext } from '../analytics/query-context.
 import { AnalyticsClock } from './clock.js';
 import { SettingsService } from './settings.service.js';
 
-const FILTER_KEYS = ['from', 'to', 'programId', 'certificationId', 'teamId', 'managerId', 'departmentId', 'locationId', 'userId'] as const;
+const FILTER_KEYS = [
+  'from',
+  'to',
+  'programId',
+  'certificationId',
+  'teamId',
+  'managerId',
+  'departmentId',
+  'locationId',
+  'userId',
+] as const;
 
 /** Keep only known, defined filter keys (stable cache keys and stored export filters). */
 export function cleanFilters(input: Partial<Record<string, unknown>>): AnalyticsFilters {
@@ -44,7 +54,11 @@ export class AnalyticsScope {
     return this.config.analytics.timezone;
   }
 
-  async context(p: Principal, permission: PermissionKey, filters: Partial<Record<string, unknown>>): Promise<QueryContext> {
+  async context(
+    p: Principal,
+    permission: PermissionKey,
+    filters: Partial<Record<string, unknown>>,
+  ): Promise<QueryContext> {
     const scope = p.scopeFilter(permission);
     if (scope.kind === 'none') throw new ForbiddenError();
     const clean = cleanFilters(filters);
@@ -53,12 +67,27 @@ export class AnalyticsScope {
   }
 
   /** Context for a stored request (export jobs run later with the scope captured at request time). */
-  async build(organizationId: string, scope: ScopeFilter, filters: AnalyticsFilters): Promise<QueryContext> {
+  async build(
+    organizationId: string,
+    scope: ScopeFilter,
+    filters: AnalyticsFilters,
+  ): Promise<QueryContext> {
     const { settings } = await this.settings.get(organizationId);
-    return { organizationId, scope, filters, now: this.clock.now(), timezone: this.config.analytics.timezone, settings };
+    return {
+      organizationId,
+      scope,
+      filters,
+      now: this.clock.now(),
+      timezone: this.config.analytics.timezone,
+      settings,
+    };
   }
 
-  private async assertFilters(p: Principal, scope: ScopeFilter, f: AnalyticsFilters): Promise<void> {
+  private async assertFilters(
+    p: Principal,
+    scope: ScopeFilter,
+    f: AnalyticsFilters,
+  ): Promise<void> {
     if (scope.kind === 'organization' || scope.kind === 'platform') return;
     if (f.teamId && (scope.kind !== 'managed' || !scope.teamIds.includes(f.teamId))) {
       throw new ForbiddenError('You can only filter by teams you manage.');
@@ -87,7 +116,11 @@ export class AnalyticsScope {
   }
 
   /** 404 unless the learner is visible to the caller under `permission`. */
-  async assertLearnerVisible(p: Principal, permission: PermissionKey, userId: string): Promise<void> {
+  async assertLearnerVisible(
+    p: Principal,
+    permission: PermissionKey,
+    userId: string,
+  ): Promise<void> {
     const scope = p.scopeFilter(permission);
     if (scope.kind === 'none') throw new ForbiddenError();
     if (!(await this.admits(p, scope, userId))) throw new NotFoundError('Learner');

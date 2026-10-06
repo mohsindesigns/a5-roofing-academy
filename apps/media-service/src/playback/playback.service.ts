@@ -8,7 +8,12 @@ import { TelemetryService } from '../telemetry/telemetry.service.js';
 import { MediaTokens, type HlsTokenClaims, type PlaybackTokenClaims } from './media-tokens.js';
 import { parsePlaybackPolicy } from './playback-policy.js';
 
-const PENDING = new Set<media.MediaStatus>(['awaiting_upload', 'uploaded', 'scanning', 'processing']);
+const PENDING = new Set<media.MediaStatus>([
+  'awaiting_upload',
+  'uploaded',
+  'scanning',
+  'processing',
+]);
 
 interface DescribeOptions {
   viewerId: string;
@@ -33,12 +38,22 @@ export class PlaybackService {
       grant = await verifyLessonGrant(grantToken, this.config.media.lessonGrantSecret);
     } catch (err) {
       if (err instanceof TokenError && err.code === 'expired') {
-        throw new AppError(403, 'GRANT_EXPIRED', 'This lesson link has expired. Reopen the lesson from your training plan.');
+        throw new AppError(
+          403,
+          'GRANT_EXPIRED',
+          'This lesson link has expired. Reopen the lesson from your training plan.',
+        );
       }
-      throw new AppError(403, 'GRANT_INVALID', 'This lesson link is not valid. Reopen the lesson from your training plan.');
+      throw new AppError(
+        403,
+        'GRANT_INVALID',
+        'This lesson link is not valid. Reopen the lesson from your training plan.',
+      );
     }
     if (grant.userId !== p.userId || grant.organizationId !== p.organizationId) {
-      throw new ForbiddenError('This lesson was opened for a different account. Reopen it from your training plan.');
+      throw new ForbiddenError(
+        'This lesson was opened for a different account. Reopen it from your training plan.',
+      );
     }
     if (grant.resource.type !== 'media' && grant.resource.type !== 'document') {
       throw new ForbiddenError('This lesson does not include a video or document.');
@@ -56,23 +71,44 @@ export class PlaybackService {
   /** Administrator preview: same descriptor, no progress and no telemetry. */
   async preview(p: Principal, id: string): Promise<media.PlaybackDescriptor> {
     const asset = await this.read.get(p.organizationId, id);
-    if (asset.kind === 'caption') throw new PreconditionError('NOT_PLAYABLE', 'Caption files are previewed together with their video.');
+    if (asset.kind === 'caption')
+      throw new PreconditionError(
+        'NOT_PLAYABLE',
+        'Caption files are previewed together with their video.',
+      );
     this.assertPlayable(asset);
-    return this.describe(asset, { viewerId: p.userId, policy: parsePlaybackPolicy({}), context: null });
+    return this.describe(asset, {
+      viewerId: p.userId,
+      policy: parsePlaybackPolicy({}),
+      context: null,
+    });
   }
 
   private assertPlayable(asset: AssetRow): void {
     if (isPlayable(asset)) return;
     if (PENDING.has(asset.status)) {
-      throw new PreconditionError('MEDIA_NOT_READY', 'This media is still being processed. Try again in a few minutes.');
+      throw new PreconditionError(
+        'MEDIA_NOT_READY',
+        'This media is still being processed. Try again in a few minutes.',
+      );
     }
-    throw new PreconditionError('MEDIA_UNAVAILABLE', 'This media is not available. Ask your training administrator to replace it.');
+    throw new PreconditionError(
+      'MEDIA_UNAVAILABLE',
+      'This media is not available. Ask your training administrator to replace it.',
+    );
   }
 
-  private async describe(asset: AssetRow, options: DescribeOptions): Promise<media.PlaybackDescriptor> {
+  private async describe(
+    asset: AssetRow,
+    options: DescribeOptions,
+  ): Promise<media.PlaybackDescriptor> {
     const ttl = this.config.media.playbackTtlSeconds;
-    const sign = (key: string, extra: { contentType?: string } = {}) => this.read.sign(key, { expiresInSeconds: ttl, ...extra });
-    const hls = this.tokens.sign<HlsTokenClaims>({ typ: 'hls', aid: asset.id, org: asset.organization_id, sub: options.viewerId }, ttl);
+    const sign = (key: string, extra: { contentType?: string } = {}) =>
+      this.read.sign(key, { expiresInSeconds: ttl, ...extra });
+    const hls = this.tokens.sign<HlsTokenClaims>(
+      { typ: 'hls', aid: asset.id, org: asset.organization_id, sub: options.viewerId },
+      ttl,
+    );
     const isVideo = asset.kind === 'video';
 
     let kind: media.PlaybackDescriptor['kind'];
@@ -104,7 +140,13 @@ export class PlaybackService {
         : Promise.resolve([]),
       isVideo ? this.read.chapters(asset.id) : Promise.resolve([]),
       options.context && isVideo
-        ? this.telemetry.resume(options.viewerId, asset.id, options.context.type, options.context.id, options.policy.completionPercent)
+        ? this.telemetry.resume(
+            options.viewerId,
+            asset.id,
+            options.context.type,
+            options.context.id,
+            options.policy.completionPercent,
+          )
         : Promise.resolve(null),
     ]);
 

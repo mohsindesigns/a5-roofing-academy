@@ -12,7 +12,12 @@ beforeAll(async () => {
 afterAll(() => h?.close());
 
 async function roleId(key: string): Promise<string> {
-  const row = await h.db.selectFrom('roles').select('id').where('key', '=', key).where('organization_id', '=', ORGANIZATION.id).executeTakeFirstOrThrow();
+  const row = await h.db
+    .selectFrom('roles')
+    .select('id')
+    .where('key', '=', key)
+    .where('organization_id', '=', ORGANIZATION.id)
+    .executeTakeFirstOrThrow();
   return row.id;
 }
 
@@ -21,8 +26,12 @@ describe('representatives', () => {
     const rep = await h.as('marcus');
     expect((await h.http.get('/api/v1/users').set(rep)).status).toBe(403);
     expect((await h.http.get('/api/v1/roles').set(rep)).status).toBe(403);
-    expect((await h.http.post('/api/v1/teams').set(rep).send({ name: 'Rogue team' })).status).toBe(403);
-    expect((await h.http.put('/api/v1/feature-flags/voice_ai').set(rep).send({ enabled: true })).status).toBe(403);
+    expect((await h.http.post('/api/v1/teams').set(rep).send({ name: 'Rogue team' })).status).toBe(
+      403,
+    );
+    expect(
+      (await h.http.put('/api/v1/feature-flags/voice_ai').set(rep).send({ enabled: true })).status,
+    ).toBe(403);
   });
 
   it('can read their own profile but not a colleague', async () => {
@@ -38,7 +47,10 @@ describe('manager data scope', () => {
     expect(res.status).toBe(200);
     const names = res.body.items.map((u: { displayName: string }) => u.displayName).sort();
     const teamA = TEAMS.find((t) => t.name === 'Dallas Residential A')!;
-    const expected = [...teamA.members.map((m) => `${PEOPLE[m].firstName} ${PEOPLE[m].lastName}`), 'Danielle Okafor'].sort();
+    const expected = [
+      ...teamA.members.map((m) => `${PEOPLE[m].firstName} ${PEOPLE[m].lastName}`),
+      'Danielle Okafor',
+    ].sort();
     expect(names).toEqual(expected);
   });
 
@@ -49,7 +61,9 @@ describe('manager data scope', () => {
 
   it('sees only managed teams', async () => {
     const res = await h.http.get('/api/v1/teams').set(await h.as('luis'));
-    expect(res.body.items.map((t: { name: string }) => t.name)).toEqual(['Fort Worth Storm Response']);
+    expect(res.body.items.map((t: { name: string }) => t.name)).toEqual([
+      'Fort Worth Storm Response',
+    ]);
   });
 
   it('trainers see assigned trainees across teams', async () => {
@@ -91,12 +105,19 @@ describe('role management', () => {
     const created = await h.http
       .post('/api/v1/roles')
       .set(admin)
-      .send({ name: 'Regional Sales Director', dataScope: 'organization', cloneFromRoleId: await roleId('manager') });
+      .send({
+        name: 'Regional Sales Director',
+        dataScope: 'organization',
+        cloneFromRoleId: await roleId('manager'),
+      });
     expect(created.status).toBe(201);
     expect(created.body.permissions).toContain('certificate_approvals.decide');
     expect(created.body.isSystem).toBe(false);
 
-    const duplicate = await h.http.post('/api/v1/roles').set(admin).send({ name: 'regional sales director', dataScope: 'own' });
+    const duplicate = await h.http
+      .post('/api/v1/roles')
+      .set(admin)
+      .send({ name: 'regional sales director', dataScope: 'own' });
     expect(duplicate.status).toBe(409);
 
     const archived = await h.http.post(`/api/v1/roles/${created.body.id}/archive`).set(admin);
@@ -105,14 +126,20 @@ describe('role management', () => {
   });
 
   it('refuses to archive roles that are in use', async () => {
-    const res = await h.http.post(`/api/v1/roles/${await roleId('trainer')}/archive`).set(await h.as('priya'));
+    const res = await h.http
+      .post(`/api/v1/roles/${await roleId('trainer')}/archive`)
+      .set(await h.as('priya'));
     expect(res.status).toBe(422);
   });
 
   it('resets a modified system role to defaults', async () => {
     const admin = await h.as('priya');
     const id = await roleId('auditor');
-    await h.http.put(`/api/v1/roles/${id}/permissions`).set(admin).send({ permissions: ['users.view'] }).expect(200);
+    await h.http
+      .put(`/api/v1/roles/${id}/permissions`)
+      .set(admin)
+      .send({ permissions: ['users.view'] })
+      .expect(200);
     const modified = await h.http.get(`/api/v1/roles/${id}`).set(admin);
     expect(modified.body.modifiedFromDefault).toBe(true);
     const reset = await h.http.post(`/api/v1/roles/${id}/reset`).set(admin);
@@ -122,8 +149,14 @@ describe('role management', () => {
   });
 
   it('records an audit event for permission changes', async () => {
-    const audits = await h.db.selectFrom('outbox_events').select('envelope').where('type', '=', 'audit.recorded').execute();
-    const actions = audits.map((a) => (a.envelope as { payload: { action: string } }).payload.action);
+    const audits = await h.db
+      .selectFrom('outbox_events')
+      .select('envelope')
+      .where('type', '=', 'audit.recorded')
+      .execute();
+    const actions = audits.map(
+      (a) => (a.envelope as { payload: { action: string } }).payload.action,
+    );
     expect(actions).toContain('role.permissions_changed');
     expect(actions).toContain('role.cloned');
   });
@@ -135,29 +168,61 @@ describe('privilege escalation', () => {
     const limited = await h.http
       .post('/api/v1/roles')
       .set(admin)
-      .send({ name: 'People Coordinator', dataScope: 'organization', permissions: ['users.view', 'roles.view', 'roles.update', 'permissions.manage', 'roles.create'] });
+      .send({
+        name: 'People Coordinator',
+        dataScope: 'organization',
+        permissions: [
+          'users.view',
+          'roles.view',
+          'roles.update',
+          'permissions.manage',
+          'roles.create',
+        ],
+      });
     expect(limited.status).toBe(201);
-    await h.http.put(`/api/v1/users/${PEOPLE.ruth.id}/roles`).set(admin).send({ roleIds: [limited.body.id] }).expect(200);
+    await h.http
+      .put(`/api/v1/users/${PEOPLE.ruth.id}/roles`)
+      .set(admin)
+      .send({ roleIds: [limited.body.id] })
+      .expect(200);
 
     const ruth = await h.as('ruth');
     const escalate = await h.http
       .put(`/api/v1/roles/${limited.body.id}/permissions`)
       .set(ruth)
-      .send({ permissions: ['users.view', 'roles.view', 'roles.update', 'permissions.manage', 'roles.create', 'users.delete'] });
+      .send({
+        permissions: [
+          'users.view',
+          'roles.view',
+          'roles.update',
+          'permissions.manage',
+          'roles.create',
+          'users.delete',
+        ],
+      });
     expect(escalate.status).toBe(403);
     expect(escalate.body.error.details.permissions).toEqual(['users.delete']);
 
-    const widen = await h.http.post('/api/v1/roles').set(ruth).send({ name: 'Shadow admin', dataScope: 'platform', permissions: [] });
+    const widen = await h.http
+      .post('/api/v1/roles')
+      .set(ruth)
+      .send({ name: 'Shadow admin', dataScope: 'platform', permissions: [] });
     expect(widen.status).toBe(400);
   });
 
   it('administrators cannot assign roles granting permissions they lack', async () => {
-    const res = await h.http.put(`/api/v1/users/${PEOPLE.tyler.id}/roles`).set(await h.as('grant')).send({ roleIds: [await roleId('super_admin')] });
+    const res = await h.http
+      .put(`/api/v1/users/${PEOPLE.tyler.id}/roles`)
+      .set(await h.as('grant'))
+      .send({ roleIds: [await roleId('super_admin')] });
     expect(res.status).toBe(403);
   });
 
   it('users cannot change their own roles', async () => {
-    const res = await h.http.put(`/api/v1/users/${PEOPLE.priya.id}/roles`).set(await h.as('priya')).send({ roleIds: [await roleId('admin')] });
+    const res = await h.http
+      .put(`/api/v1/users/${PEOPLE.priya.id}/roles`)
+      .set(await h.as('priya'))
+      .send({ roleIds: [await roleId('admin')] });
     expect(res.status).toBe(403);
   });
 });
@@ -170,8 +235,14 @@ describe('revocation takes effect immediately', () => {
 
     const manager = await roleId('manager');
     const current = await h.http.get(`/api/v1/roles/${manager}`).set(await h.as('priya'));
-    const without = current.body.permissions.filter((p: string) => p !== 'certificate_approvals.decide');
-    await h.http.put(`/api/v1/roles/${manager}/permissions`).set(await h.as('priya')).send({ permissions: without }).expect(200);
+    const without = current.body.permissions.filter(
+      (p: string) => p !== 'certificate_approvals.decide',
+    );
+    await h.http
+      .put(`/api/v1/roles/${manager}/permissions`)
+      .set(await h.as('priya'))
+      .send({ permissions: without })
+      .expect(200);
 
     const epoch = await h.redis.get(iamKeys.epoch(h.ns, ORGANIZATION.id));
     expect(Number(epoch)).toBeGreaterThan(0);
@@ -180,7 +251,9 @@ describe('revocation takes effect immediately', () => {
   });
 
   it('deactivation revokes sessions and principal resolution', async () => {
-    const login = await h.http.post('/api/v1/auth/login').send({ email: h.email('colton'), password: h.password });
+    const login = await h.http
+      .post('/api/v1/auth/login')
+      .send({ email: h.email('colton'), password: h.password });
     expect(login.status).toBe(200);
     const res = await h.http
       .post(`/api/v1/users/${PEOPLE.colton.id}/deactivate`)
@@ -190,11 +263,15 @@ describe('revocation takes effect immediately', () => {
     expect(res.body.status).toBe('deactivated');
     expect(await h.redis.exists(iamKeys.session(h.ns, login.body.sessionId))).toBe(0);
     const svc = await serviceHeaders('gateway');
-    const principal = await h.http.get(`/internal/principals/${PEOPLE.colton.id}?sessionId=${login.body.sessionId}`).set(svc);
+    const principal = await h.http
+      .get(`/internal/principals/${PEOPLE.colton.id}?sessionId=${login.body.sessionId}`)
+      .set(svc);
     expect(principal.body).toEqual({ principal: null, sessionActive: false });
   });
 
   it('internal endpoints reject user principals', async () => {
-    expect((await h.http.get(`/internal/principals/${PEOPLE.andre.id}`).set(await h.as('priya'))).status).toBe(401);
+    expect(
+      (await h.http.get(`/internal/principals/${PEOPLE.andre.id}`).set(await h.as('priya'))).status,
+    ).toBe(401);
   });
 });

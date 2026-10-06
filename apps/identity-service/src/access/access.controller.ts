@@ -16,7 +16,12 @@ import { RolesService } from './roles.service.js';
 
 const matrixUpdateSchema = z.object({
   changes: z
-    .array(z.object({ roleId: z.uuid(), permissions: identity.setRolePermissionsRequestSchema.shape.permissions }))
+    .array(
+      z.object({
+        roleId: z.uuid(),
+        permissions: identity.setRolePermissionsRequestSchema.shape.permissions,
+      }),
+    )
     .min(1)
     .max(50),
   reason: z.string().trim().max(500).nullable().optional(),
@@ -31,7 +36,8 @@ export class RolesController {
   @ZResponse(z.object({ items: z.array(identity.roleSummarySchema) }))
   async list(
     @CurrentPrincipal() p: Principal,
-    @ZQuery(z.object({ includeArchived: z.enum(['true', 'false']).optional() })) q: { includeArchived?: 'true' | 'false' },
+    @ZQuery(z.object({ includeArchived: z.enum(['true', 'false']).optional() }))
+    q: { includeArchived?: 'true' | 'false' },
   ) {
     return { items: await this.roles.list(p.organizationId, q.includeArchived === 'true') };
   }
@@ -46,7 +52,10 @@ export class RolesController {
   @Post()
   @RequirePermissions('roles.create')
   @ZResponse(identity.roleDetailSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(identity.createRoleRequestSchema) body: identity.CreateRoleRequest) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(identity.createRoleRequestSchema) body: identity.CreateRoleRequest,
+  ) {
     return this.roles.create(p, body);
   }
 
@@ -56,7 +65,8 @@ export class RolesController {
   update(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(identity.updateRoleRequestSchema) body: { name?: string; description?: string | null; dataScope?: DataScope },
+    @ZBody(identity.updateRoleRequestSchema)
+    body: { name?: string; description?: string | null; dataScope?: DataScope },
   ) {
     return this.roles.update(p, id, body);
   }
@@ -67,7 +77,8 @@ export class RolesController {
   setPermissions(
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
-    @ZBody(identity.setRolePermissionsRequestSchema) body: { permissions: PermissionKey[]; reason?: string | null },
+    @ZBody(identity.setRolePermissionsRequestSchema)
+    body: { permissions: PermissionKey[]; reason?: string | null },
   ) {
     return this.roles.setPermissions(p, id, body.permissions, body.reason);
   }
@@ -117,4 +128,3 @@ export class PermissionsController {
     return this.roles.setMatrix(p, body.changes, body.reason);
   }
 }
-

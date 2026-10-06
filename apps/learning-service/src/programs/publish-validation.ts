@@ -15,14 +15,28 @@ export function publishIssues(tree: ProgramTree): learning.PublishIssue[] {
   const phaseIds = new Set(tree.phases.map((p) => p.id));
 
   if (lessons.length === 0) {
-    issues.push({ nodeType: 'program', nodeId: tree.programId, message: 'Add at least one lesson before publishing.' });
+    issues.push({
+      nodeType: 'program',
+      nodeId: tree.programId,
+      message: 'Add at least one lesson before publishing.',
+    });
   }
 
-  const checkRule = (rule: Rule | null, nodeType: learning.PublishIssue['nodeType'], nodeId: string, label: string) => {
+  const checkRule = (
+    rule: Rule | null,
+    nodeType: learning.PublishIssue['nodeType'],
+    nodeId: string,
+    label: string,
+  ) => {
     if (!rule) return;
     const refs = ruleReferences([rule]);
     const self = [...refs.lessonIds, ...refs.moduleIds, ...refs.phaseIds].includes(nodeId);
-    if (self) issues.push({ nodeType, nodeId, message: `${label}: the unlock rule cannot depend on the item itself.` });
+    if (self)
+      issues.push({
+        nodeType,
+        nodeId,
+        message: `${label}: the unlock rule cannot depend on the item itself.`,
+      });
     const missing =
       refs.lessonIds.filter((id) => !lessonIds.has(id)).length +
       refs.moduleIds.filter((id) => !moduleIds.has(id)).length +
@@ -39,28 +53,47 @@ export function publishIssues(tree: ProgramTree): learning.PublishIssue[] {
   tree.phases.forEach((phase, index) => {
     const name = phaseName(tree, index, phase.title);
     if (!phase.modules.some((m) => m.lessons.length > 0)) {
-      issues.push({ nodeType: 'phase', nodeId: phase.id, message: `${name} has no lessons. Add a lesson or archive it.` });
+      issues.push({
+        nodeType: 'phase',
+        nodeId: phase.id,
+        message: `${name} has no lessons. Add a lesson or archive it.`,
+      });
     }
     checkRule(phase.unlockRule, 'phase', phase.id, name);
     for (const module of phase.modules) {
       if (module.lessons.length === 0) {
-        issues.push({ nodeType: 'module', nodeId: module.id, message: `Module "${module.title}" has no lessons. Add a lesson or archive it.` });
+        issues.push({
+          nodeType: 'module',
+          nodeId: module.id,
+          message: `Module "${module.title}" has no lessons. Add a lesson or archive it.`,
+        });
       }
       checkRule(module.unlockRule, 'module', module.id, `Module "${module.title}"`);
       for (const lesson of module.lessons) {
         const label = `Lesson "${lesson.title}"`;
         if (!lessonTypes.has(lesson.type)) {
-          issues.push({ nodeType: 'lesson', nodeId: lesson.id, message: `${label}: unknown lesson type "${lesson.type}".` });
+          issues.push({
+            nodeType: 'lesson',
+            nodeId: lesson.id,
+            message: `${label}: unknown lesson type "${lesson.type}".`,
+          });
           continue;
         }
         const handler = lessonTypes.get(lesson.type);
         const parsed = handler.configSchema.safeParse(lesson.config);
         if (!parsed.success) {
           for (const issue of parsed.error.issues) {
-            issues.push({ nodeType: 'lesson', nodeId: lesson.id, message: `${label}: ${issue.message} (${['config', ...issue.path.map(String)].join('.')}).` });
+            issues.push({
+              nodeType: 'lesson',
+              nodeId: lesson.id,
+              message: `${label}: ${issue.message} (${['config', ...issue.path.map(String)].join('.')}).`,
+            });
           }
         } else {
-          for (const message of handler.publishIssues?.({ body: lesson.body, config: parsed.data }) ?? []) {
+          for (const message of handler.publishIssues?.({
+            body: lesson.body,
+            config: parsed.data,
+          }) ?? []) {
             issues.push({ nodeType: 'lesson', nodeId: lesson.id, message: `${label}: ${message}` });
           }
         }

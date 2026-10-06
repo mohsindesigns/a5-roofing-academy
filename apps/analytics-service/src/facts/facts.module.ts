@@ -8,7 +8,8 @@ import { FactsConsumer } from './facts.consumer.js';
     {
       provide: FactWriter,
       inject: [ANALYTICS_CONFIG],
-      useFactory: (config: AnalyticsConfig) => new FactWriter({ timezone: config.analytics.timezone }),
+      useFactory: (config: AnalyticsConfig) =>
+        new FactWriter({ timezone: config.analytics.timezone }),
     },
     FactsConsumer,
   ],

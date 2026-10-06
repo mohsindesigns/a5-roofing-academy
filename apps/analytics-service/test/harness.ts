@@ -8,7 +8,13 @@ import { claimInbox, createDatabase, migrateToLatest, type Database } from '@a5/
 import { applyDirectoryTeam, applyDirectoryUnit, applyDirectoryUser } from '@a5/directory';
 import { buildEvent, type EventDefinition, type EventEnvelope } from '@a5/events';
 import { createRedis, RedisNamespace, type Redis } from '@a5/messaging';
-import { TEST_INTERNAL_SECRET, closeApp, createTestApp, principalHeaders, testLogger } from '@a5/nest-kit/testing';
+import {
+  TEST_INTERNAL_SECRET,
+  closeApp,
+  createTestApp,
+  principalHeaders,
+  testLogger,
+} from '@a5/nest-kit/testing';
 import { getDefaultRole, type PermissionMap, type SystemRoleKey } from '@a5/permissions';
 import {
   ORGANIZATION,
@@ -20,7 +26,12 @@ import {
   directoryUsers,
   type PersonKey,
 } from '@a5/seed-data';
-import { TEST_REDIS_URL, createTestDatabase, testRedisNamespace, type TestDatabase } from '@a5/testing';
+import {
+  TEST_REDIS_URL,
+  createTestDatabase,
+  testRedisNamespace,
+  type TestDatabase,
+} from '@a5/testing';
 import type { z } from 'zod';
 import { stableId } from '../src/common/ids.js';
 import { AppModule } from '../src/app.module.js';
@@ -63,7 +74,11 @@ export interface AnalyticsHarness {
   /** Principal headers for a seeded person acting with a system role's permissions and scope. */
   as(person: PersonKey, role?: SystemRoleKey): Promise<Record<string, string>>;
   /** Principal headers for an arbitrary permission map. */
-  custom(userId: string, permissions: PermissionMap, extra?: { managedTeamIds?: string[]; managedUserIds?: string[] }): Promise<Record<string, string>>;
+  custom(
+    userId: string,
+    permissions: PermissionMap,
+    extra?: { managedTeamIds?: string[]; managedUserIds?: string[] },
+  ): Promise<Record<string, string>>;
   /** Apply events through the same code path as the consumers (inbox claim included). */
   apply(...events: EventEnvelope[]): Promise<void>;
   close(): Promise<void>;
@@ -125,7 +140,10 @@ export async function loadDirectory(db: Db): Promise<void> {
   });
 }
 
-export async function createAnalyticsHarness(name: string, options: HarnessOptions = {}): Promise<AnalyticsHarness> {
+export async function createAnalyticsHarness(
+  name: string,
+  options: HarnessOptions = {},
+): Promise<AnalyticsHarness> {
   const tdb: TestDatabase = await createTestDatabase(`analytics_${name}`);
   const namespace = testRedisNamespace(`analytics-${name}`);
   const storageRoot = await mkdtemp(join(tmpdir(), 'a5-analytics-test-'));
@@ -143,7 +161,10 @@ export async function createAnalyticsHarness(name: string, options: HarnessOptio
     REPORT_FILES_PUBLIC_URL: 'http://localhost:4000/api/v1/reports/files',
     ...options.env,
   });
-  const database: Database<AnalyticsDatabase> = createDatabase<AnalyticsDatabase>({ url: tdb.url, poolMax: 6 });
+  const database: Database<AnalyticsDatabase> = createDatabase<AnalyticsDatabase>({
+    url: tdb.url,
+    poolMax: 6,
+  });
   await migrateToLatest(database.db as never, migrations);
   if (options.seed) await seedAnalytics(database.db, { timezone: config.analytics.timezone });
   else if (options.directory !== false) await loadDirectory(database.db);
@@ -183,7 +204,12 @@ export async function createAnalyticsHarness(name: string, options: HarnessOptio
     async apply(...events) {
       await database.db.transaction().execute(async (trx) => {
         for (const event of events) {
-          const claimed = await claimInbox(trx as never, event.id, `analytics.${event.type}`, event.type);
+          const claimed = await claimInbox(
+            trx as never,
+            event.id,
+            `analytics.${event.type}`,
+            event.type,
+          );
           if (claimed) await applyFactEvent(writer, trx as Trx, event);
         }
       });

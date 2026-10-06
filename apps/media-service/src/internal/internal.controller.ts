@@ -1,10 +1,24 @@
 import { Get } from '@nestjs/common';
 import { z } from 'zod';
 import { media } from '@a5/contracts';
-import { InjectDb, InternalController, NotFoundError, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  InjectDb,
+  InternalController,
+  NotFoundError,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import type { Db } from '../database/index.js';
 
-type Row = { id: string; organization_id: string; title: string; kind: media.MediaKind; status: media.MediaStatus; duration_seconds: number | null };
+type Row = {
+  id: string;
+  organization_id: string;
+  title: string;
+  kind: media.MediaKind;
+  status: media.MediaStatus;
+  duration_seconds: number | null;
+};
 
 const toDto = (r: Row): media.InternalMediaAsset => ({
   id: r.id,
@@ -18,7 +32,12 @@ const toDto = (r: Row): media.InternalMediaAsset => ({
 const idsQuery = z.object({
   ids: z
     .string()
-    .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean))
+    .transform((v) =>
+      v
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    )
     .pipe(z.array(z.uuid()).min(1).max(500)),
 });
 

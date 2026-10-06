@@ -2,7 +2,15 @@ import { Get, Patch, Post } from '@nestjs/common';
 import { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { certification } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { SignatoriesService, StampsService } from './signatories.service.js';
 
 const c = certification;
@@ -14,8 +22,16 @@ export class SignatoriesController {
   @Get()
   @RequirePermissions('signatures.manage')
   @ZResponse(c.signatoryPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(c.listSignatoriesQuerySchema) q: z.infer<typeof c.listSignatoriesQuerySchema>) {
-    return this.signatories.list(p, { q: q.q, active: q.active, page: q.page, pageSize: q.pageSize });
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(c.listSignatoriesQuerySchema) q: z.infer<typeof c.listSignatoriesQuerySchema>,
+  ) {
+    return this.signatories.list(p, {
+      q: q.q,
+      active: q.active,
+      page: q.page,
+      pageSize: q.pageSize,
+    });
   }
 
   @Get(':id')
@@ -35,14 +51,21 @@ export class SignatoriesController {
   @Post()
   @RequirePermissions('signatures.manage')
   @ZResponse(c.signatorySchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(c.createSignatoryRequestSchema) body: z.infer<typeof c.createSignatoryRequestSchema>) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(c.createSignatoryRequestSchema) body: z.infer<typeof c.createSignatoryRequestSchema>,
+  ) {
     return this.signatories.create(p, body);
   }
 
   @Patch(':id')
   @RequirePermissions('signatures.manage')
   @ZResponse(c.signatorySchema)
-  update(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(c.updateSignatoryRequestSchema) body: z.infer<typeof c.updateSignatoryRequestSchema>) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(c.updateSignatoryRequestSchema) body: z.infer<typeof c.updateSignatoryRequestSchema>,
+  ) {
     return this.signatories.update(p, id, body);
   }
 }
@@ -54,7 +77,10 @@ export class StampsController {
   @Get()
   @RequirePermissions('stamps.manage')
   @ZResponse(c.stampPageSchema)
-  list(@CurrentPrincipal() p: Principal, @ZQuery(c.listSignatoriesQuerySchema) q: z.infer<typeof c.listSignatoriesQuerySchema>) {
+  list(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(c.listSignatoriesQuerySchema) q: z.infer<typeof c.listSignatoriesQuerySchema>,
+  ) {
     return this.stamps.list(p, { q: q.q, active: q.active, page: q.page, pageSize: q.pageSize });
   }
 
@@ -68,14 +94,21 @@ export class StampsController {
   @Post()
   @RequirePermissions('stamps.manage')
   @ZResponse(c.stampSchema)
-  create(@CurrentPrincipal() p: Principal, @ZBody(c.createStampRequestSchema) body: z.infer<typeof c.createStampRequestSchema>) {
+  create(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(c.createStampRequestSchema) body: z.infer<typeof c.createStampRequestSchema>,
+  ) {
     return this.stamps.create(p, body);
   }
 
   @Patch(':id')
   @RequirePermissions('stamps.manage')
   @ZResponse(c.stampSchema)
-  update(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(c.updateStampRequestSchema) body: z.infer<typeof c.updateStampRequestSchema>) {
+  update(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(c.updateStampRequestSchema) body: z.infer<typeof c.updateStampRequestSchema>,
+  ) {
     return this.stamps.update(p, id, body);
   }
 }

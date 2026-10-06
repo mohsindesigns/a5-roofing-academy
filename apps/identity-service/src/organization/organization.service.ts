@@ -2,7 +2,14 @@ import { Injectable } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import { FEATURE_FLAGS, type identity } from '@a5/contracts';
 import { isUniqueViolation, likePattern, sql } from '@a5/database';
-import { ConflictError, EventBus, InjectDb, NotFoundError, PreconditionError, ValidationError } from '@a5/nest-kit';
+import {
+  ConflictError,
+  EventBus,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+  ValidationError,
+} from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import { DirectoryPublisher } from '../common/directory-publisher.js';
 import { IamCache } from '../common/iam-cache.js';
@@ -56,7 +63,10 @@ export class OrganizationService {
     }));
   }
 
-  async departments(organizationId: string, includeArchived = false): Promise<identity.Department[]> {
+  async departments(
+    organizationId: string,
+    includeArchived = false,
+  ): Promise<identity.Department[]> {
     const rows = await this.db
       .selectFrom('departments as d')
       .select((eb) => [
@@ -88,7 +98,13 @@ export class OrganizationService {
     actor: Principal,
     kind: UnitKind,
     id: string | null,
-    input: { name: string; code?: string | null; city?: string | null; state?: string | null; timezone?: string },
+    input: {
+      name: string;
+      code?: string | null;
+      city?: string | null;
+      state?: string | null;
+      timezone?: string;
+    },
   ): Promise<string> {
     const table = kind === 'location' ? 'locations' : 'departments';
     const unitId = id ?? uuidv7();
@@ -106,7 +122,13 @@ export class OrganizationService {
             .updateTable(table)
             .set(
               kind === 'location'
-                ? { name: input.name, code: input.code ?? null, city: input.city ?? null, state: input.state ?? null, timezone: input.timezone }
+                ? {
+                    name: input.name,
+                    code: input.code ?? null,
+                    city: input.city ?? null,
+                    state: input.state ?? null,
+                    timezone: input.timezone,
+                  }
                 : { name: input.name, code: input.code ?? null },
             )
             .where('id', '=', id)
@@ -128,7 +150,13 @@ export class OrganizationService {
         } else {
           await trx
             .insertInto('departments')
-            .values({ id: unitId, organization_id: actor.organizationId, name: input.name, code: input.code ?? null, archived_at: null })
+            .values({
+              id: unitId,
+              organization_id: actor.organizationId,
+              name: input.name,
+              code: input.code ?? null,
+              archived_at: null,
+            })
             .execute();
         }
         await this.directory.unit(trx, kind, unitId);
@@ -141,13 +169,19 @@ export class OrganizationService {
         });
       });
     } catch (err) {
-      if (isUniqueViolation(err)) throw new ConflictError('NAME_TAKEN', `A ${kind} with this name already exists.`);
+      if (isUniqueViolation(err))
+        throw new ConflictError('NAME_TAKEN', `A ${kind} with this name already exists.`);
       throw err;
     }
     return unitId;
   }
 
-  async setUnitArchived(actor: Principal, kind: UnitKind, id: string, archived: boolean): Promise<void> {
+  async setUnitArchived(
+    actor: Principal,
+    kind: UnitKind,
+    id: string,
+    archived: boolean,
+  ): Promise<void> {
     const table = kind === 'location' ? 'locations' : 'departments';
     await this.db.transaction().execute(async (trx) => {
       const row = await trx
@@ -204,7 +238,14 @@ export class OrganizationService {
       query = query.where((eb) =>
         eb.or([
           eb('t.id', 'in', teamIds.length ? teamIds : ['00000000-0000-0000-0000-000000000000']),
-          eb('t.id', 'in', this.db.selectFrom('team_members').select('team_id').where('user_id', '=', actor.userId)),
+          eb(
+            't.id',
+            'in',
+            this.db
+              .selectFrom('team_members')
+              .select('team_id')
+              .where('user_id', '=', actor.userId),
+          ),
         ]),
       );
     }
@@ -226,7 +267,9 @@ export class OrganizationService {
     }));
   }
 
-  private async managersOf(teamIds: string[]): Promise<Map<string, Array<{ id: string; displayName: string }>>> {
+  private async managersOf(
+    teamIds: string[],
+  ): Promise<Map<string, Array<{ id: string; displayName: string }>>> {
     if (!teamIds.length) return new Map();
     const rows = await this.db
       .selectFrom('team_managers as tm')
@@ -237,7 +280,10 @@ export class OrganizationService {
       .execute();
     const map = new Map<string, Array<{ id: string; displayName: string }>>();
     for (const r of rows) {
-      map.set(r.team_id, [...(map.get(r.team_id) ?? []), { id: r.id, displayName: `${r.first_name} ${r.last_name}` }]);
+      map.set(r.team_id, [
+        ...(map.get(r.team_id) ?? []),
+        { id: r.id, displayName: `${r.first_name} ${r.last_name}` },
+      ]);
     }
     return map;
   }
@@ -268,7 +314,13 @@ export class OrganizationService {
   async upsertTeam(
     actor: Principal,
     id: string | null,
-    input: { name: string; description?: string | null; locationId?: string | null; departmentId?: string | null; managerIds: string[] },
+    input: {
+      name: string;
+      description?: string | null;
+      locationId?: string | null;
+      departmentId?: string | null;
+      managerIds: string[];
+    },
   ): Promise<string> {
     await assertOrgReferences(this.db, actor.organizationId, {
       locationId: input.locationId,
@@ -287,9 +339,13 @@ export class OrganizationService {
             .where('organization_id', '=', actor.organizationId)
             .executeTakeFirst();
           if (!existing) throw new NotFoundError('Team');
-          previousManagers = (await trx.selectFrom('team_managers').select('user_id').where('team_id', '=', id).execute()).map(
-            (r) => r.user_id,
-          );
+          previousManagers = (
+            await trx
+              .selectFrom('team_managers')
+              .select('user_id')
+              .where('team_id', '=', id)
+              .execute()
+          ).map((r) => r.user_id);
           await trx
             .updateTable('teams')
             .set({
@@ -340,7 +396,8 @@ export class OrganizationService {
         await this.directory.teams(trx, [teamId]);
       });
     } catch (err) {
-      if (isUniqueViolation(err)) throw new ConflictError('NAME_TAKEN', 'A team with this name already exists.');
+      if (isUniqueViolation(err))
+        throw new ConflictError('NAME_TAKEN', 'A team with this name already exists.');
       throw err;
     }
     await this.cache.invalidateUsers([...previousManagers, ...input.managerIds]);
@@ -356,15 +413,27 @@ export class OrganizationService {
       .where('organization_id', '=', actor.organizationId)
       .executeTakeFirst();
     if (!team) throw new NotFoundError('Team');
-    if (team.archived_at) throw new PreconditionError('TEAM_ARCHIVED', 'Restore the team before changing its members.');
+    if (team.archived_at)
+      throw new PreconditionError('TEAM_ARCHIVED', 'Restore the team before changing its members.');
     await this.db.transaction().execute(async (trx) => {
-      const current = (await trx.selectFrom('team_members').select('user_id').where('team_id', '=', id).execute()).map((r) => r.user_id);
+      const current = (
+        await trx.selectFrom('team_members').select('user_id').where('team_id', '=', id).execute()
+      ).map((r) => r.user_id);
       const next = [...new Set(memberIds)];
       const added = next.filter((m) => !current.includes(m));
       const removed = current.filter((m) => !next.includes(m));
       if (!added.length && !removed.length) return;
-      if (removed.length) await trx.deleteFrom('team_members').where('team_id', '=', id).where('user_id', 'in', removed).execute();
-      if (added.length) await trx.insertInto('team_members').values(added.map((user_id) => ({ team_id: id, user_id }))).execute();
+      if (removed.length)
+        await trx
+          .deleteFrom('team_members')
+          .where('team_id', '=', id)
+          .where('user_id', 'in', removed)
+          .execute();
+      if (added.length)
+        await trx
+          .insertInto('team_members')
+          .values(added.map((user_id) => ({ team_id: id, user_id })))
+          .execute();
       await this.directory.users(trx, [...added, ...removed]);
       await this.directory.teams(trx, [id]);
       await this.events.audit(trx, {
@@ -378,7 +447,11 @@ export class OrganizationService {
   }
 
   async setTeamArchived(actor: Principal, id: string, archived: boolean): Promise<void> {
-    const managers = await this.db.selectFrom('team_managers').select('user_id').where('team_id', '=', id).execute();
+    const managers = await this.db
+      .selectFrom('team_managers')
+      .select('user_id')
+      .where('team_id', '=', id)
+      .execute();
     await this.db.transaction().execute(async (trx) => {
       const row = await trx
         .updateTable('teams')
@@ -416,7 +489,11 @@ export class OrganizationService {
   // ---------------------------------------------------------------- settings
 
   async settings(organizationId: string): Promise<identity.OrganizationSettings> {
-    const org = await this.db.selectFrom('organizations').selectAll().where('id', '=', organizationId).executeTakeFirstOrThrow();
+    const org = await this.db
+      .selectFrom('organizations')
+      .selectAll()
+      .where('id', '=', organizationId)
+      .executeTakeFirstOrThrow();
     return {
       name: org.name,
       legalName: org.legal_name,
@@ -426,7 +503,10 @@ export class OrganizationService {
     };
   }
 
-  async updateSettings(actor: Principal, input: identity.OrganizationSettings): Promise<identity.OrganizationSettings> {
+  async updateSettings(
+    actor: Principal,
+    input: identity.OrganizationSettings,
+  ): Promise<identity.OrganizationSettings> {
     const before = await this.settings(actor.organizationId);
     await this.db.transaction().execute(async (trx) => {
       await trx
@@ -453,17 +533,33 @@ export class OrganizationService {
   }
 
   async security(organizationId: string): Promise<identity.SecuritySettings> {
-    const org = await this.db.selectFrom('organizations').select('security').where('id', '=', organizationId).executeTakeFirstOrThrow();
+    const org = await this.db
+      .selectFrom('organizations')
+      .select('security')
+      .where('id', '=', organizationId)
+      .executeTakeFirstOrThrow();
     return org.security;
   }
 
-  async updateSecurity(actor: Principal, input: identity.SecuritySettings): Promise<identity.SecuritySettings> {
+  async updateSecurity(
+    actor: Principal,
+    input: identity.SecuritySettings,
+  ): Promise<identity.SecuritySettings> {
     if (input.sessionIdleMinutes > input.sessionMaxHours * 60) {
-      throw new ValidationError([{ path: 'sessionIdleMinutes', message: 'Idle timeout cannot exceed the maximum session length.' }]);
+      throw new ValidationError([
+        {
+          path: 'sessionIdleMinutes',
+          message: 'Idle timeout cannot exceed the maximum session length.',
+        },
+      ]);
     }
     const before = await this.security(actor.organizationId);
     await this.db.transaction().execute(async (trx) => {
-      await trx.updateTable('organizations').set({ security: input }).where('id', '=', actor.organizationId).execute();
+      await trx
+        .updateTable('organizations')
+        .set({ security: input })
+        .where('id', '=', actor.organizationId)
+        .execute();
       await this.events.audit(trx, {
         action: 'organization.security_changed',
         resourceType: 'organization',
@@ -494,7 +590,11 @@ export class OrganizationService {
     });
   }
 
-  async setFeatureFlag(actor: Principal, key: string, enabled: boolean): Promise<identity.FeatureFlagEntry[]> {
+  async setFeatureFlag(
+    actor: Principal,
+    key: string,
+    enabled: boolean,
+  ): Promise<identity.FeatureFlagEntry[]> {
     if (!FEATURE_FLAGS.some((f) => f.key === key)) throw new NotFoundError('Feature flag');
     await this.db.transaction().execute(async (trx) => {
       const previous = await trx
@@ -507,7 +607,9 @@ export class OrganizationService {
         .insertInto('feature_flags')
         .values({ organization_id: actor.organizationId, key, enabled, updated_by: actor.userId })
         .onConflict((oc) =>
-          oc.columns(['organization_id', 'key']).doUpdateSet({ enabled, updated_by: actor.userId, updated_at: sql<Date>`now()` }),
+          oc
+            .columns(['organization_id', 'key'])
+            .doUpdateSet({ enabled, updated_by: actor.userId, updated_at: sql<Date>`now()` }),
         )
         .execute();
       await this.events.audit(trx, {

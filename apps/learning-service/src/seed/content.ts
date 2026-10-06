@@ -5,7 +5,8 @@
 
 export const ARTICLES: Record<string, { summary: string; body: string }> = {
   'w1-trust': {
-    summary: 'Why homeowners say yes to A5, and the six stops on every customer journey from first knock to final walkthrough.',
+    summary:
+      'Why homeowners say yes to A5, and the six stops on every customer journey from first knock to final walkthrough.',
     body: `# How A5 Earns Homeowner Trust
 
 Most people never think about their roof until something goes wrong. When a storm rolls through north Texas, a stranger at the door is asking a homeowner to trust them with the most expensive repair on the house. Nobody owes you that trust. Your job in the next four weeks is to learn how A5 earns it, one honest conversation at a time.
@@ -41,7 +42,8 @@ After this article you should be able to name the six stops of the journey, expl
   },
 
   'w2-materials': {
-    summary: 'What a residential roof is made of, how each layer fails and what hail and wind actually do to it.',
+    summary:
+      'What a residential roof is made of, how each layer fails and what hail and wind actually do to it.',
     body: `# Shingles, Underlayment and Ventilation
 
 A roof is a system, not a surface. The shingles you can see are the visible layer of five or six components working together, and a failure in any one of them can ruin the others. Knowing the parts lets you speak with credibility at the door and, more importantly, lets you spot problems a homeowner has never noticed.
@@ -74,7 +76,8 @@ Keep a mental checklist for every inspection: shingle condition, underlayment ev
   },
 
   'w2-adjusters': {
-    summary: 'How a storm claim moves from first notice to payment, who the adjuster works for and how A5 supports homeowners without crossing the line.',
+    summary:
+      'How a storm claim moves from first notice to payment, who the adjuster works for and how A5 supports homeowners without crossing the line.',
     body: `# Working With Adjusters
 
 When a roof has storm damage, the homeowner's insurance policy usually decides how the repair gets paid for. Reps who understand the claim process are trusted. Reps who guess, promise outcomes or try to negotiate on the homeowner's behalf cause trouble for everyone. This article explains how a claim moves, who the people are and where our role starts and stops.
@@ -112,7 +115,8 @@ A well-run claim ends with the homeowner understanding the estimate, A5 holding 
   },
 
   'w3-discovery': {
-    summary: 'The question sequence that turns a door conversation into a real understanding of what this homeowner cares about.',
+    summary:
+      'The question sequence that turns a door conversation into a real understanding of what this homeowner cares about.',
     body: `# Discovery Questions That Uncover Real Concerns
 
 Discovery is the part of the conversation where you stop talking and start learning. Reps who skip it deliver the same pitch to everyone and hit the same objections. Reps who do it well hear the real concern, often something never mentioned in the first minute, and everything that follows is simpler because of it.
@@ -167,7 +171,8 @@ In the AI practice sessions this week, the simulated homeowner reveals a hidden 
   },
 
   'w4-compliance': {
-    summary: 'The promises A5 representatives never make, and how to handle the moments when a homeowner asks you to cross the line.',
+    summary:
+      'The promises A5 representatives never make, and how to handle the moments when a homeowner asks you to cross the line.',
     body: `# Compliance: What We Never Promise
 
 Most compliance problems in roofing sales are not dramatic. They happen in friendly conversations when a rep wants to be helpful, or wants to close, and says something that sounds harmless. This article lists what A5 never promises, explains why and gives you words to use when a homeowner pushes.
@@ -212,14 +217,22 @@ If you are not sure whether something is allowed, do not say it and do not guess
 
 /** Companion text for non-article lessons (shown above the player or the action). */
 export const LESSON_NOTES: Record<string, string> = {
-  'w1-welcome': 'A welcome from A5 leadership on why the academy exists, what is expected of you in the first four weeks and who to call when you need help.',
-  'w1-journey': 'Follow a real job from the first door knock through production to the final walkthrough, and see where a sales representative makes the difference.',
-  'w1-journey-map': 'A one-page map of the six customer journey stops with the handoffs between sales, project management and production. Keep it on your phone.',
-  'w2-anatomy': 'A walk across a residential roof naming every component, with close-ups of the places leaks start.',
-  'w2-damage': 'How to tell hail and wind damage from age and wear, and how to photograph evidence so an adjuster can see it.',
-  'w2-claims': 'A homeowner claim from first notice to final payment, shown step by step, with the points where homeowners usually need help understanding what is happening.',
-  'w3-opening': 'The first thirty seconds at the door: how to introduce yourself, why you are there and how to earn a minute more of attention.',
-  'w3-framework': 'The A5 objection framework: acknowledge, explore, respond, confirm. See it applied to the five objections you will hear most often.',
+  'w1-welcome':
+    'A welcome from A5 leadership on why the academy exists, what is expected of you in the first four weeks and who to call when you need help.',
+  'w1-journey':
+    'Follow a real job from the first door knock through production to the final walkthrough, and see where a sales representative makes the difference.',
+  'w1-journey-map':
+    'A one-page map of the six customer journey stops with the handoffs between sales, project management and production. Keep it on your phone.',
+  'w2-anatomy':
+    'A walk across a residential roof naming every component, with close-ups of the places leaks start.',
+  'w2-damage':
+    'How to tell hail and wind damage from age and wear, and how to photograph evidence so an adjuster can see it.',
+  'w2-claims':
+    'A homeowner claim from first notice to final payment, shown step by step, with the points where homeowners usually need help understanding what is happening.',
+  'w3-opening':
+    'The first thirty seconds at the door: how to introduce yourself, why you are there and how to earn a minute more of attention.',
+  'w3-framework':
+    'The A5 objection framework: acknowledge, explore, respond, confirm. See it applied to the five objections you will hear most often.',
 };
 
 export const CODE_OF_CONDUCT = `# A5 Roofing Sales Code of Conduct

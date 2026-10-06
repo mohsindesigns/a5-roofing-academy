@@ -2,7 +2,14 @@ import { Delete, HttpCode, Patch, Post } from '@nestjs/common';
 import type { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { learning } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZResponse,
+} from '@a5/nest-kit';
 import { StructureService } from './structure.service.js';
 
 type Out<T extends z.ZodType> = z.output<T>;
@@ -15,7 +22,11 @@ export class StructureController {
   @Post(':id/phases')
   @RequirePermissions('lessons.create')
   @ZResponse(learning.programDetailSchema)
-  createPhase(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(learning.createPhaseRequestSchema) body: Out<typeof learning.createPhaseRequestSchema>) {
+  createPhase(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(learning.createPhaseRequestSchema) body: Out<typeof learning.createPhaseRequestSchema>,
+  ) {
     return this.structure.createPhase(p, id, body);
   }
 
@@ -48,7 +59,11 @@ export class StructureController {
   @HttpCode(200)
   @RequirePermissions('lessons.update')
   @ZResponse(learning.programDetailSchema)
-  archivePhase(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('phaseId') phaseId: string) {
+  archivePhase(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('phaseId') phaseId: string,
+  ) {
     return this.structure.setPhaseArchived(p, id, phaseId, true);
   }
 
@@ -56,21 +71,33 @@ export class StructureController {
   @HttpCode(200)
   @RequirePermissions('lessons.update')
   @ZResponse(learning.programDetailSchema)
-  restorePhase(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('phaseId') phaseId: string) {
+  restorePhase(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('phaseId') phaseId: string,
+  ) {
     return this.structure.setPhaseArchived(p, id, phaseId, false);
   }
 
   @Delete(':id/phases/:phaseId')
   @RequirePermissions('lessons.delete')
   @ZResponse(learning.deleteResultSchema)
-  deletePhase(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('phaseId') phaseId: string) {
+  deletePhase(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('phaseId') phaseId: string,
+  ) {
     return this.structure.deletePhase(p, id, phaseId);
   }
 
   @Post(':id/modules')
   @RequirePermissions('lessons.create')
   @ZResponse(learning.programDetailSchema)
-  createModule(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZBody(learning.createModuleRequestSchema) body: Out<typeof learning.createModuleRequestSchema>) {
+  createModule(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZBody(learning.createModuleRequestSchema) body: Out<typeof learning.createModuleRequestSchema>,
+  ) {
     return this.structure.createModule(p, id, body);
   }
 
@@ -103,7 +130,11 @@ export class StructureController {
   @HttpCode(200)
   @RequirePermissions('lessons.update')
   @ZResponse(learning.programDetailSchema)
-  archiveModule(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('moduleId') moduleId: string) {
+  archiveModule(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('moduleId') moduleId: string,
+  ) {
     return this.structure.setModuleArchived(p, id, moduleId, true);
   }
 
@@ -111,14 +142,22 @@ export class StructureController {
   @HttpCode(200)
   @RequirePermissions('lessons.update')
   @ZResponse(learning.programDetailSchema)
-  restoreModule(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('moduleId') moduleId: string) {
+  restoreModule(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('moduleId') moduleId: string,
+  ) {
     return this.structure.setModuleArchived(p, id, moduleId, false);
   }
 
   @Delete(':id/modules/:moduleId')
   @RequirePermissions('lessons.delete')
   @ZResponse(learning.deleteResultSchema)
-  deleteModule(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZParam('moduleId') moduleId: string) {
+  deleteModule(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZParam('moduleId') moduleId: string,
+  ) {
     return this.structure.deleteModule(p, id, moduleId);
   }
 }

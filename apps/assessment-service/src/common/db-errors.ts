@@ -1,7 +1,9 @@
 import { ConflictError } from '@a5/nest-kit';
 
 function sqlState(err: unknown): string | undefined {
-  return typeof err === 'object' && err !== null && 'code' in err ? String((err as { code: unknown }).code) : undefined;
+  return typeof err === 'object' && err !== null && 'code' in err
+    ? String((err as { code: unknown }).code)
+    : undefined;
 }
 
 /**
@@ -12,11 +14,20 @@ function sqlState(err: unknown): string | undefined {
 export function mapIntegrityError(err: unknown, noun = 'attempt'): unknown {
   switch (sqlState(err)) {
     case 'A5A01':
-      return new ConflictError('ATTEMPT_CLOSED', `This ${noun} has already been submitted, so its answers can no longer change.`);
+      return new ConflictError(
+        'ATTEMPT_CLOSED',
+        `This ${noun} has already been submitted, so its answers can no longer change.`,
+      );
     case 'A5A02':
-      return new ConflictError('ATTEMPT_FINAL', `This ${noun} is already graded. Record a score override to change its result.`);
+      return new ConflictError(
+        'ATTEMPT_FINAL',
+        `This ${noun} is already graded. Record a score override to change its result.`,
+      );
     case 'A5I01':
-      return new ConflictError('RECORD_IMMUTABLE', 'This record is part of the permanent assessment history and cannot be changed.');
+      return new ConflictError(
+        'RECORD_IMMUTABLE',
+        'This record is part of the permanent assessment history and cannot be changed.',
+      );
     default:
       return err;
   }

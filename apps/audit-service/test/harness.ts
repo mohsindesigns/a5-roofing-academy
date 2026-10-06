@@ -3,13 +3,38 @@ import type { AddressInfo } from 'node:net';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { createDatabase, migrateToLatest, sql, type Database } from '@a5/database';
-import { auditEvents, buildEvent, streamFor, type AuditRecord, type EventEnvelope, type Producer } from '@a5/events';
+import {
+  auditEvents,
+  buildEvent,
+  streamFor,
+  type AuditRecord,
+  type EventEnvelope,
+  type Producer,
+} from '@a5/events';
 import { RedisNamespace, StreamPublisher, createRedis, type Redis } from '@a5/messaging';
-import { TEST_INTERNAL_SECRET, closeApp, createTestApp, principalHeaders, testLogger } from '@a5/nest-kit/testing';
+import {
+  TEST_INTERNAL_SECRET,
+  closeApp,
+  createTestApp,
+  principalHeaders,
+  testLogger,
+} from '@a5/nest-kit/testing';
 import { uuidv7 } from '@a5/observability';
-import { getDefaultRole, scopeRank, type DataScope, type PermissionKey, type PermissionMap } from '@a5/permissions';
+import {
+  getDefaultRole,
+  scopeRank,
+  type DataScope,
+  type PermissionKey,
+  type PermissionMap,
+} from '@a5/permissions';
 import { ORGANIZATION, PEOPLE, TEAMS, type PersonKey } from '@a5/seed-data';
-import { TEST_REDIS_URL, createTestDatabase, testRedisNamespace, waitFor, type TestDatabase } from '@a5/testing';
+import {
+  TEST_REDIS_URL,
+  createTestDatabase,
+  testRedisNamespace,
+  waitFor,
+  type TestDatabase,
+} from '@a5/testing';
 import { AppModule } from '../src/app.module.js';
 import { loadAuditConfig, type AuditConfig } from '../src/config.js';
 import { migrations } from '../src/database/migrations/index.js';
@@ -80,13 +105,19 @@ export function permissionsOf(person: PersonKey): PermissionMap {
     const role = getDefaultRole(roleKey);
     for (const key of role.permissions) {
       const current = map[key];
-      map[key] = current && scopeRank(current) >= scopeRank(role.dataScope) ? current : (role.dataScope as DataScope);
+      map[key] =
+        current && scopeRank(current) >= scopeRank(role.dataScope)
+          ? current
+          : (role.dataScope as DataScope);
     }
   }
   return map;
 }
 
-export async function headersFor(person: PersonKey, extra: { permissions?: PermissionKey[] } = {}): Promise<Record<string, string>> {
+export async function headersFor(
+  person: PersonKey,
+  extra: { permissions?: PermissionKey[] } = {},
+): Promise<Record<string, string>> {
   const p = PEOPLE[person];
   return principalHeaders({
     userId: p.id,
@@ -94,11 +125,16 @@ export async function headersFor(person: PersonKey, extra: { permissions?: Permi
     displayName: `${p.firstName} ${p.lastName}`,
     roles: [...p.roles],
     permissions: extra.permissions ?? permissionsOf(person),
-    managedTeamIds: TEAMS.filter((t) => (t.managers as readonly string[]).includes(person)).map((t) => t.id),
+    managedTeamIds: TEAMS.filter((t) => (t.managers as readonly string[]).includes(person)).map(
+      (t) => t.id,
+    ),
   });
 }
 
-export async function createAuditHarness(name: string, options: HarnessOptions = {}): Promise<AuditHarness> {
+export async function createAuditHarness(
+  name: string,
+  options: HarnessOptions = {},
+): Promise<AuditHarness> {
   const tdb: TestDatabase = await createTestDatabase(`audit_${name}`);
   const namespace = testRedisNamespace(`audit-${name}`);
   const config = loadAuditConfig({
@@ -196,13 +232,18 @@ export async function createAuditHarness(name: string, options: HarnessOptions =
 
 /** Wait until a row with this id was stored. */
 export async function stored(h: AuditHarness, id: string) {
-  return waitFor(async () => h.db.selectFrom('audit_logs').selectAll().where('id', '=', id).executeTakeFirst(), {
-    timeoutMs: 10_000,
-    message: `audit entry ${id}`,
-  });
+  return waitFor(
+    async () => h.db.selectFrom('audit_logs').selectAll().where('id', '=', id).executeTakeFirst(),
+    {
+      timeoutMs: 10_000,
+      message: `audit entry ${id}`,
+    },
+  );
 }
 
 export async function count(h: AuditHarness, where = sql<boolean>`true`): Promise<number> {
-  const rows = await sql<{ n: number }>`select count(*)::int as n from audit_logs where ${where}`.execute(h.db);
+  const rows = await sql<{
+    n: number;
+  }>`select count(*)::int as n from audit_logs where ${where}`.execute(h.db);
   return rows.rows[0]!.n;
 }

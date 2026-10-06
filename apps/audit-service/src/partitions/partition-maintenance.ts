@@ -28,20 +28,31 @@ export class PartitionMaintenance implements OnApplicationBootstrap {
     try {
       await this.queues
         .queue(PARTITION_QUEUE)
-        .upsertJobScheduler('audit-partitions', { every: this.config.partitions.intervalMs }, { name: 'ensure', opts: { attempts: 3 } });
+        .upsertJobScheduler(
+          'audit-partitions',
+          { every: this.config.partitions.intervalMs },
+          { name: 'ensure', opts: { attempts: 3 } },
+        );
     } catch (err) {
       this.logger.error({ err }, 'could not schedule audit partition maintenance');
     }
     try {
       await this.ensure();
     } catch (err) {
-      this.logger.error({ err }, 'audit partition check failed at startup; events keep landing in the default partition');
+      this.logger.error(
+        { err },
+        'audit partition check failed at startup; events keep landing in the default partition',
+      );
     }
   }
 
   /** Create missing partitions for the current and upcoming months. Returns the names created. */
   async ensure(now = new Date()): Promise<string[]> {
-    const created = await ensureUpcomingPartitions(this.db as never, this.config.partitions.monthsAhead, now);
+    const created = await ensureUpcomingPartitions(
+      this.db as never,
+      this.config.partitions.monthsAhead,
+      now,
+    );
     if (created.length) this.logger.info({ created }, 'audit partitions created');
     return created;
   }

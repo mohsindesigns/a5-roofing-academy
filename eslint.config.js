@@ -5,7 +5,14 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/*.generated.ts', '**/node_modules/**', '.claude/**', 'storage/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/*.generated.ts',
+      '**/node_modules/**',
+      '.claude/**',
+      'storage/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -33,7 +40,12 @@ export default tseslint.config(
   {
     // NestJS relies on runtime class references for dependency injection. Type-only imports of
     // injectable classes would erase the metadata, so services may use regular imports.
-    files: ['apps/*-service/src/**/*.ts', 'apps/gateway/src/**/*.ts', 'packages/nest-kit/src/**/*.ts', 'packages/directory/src/**/*.ts'],
+    files: [
+      'apps/*-service/src/**/*.ts',
+      'apps/gateway/src/**/*.ts',
+      'packages/nest-kit/src/**/*.ts',
+      'packages/directory/src/**/*.ts',
+    ],
     rules: {
       '@typescript-eslint/consistent-type-imports': 'off',
     },
@@ -48,7 +60,15 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.test.ts', '**/*.test.tsx', '**/test/**/*.ts', 'infra/**/*.mjs', '**/scripts/**/*.ts', '**/scripts/**/*.mjs', 'e2e/**/*.ts'],
+    files: [
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      '**/test/**/*.ts',
+      'infra/**/*.mjs',
+      '**/scripts/**/*.ts',
+      '**/scripts/**/*.mjs',
+      'e2e/**/*.ts',
+    ],
     rules: { 'no-console': 'off', '@typescript-eslint/no-non-null-assertion': 'off' },
   },
 );

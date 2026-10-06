@@ -10,7 +10,10 @@ export interface EffectiveScore {
 }
 
 /** Latest override per attempt. Overrides never modify the graded attempt; the newest one wins. */
-export async function latestOverrides(db: DbOrTrx, attemptIds: readonly string[]): Promise<Map<string, ScoreOverrideRow>> {
+export async function latestOverrides(
+  db: DbOrTrx,
+  attemptIds: readonly string[],
+): Promise<Map<string, ScoreOverrideRow>> {
   if (attemptIds.length === 0) return new Map();
   const rows = await db
     .selectFrom('score_overrides')
@@ -24,8 +27,16 @@ export async function latestOverrides(db: DbOrTrx, attemptIds: readonly string[]
   return new Map(rows.map((r) => [r.attempt_id, r]));
 }
 
-export function effectiveScore(attempt: Pick<AttemptRow, 'status' | 'score_percent' | 'passed'>, override: ScoreOverrideRow | undefined): EffectiveScore {
+export function effectiveScore(
+  attempt: Pick<AttemptRow, 'status' | 'score_percent' | 'passed'>,
+  override: ScoreOverrideRow | undefined,
+): EffectiveScore {
   if (attempt.status !== 'graded') return { scorePercent: null, passed: null, overridden: false };
-  if (override) return { scorePercent: override.new_score_percent, passed: override.new_passed, overridden: true };
+  if (override)
+    return {
+      scorePercent: override.new_score_percent,
+      passed: override.new_passed,
+      overridden: true,
+    };
   return { scorePercent: attempt.score_percent, passed: attempt.passed, overridden: false };
 }

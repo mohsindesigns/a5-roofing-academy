@@ -6,11 +6,29 @@ import type { z } from 'zod';
 import { createDatabase, migrateToLatest, type Database } from '@a5/database';
 import { buildEvent, streamFor, type EventDefinition, type EventEnvelope } from '@a5/events';
 import { RedisNamespace, StreamPublisher, createRedis, type Redis } from '@a5/messaging';
-import { TEST_INTERNAL_SECRET, closeApp, createTestApp, principalHeaders, testLogger } from '@a5/nest-kit/testing';
+import {
+  TEST_INTERNAL_SECRET,
+  closeApp,
+  createTestApp,
+  principalHeaders,
+  testLogger,
+} from '@a5/nest-kit/testing';
 import { uuidv7 } from '@a5/observability';
-import { getDefaultRole, scopeRank, type DataScope, type PermissionKey, type PermissionMap } from '@a5/permissions';
+import {
+  getDefaultRole,
+  scopeRank,
+  type DataScope,
+  type PermissionKey,
+  type PermissionMap,
+} from '@a5/permissions';
 import { ORGANIZATION, PEOPLE, TEAMS, TRAINER_ASSIGNMENTS, type PersonKey } from '@a5/seed-data';
-import { TEST_REDIS_URL, createTestDatabase, testRedisNamespace, waitFor, type TestDatabase } from '@a5/testing';
+import {
+  TEST_REDIS_URL,
+  createTestDatabase,
+  testRedisNamespace,
+  waitFor,
+  type TestDatabase,
+} from '@a5/testing';
 import { AppModule } from '../src/app.module.js';
 import { loadNotificationConfig, type NotificationConfig } from '../src/config.js';
 import { migrations } from '../src/database/migrations/index.js';
@@ -40,11 +58,18 @@ export interface NotificationHarness {
   config: NotificationConfig;
   transport: MemoryTransport;
   /** Build an event envelope (not published). */
-  event<T extends string, S extends z.ZodType>(def: EventDefinition<T, S>, payload: z.input<S>, meta?: Partial<EventMetaInput>): EventEnvelope;
+  event<T extends string, S extends z.ZodType>(
+    def: EventDefinition<T, S>,
+    payload: z.input<S>,
+    meta?: Partial<EventMetaInput>,
+  ): EventEnvelope;
   /** Append an event to its producer's Redis stream, as the outbox relay would. */
   publish(event: EventEnvelope): Promise<void>;
   /** Principal headers for a seeded person with their default role permissions and scope. */
-  as(person: PersonKey, overrides?: { permissions?: PermissionKey[] }): Promise<Record<string, string>>;
+  as(
+    person: PersonKey,
+    overrides?: { permissions?: PermissionKey[] },
+  ): Promise<Record<string, string>>;
   /** Start listening on an ephemeral port (for real HTTP streaming). */
   listen(): Promise<string>;
   close(): Promise<void>;
@@ -63,13 +88,19 @@ export function permissionsOf(person: PersonKey): PermissionMap {
     const role = getDefaultRole(roleKey);
     for (const key of role.permissions) {
       const current = map[key];
-      map[key] = current && scopeRank(current) >= scopeRank(role.dataScope) ? current : (role.dataScope as DataScope);
+      map[key] =
+        current && scopeRank(current) >= scopeRank(role.dataScope)
+          ? current
+          : (role.dataScope as DataScope);
     }
   }
   return map;
 }
 
-export async function headersFor(person: PersonKey, overrides: { permissions?: PermissionKey[] } = {}): Promise<Record<string, string>> {
+export async function headersFor(
+  person: PersonKey,
+  overrides: { permissions?: PermissionKey[] } = {},
+): Promise<Record<string, string>> {
   const p = PEOPLE[person];
   return principalHeaders({
     userId: p.id,
@@ -78,13 +109,22 @@ export async function headersFor(person: PersonKey, overrides: { permissions?: P
     roles: [...p.roles],
     permissions: overrides.permissions ?? permissionsOf(person),
     scope: 'organization',
-    managedTeamIds: TEAMS.filter((t) => (t.managers as readonly string[]).includes(person)).map((t) => t.id),
-    managedUserIds: TRAINER_ASSIGNMENTS.filter((a) => a.trainer === person).flatMap((a) => a.trainees.map((k) => PEOPLE[k].id)),
+    managedTeamIds: TEAMS.filter((t) => (t.managers as readonly string[]).includes(person)).map(
+      (t) => t.id,
+    ),
+    managedUserIds: TRAINER_ASSIGNMENTS.filter((a) => a.trainer === person).flatMap((a) =>
+      a.trainees.map((k) => PEOPLE[k].id),
+    ),
   });
 }
 
-export async function createNotificationHarness(name: string, options: HarnessOptions = {}): Promise<NotificationHarness> {
-  const tdb: TestDatabase | null = options.database ? null : await createTestDatabase(`notification_${name}`);
+export async function createNotificationHarness(
+  name: string,
+  options: HarnessOptions = {},
+): Promise<NotificationHarness> {
+  const tdb: TestDatabase | null = options.database
+    ? null
+    : await createTestDatabase(`notification_${name}`);
   const databaseUrl = options.database?.url ?? tdb!.url;
   const namespace = options.namespace ?? testRedisNamespace(`notification-${name}`);
   const config = loadNotificationConfig({
@@ -104,11 +144,15 @@ export async function createNotificationHarness(name: string, options: HarnessOp
   const database = createDatabase<NotificationDatabase>({ url: databaseUrl, poolMax: 4 });
   if (!options.database) {
     await migrateToLatest(database.db as never, migrations);
-    if (options.seed !== false) await seedNotification(database.db, { demo: false, appUrl: APP_URL });
+    if (options.seed !== false)
+      await seedNotification(database.db, { demo: false, appUrl: APP_URL });
   }
 
   const transport = new MemoryTransport();
-  const app = await createTestApp(AppModule.register(config, testLogger(), { emailTransport: transport }), config);
+  const app = await createTestApp(
+    AppModule.register(config, testLogger(), { emailTransport: transport }),
+    config,
+  );
   const redis = createRedis(TEST_REDIS_URL);
   const ns = new RedisNamespace(namespace);
   const publisher = new StreamPublisher(redis, ns);
@@ -159,20 +203,39 @@ export async function createNotificationHarness(name: string, options: HarnessOp
 }
 
 /** Wait until the event was processed by the dispatch handler. */
-export async function processed(h: NotificationHarness, eventId: string, handler = 'notification.dispatch'): Promise<void> {
+export async function processed(
+  h: NotificationHarness,
+  eventId: string,
+  handler = 'notification.dispatch',
+): Promise<void> {
   await waitFor(
     async () =>
-      h.db.selectFrom('inbox_events').select('event_id').where('event_id', '=', eventId).where('handler', '=', handler).executeTakeFirst(),
+      h.db
+        .selectFrom('inbox_events')
+        .select('event_id')
+        .where('event_id', '=', eventId)
+        .where('handler', '=', handler)
+        .executeTakeFirst(),
     { timeoutMs: 10_000, message: `event ${eventId} processed by ${handler}` },
   );
 }
 
 export async function notificationsOf(h: NotificationHarness, person: PersonKey) {
-  return h.db.selectFrom('notifications').selectAll().where('user_id', '=', PEOPLE[person].id).orderBy('available_at', 'desc').execute();
+  return h.db
+    .selectFrom('notifications')
+    .selectAll()
+    .where('user_id', '=', PEOPLE[person].id)
+    .orderBy('available_at', 'desc')
+    .execute();
 }
 
 export async function deliveriesTo(h: NotificationHarness, person: PersonKey) {
-  return h.db.selectFrom('email_deliveries').selectAll().where('user_id', '=', PEOPLE[person].id).orderBy('created_at', 'desc').execute();
+  return h.db
+    .selectFrom('email_deliveries')
+    .selectAll()
+    .where('user_id', '=', PEOPLE[person].id)
+    .orderBy('created_at', 'desc')
+    .execute();
 }
 
 /** Minimal SSE reader over fetch: yields parsed events and comments. */
@@ -185,7 +248,10 @@ export interface SseMessage {
 
 export async function openStream(url: string, headers: Record<string, string>) {
   const controller = new AbortController();
-  const res = await fetch(url, { headers: { accept: 'text/event-stream', ...headers }, signal: controller.signal });
+  const res = await fetch(url, {
+    headers: { accept: 'text/event-stream', ...headers },
+    signal: controller.signal,
+  });
   const messages: SseMessage[] = [];
   let buffer = '';
   const reader = res.body!.getReader();
@@ -205,7 +271,8 @@ export async function openStream(url: string, headers: Record<string, string>) {
             if (line.startsWith(':')) msg.comment = line.slice(1).trim();
             else if (line.startsWith('event: ')) msg.event = line.slice(7);
             else if (line.startsWith('id: ')) msg.id = line.slice(4);
-            else if (line.startsWith('data: ')) msg.data = (msg.data ? `${msg.data}\n` : '') + line.slice(6);
+            else if (line.startsWith('data: '))
+              msg.data = (msg.data ? `${msg.data}\n` : '') + line.slice(6);
           }
           messages.push(msg);
         }

@@ -64,10 +64,19 @@ function contentTypeOf(file: string): string {
 
 function isMissingObject(err: unknown): boolean {
   const e = err as { code?: string; name?: string; $metadata?: { httpStatusCode?: number } };
-  return e?.code === 'NoSuchKey' || e?.name === 'NoSuchKey' || e?.$metadata?.httpStatusCode === 404 || e?.code === 'ENOENT';
+  return (
+    e?.code === 'NoSuchKey' ||
+    e?.name === 'NoSuchKey' ||
+    e?.$metadata?.httpStatusCode === 404 ||
+    e?.code === 'ENOENT'
+  );
 }
 
-async function mapLimit<T>(items: readonly T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+async function mapLimit<T>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
   let next = 0;
   const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
     while (next < items.length) await fn(items[next++]!);
@@ -84,15 +93,25 @@ async function mapLimit<T>(items: readonly T[], limit: number, fn: (item: T) => 
 export class MediaProcessor {
   constructor(private readonly deps: MediaProcessorDeps) {}
 
-  async process(assetId: string, { finalAttempt = true }: { finalAttempt?: boolean } = {}): Promise<ProcessOutcome> {
+  async process(
+    assetId: string,
+    { finalAttempt = true }: { finalAttempt?: boolean } = {},
+  ): Promise<ProcessOutcome> {
     const { db, logger } = this.deps;
-    const asset = await db.selectFrom('media_assets').selectAll().where('id', '=', assetId).executeTakeFirst();
+    const asset = await db
+      .selectFrom('media_assets')
+      .selectAll()
+      .where('id', '=', assetId)
+      .executeTakeFirst();
     if (!asset) {
       logger.warn({ assetId }, 'media.process: asset no longer exists');
       return 'skipped';
     }
     if (!PROCESSABLE.includes(asset.status)) {
-      logger.info({ assetId, status: asset.status }, 'media.process: asset is not awaiting processing');
+      logger.info(
+        { assetId, status: asset.status },
+        'media.process: asset is not awaiting processing',
+      );
       return 'skipped';
     }
 
@@ -105,8 +124,15 @@ export class MediaProcessor {
         return err.outcome;
       }
       if (finalAttempt) {
-        const reason = err instanceof ProcessError ? `${err.message}${lastLine(err.stderrTail) ? `: ${lastLine(err.stderrTail)}` : ''}` : (err as Error).message;
-        await this.markUnusable(asset, `Processing failed after several attempts (${reason.slice(0, 300)}). Upload the file again or contact support.`, 'failed');
+        const reason =
+          err instanceof ProcessError
+            ? `${err.message}${lastLine(err.stderrTail) ? `: ${lastLine(err.stderrTail)}` : ''}`
+            : (err as Error).message;
+        await this.markUnusable(
+          asset,
+          `Processing failed after several attempts (${reason.slice(0, 300)}). Upload the file again or contact support.`,
+          'failed',
+        );
       }
       throw err;
     } finally {
@@ -121,15 +147,30 @@ export class MediaProcessor {
     const sourcePath = join(dir, 'source');
     const { size, sha256 } = await this.download(asset.storage_key, sourcePath);
     if (size !== asset.size_bytes) {
-      throw new PermanentProcessingError('The stored file changed after the upload was verified. Upload it again.', 'rejected');
+      throw new PermanentProcessingError(
+        'The stored file changed after the upload was verified. Upload it again.',
+        'rejected',
+      );
     }
-    const verdict = await validateFileContent(asset.kind, asset.mime_type, await this.head(sourcePath));
+    const verdict = await validateFileContent(
+      asset.kind,
+      asset.mime_type,
+      await this.head(sourcePath),
+    );
     if (!verdict.ok) throw new PermanentProcessingError(verdict.reason, 'rejected');
 
     const scan = await scanner.scanFile(sourcePath);
     if (scan.status === 'infected') {
-      await storage.deleteObject(asset.storage_key).catch((err: unknown) => logger.error({ err, assetId: asset.id }, 'could not delete infected upload'));
-      throw new PermanentProcessingError(`The file failed the malware scan (${scan.signature}) and was removed.`, 'rejected', 'infected');
+      await storage
+        .deleteObject(asset.storage_key)
+        .catch((err: unknown) =>
+          logger.error({ err, assetId: asset.id }, 'could not delete infected upload'),
+        );
+      throw new PermanentProcessingError(
+        `The file failed the malware scan (${scan.signature}) and was removed.`,
+        'rejected',
+        'infected',
+      );
     }
     const scanStatus: ScanStatus = scan.status === 'skipped' ? 'skipped' : 'clean';
     await this.deps.db
@@ -159,14 +200,20 @@ export class MediaProcessor {
   private async processVideo(asset: AssetRow, sourcePath: string, dir: string): Promise<void> {
     const { transcoder, storage } = this.deps;
     const probe = await this.invalidMediaIsPermanent(() => transcoder.probe(sourcePath));
-    if (!probe.video) throw new PermanentProcessingError('The file does not contain a playable video track.');
-    if (!probe.durationSeconds) throw new PermanentProcessingError('The video has no measurable duration.');
+    if (!probe.video)
+      throw new PermanentProcessingError('The file does not contain a playable video track.');
+    if (!probe.durationSeconds)
+      throw new PermanentProcessingError('The video has no measurable duration.');
 
     const outDir = join(dir, 'hls');
     await mkdir(outDir);
-    const hls = await this.invalidMediaIsPermanent(() => transcoder.transcodeToHls(sourcePath, outDir, probe));
+    const hls = await this.invalidMediaIsPermanent(() =>
+      transcoder.transcodeToHls(sourcePath, outDir, probe),
+    );
     const thumbPath = join(dir, 'thumb.jpg');
-    await this.invalidMediaIsPermanent(() => transcoder.thumbnail(sourcePath, thumbPath, probe.durationSeconds! * 0.1));
+    await this.invalidMediaIsPermanent(() =>
+      transcoder.thumbnail(sourcePath, thumbPath, probe.durationSeconds! * 0.1),
+    );
 
     const org = asset.organization_id;
     // Remove leftovers of an earlier, interrupted attempt before publishing the new package.
@@ -174,7 +221,10 @@ export class MediaProcessor {
     await mapLimit(hls.files, UPLOAD_CONCURRENCY, async (file) => {
       const path = join(outDir, file);
       const { size } = await stat(path);
-      await storage.putObject(mediaKeys.hls(org, asset.id, file), createReadStream(path), { contentType: contentTypeOf(file), contentLength: size });
+      await storage.putObject(mediaKeys.hls(org, asset.id, file), createReadStream(path), {
+        contentType: contentTypeOf(file),
+        contentLength: size,
+      });
     });
     const thumbKey = mediaKeys.thumbnail(org, asset.id);
     await storage.putObject(thumbKey, await readFile(thumbPath), { contentType: 'image/jpeg' });
@@ -211,9 +261,14 @@ export class MediaProcessor {
 
   private async processImage(asset: AssetRow, sourcePath: string): Promise<void> {
     const probe = await this.invalidMediaIsPermanent(() => this.deps.transcoder.probe(sourcePath));
-    if (!probe.video) throw new PermanentProcessingError('The image could not be read.', 'rejected');
+    if (!probe.video)
+      throw new PermanentProcessingError('The image could not be read.', 'rejected');
     // The image is its own cover/thumbnail.
-    await this.publish(asset, { width: probe.video.width, height: probe.video.height, thumbnail_key: asset.storage_key });
+    await this.publish(asset, {
+      width: probe.video.width,
+      height: probe.video.height,
+      thumbnail_key: asset.storage_key,
+    });
   }
 
   private async processCaption(asset: AssetRow, sourcePath: string): Promise<void> {
@@ -224,7 +279,10 @@ export class MediaProcessor {
       throw new PermanentProcessingError('Caption files must be UTF-8 encoded WebVTT.', 'rejected');
     }
     if (!/^\uFEFF?WEBVTT(?:[ \t].*)?(?:\r?\n|$)/.test(text)) {
-      throw new PermanentProcessingError('Caption files must start with the WEBVTT header.', 'rejected');
+      throw new PermanentProcessingError(
+        'Caption files must start with the WEBVTT header.',
+        'rejected',
+      );
     }
     if (!/\d{2}:\d{2}(?::\d{2})?\.\d{3}\s+-->\s+\d{2}:\d{2}(?::\d{2})?\.\d{3}/.test(text)) {
       throw new PermanentProcessingError('The caption file does not contain any cues.', 'rejected');
@@ -244,7 +302,12 @@ export class MediaProcessor {
   /** Mark ready and announce it, atomically. */
   private async publish(
     asset: AssetRow,
-    patch: Partial<Pick<MediaAssetsTable, 'duration_seconds' | 'width' | 'height' | 'hls_master_key' | 'thumbnail_key'>>,
+    patch: Partial<
+      Pick<
+        MediaAssetsTable,
+        'duration_seconds' | 'width' | 'height' | 'hls_master_key' | 'thumbnail_key'
+      >
+    >,
     extra?: (trx: Trx) => Promise<void>,
   ): Promise<void> {
     await this.deps.db.transaction().execute(async (trx) => {
@@ -260,13 +323,27 @@ export class MediaProcessor {
       await this.deps.events.emit(
         trx,
         mediaEvents.assetReady,
-        { assetId: asset.id, kind: asset.kind, title: asset.title, durationSeconds: updated.duration_seconds },
-        { organizationId: asset.organization_id, subject: { type: 'media_asset', id: asset.id }, actor: { type: 'system', id: null } },
+        {
+          assetId: asset.id,
+          kind: asset.kind,
+          title: asset.title,
+          durationSeconds: updated.duration_seconds,
+        },
+        {
+          organizationId: asset.organization_id,
+          subject: { type: 'media_asset', id: asset.id },
+          actor: { type: 'system', id: null },
+        },
       );
     });
   }
 
-  private async markUnusable(asset: AssetRow, error: string, outcome: 'failed' | 'rejected', scanStatus?: ScanStatus): Promise<void> {
+  private async markUnusable(
+    asset: AssetRow,
+    error: string,
+    outcome: 'failed' | 'rejected',
+    scanStatus?: ScanStatus,
+  ): Promise<void> {
     await this.deps.db.transaction().execute(async (trx) => {
       const updated = await trx
         .updateTable('media_assets')
@@ -280,14 +357,26 @@ export class MediaProcessor {
         trx,
         mediaEvents.assetFailed,
         { assetId: asset.id, title: asset.title, error },
-        { organizationId: asset.organization_id, subject: { type: 'media_asset', id: asset.id }, actor: { type: 'system', id: null } },
+        {
+          organizationId: asset.organization_id,
+          subject: { type: 'media_asset', id: asset.id },
+          actor: { type: 'system', id: null },
+        },
       );
     });
-    this.deps.logger.warn({ assetId: asset.id, outcome, error }, 'media asset could not be processed');
+    this.deps.logger.warn(
+      { assetId: asset.id, outcome, error },
+      'media asset could not be processed',
+    );
   }
 
   private async setStatus(id: string, status: MediaStatus): Promise<void> {
-    await this.deps.db.updateTable('media_assets').set({ status }).where('id', '=', id).where('status', 'in', PROCESSABLE).execute();
+    await this.deps.db
+      .updateTable('media_assets')
+      .set({ status })
+      .where('id', '=', id)
+      .where('status', 'in', PROCESSABLE)
+      .execute();
   }
 
   private async download(key: string, path: string): Promise<{ size: number; sha256: string }> {
@@ -295,7 +384,10 @@ export class MediaProcessor {
     try {
       ({ body } = await this.deps.storage.getObject(key));
     } catch (err) {
-      if (isMissingObject(err)) throw new PermanentProcessingError('The uploaded file is missing from storage. Upload it again.');
+      if (isMissingObject(err))
+        throw new PermanentProcessingError(
+          'The uploaded file is missing from storage. Upload it again.',
+        );
       throw err;
     }
     const hash = createHash('sha256');

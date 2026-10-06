@@ -20,7 +20,8 @@ export class IamCache {
   }
 
   async invalidateUsers(userIds: readonly string[]): Promise<void> {
-    if (userIds.length) await this.redis.del(...userIds.map((id) => iamKeys.principal(this.ns, id)));
+    if (userIds.length)
+      await this.redis.del(...userIds.map((id) => iamKeys.principal(this.ns, id)));
   }
 
   async markSessionActive(sessionId: string, expiresAt: Date): Promise<void> {
@@ -29,7 +30,8 @@ export class IamCache {
   }
 
   async revokeSessions(sessionIds: readonly string[]): Promise<void> {
-    if (sessionIds.length) await this.redis.del(...sessionIds.map((id) => iamKeys.session(this.ns, id)));
+    if (sessionIds.length)
+      await this.redis.del(...sessionIds.map((id) => iamKeys.session(this.ns, id)));
   }
 
   async invalidateFeatureFlags(organizationId: string): Promise<void> {

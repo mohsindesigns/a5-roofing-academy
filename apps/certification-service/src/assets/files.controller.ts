@@ -24,11 +24,18 @@ export class FilesController {
   @Get('object')
   @Public()
   @ApiExcludeEndpoint()
-  async object(@ZQuery(signedQuerySchema) q: z.infer<typeof signedQuerySchema>, @Res() res: Response) {
+  async object(
+    @ZQuery(signedQuerySchema) q: z.infer<typeof signedQuerySchema>,
+    @Res() res: Response,
+  ) {
     const storage = this.storage;
     if (!(storage instanceof LocalDiskStorage)) throw new NotFoundError('File');
     if (!storage.verify(q.key, q.expires, q.sig, q.download ?? '')) {
-      throw new AppError(403, 'LINK_EXPIRED', 'This link has expired or is invalid. Request a new link and try again.');
+      throw new AppError(
+        403,
+        'LINK_EXPIRED',
+        'This link has expired or is invalid. Request a new link and try again.',
+      );
     }
     let object: Awaited<ReturnType<ObjectStorage['getObject']>>;
     try {
@@ -41,7 +48,10 @@ export class FilesController {
     res.setHeader('Content-Length', String(object.size));
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Disposition', fileName ? `attachment; filename="${fileName}"` : 'inline');
+    res.setHeader(
+      'Content-Disposition',
+      fileName ? `attachment; filename="${fileName}"` : 'inline',
+    );
     object.body.on('error', () => res.destroy());
     object.body.pipe(res);
   }

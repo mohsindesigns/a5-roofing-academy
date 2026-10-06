@@ -3,7 +3,15 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { assessment } from '@a5/contracts';
-import { ApiController, CurrentPrincipal, RequirePermissions, ZBody, ZParam, ZQuery, ZResponse } from '@a5/nest-kit';
+import {
+  ApiController,
+  CurrentPrincipal,
+  RequirePermissions,
+  ZBody,
+  ZParam,
+  ZQuery,
+  ZResponse,
+} from '@a5/nest-kit';
 import { AttemptsService } from './attempts.service.js';
 
 /** Learner entry point of an assessment opened from a lesson (or standalone). */
@@ -14,7 +22,11 @@ export class LearnerAssessmentsController {
   @Get(':id/intro')
   @RequirePermissions('assessments.take')
   @ZResponse(assessment.assessmentIntroSchema)
-  intro(@CurrentPrincipal() p: Principal, @ZParam('id') id: string, @ZQuery(assessment.assessmentIntroQuerySchema) q: { grant?: string }) {
+  intro(
+    @CurrentPrincipal() p: Principal,
+    @ZParam('id') id: string,
+    @ZQuery(assessment.assessmentIntroQuerySchema) q: { grant?: string },
+  ) {
     return this.attempts.intro(p, id, q.grant);
   }
 }
@@ -29,7 +41,8 @@ export class AttemptsController {
   @ZResponse(assessment.learnerAttemptSchema)
   async start(
     @CurrentPrincipal() p: Principal,
-    @ZBody(assessment.startAttemptRequestSchema) body: z.infer<typeof assessment.startAttemptRequestSchema>,
+    @ZBody(assessment.startAttemptRequestSchema)
+    body: z.infer<typeof assessment.startAttemptRequestSchema>,
     @Res({ passthrough: true }) res: Response,
   ) {
     const { attempt, created } = await this.attempts.start(p, body);
@@ -40,7 +53,10 @@ export class AttemptsController {
   @Get('mine')
   @RequirePermissions('assessments.take')
   @ZResponse(assessment.myAttemptsSchema)
-  async mine(@CurrentPrincipal() p: Principal, @ZQuery(assessment.myAttemptsQuerySchema) q: { assessmentId?: string }) {
+  async mine(
+    @CurrentPrincipal() p: Principal,
+    @ZQuery(assessment.myAttemptsQuerySchema) q: { assessmentId?: string },
+  ) {
     return { items: await this.attempts.mine(p, q.assessmentId) };
   }
 
@@ -60,7 +76,8 @@ export class AttemptsController {
     @CurrentPrincipal() p: Principal,
     @ZParam('id') id: string,
     @ZParam('attemptQuestionId') attemptQuestionId: string,
-    @ZBody(assessment.saveAnswerRequestSchema) body: z.infer<typeof assessment.saveAnswerRequestSchema>,
+    @ZBody(assessment.saveAnswerRequestSchema)
+    body: z.infer<typeof assessment.saveAnswerRequestSchema>,
   ) {
     return this.attempts.saveAnswer(p, id, attemptQuestionId, body);
   }

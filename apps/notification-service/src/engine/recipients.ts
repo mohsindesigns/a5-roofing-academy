@@ -61,7 +61,12 @@ export class RecipientResolver {
       const user = users.get(id);
       if (user) {
         if (!this.reachable(user, input.organizationId)) continue;
-        out.push({ userId: id, email: user.email || null, firstName: user.firstName, displayName: user.displayName });
+        out.push({
+          userId: id,
+          email: user.email || null,
+          firstName: user.firstName,
+          displayName: user.displayName,
+        });
       } else if (id === input.subjectId) {
         // The directory has not caught up with a brand-new person yet: use the event's details.
         const name = input.subjectFallback?.displayName ?? null;

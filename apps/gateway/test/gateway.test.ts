@@ -37,7 +37,10 @@ const principal: PrincipalData = {
 let upstream: Server;
 let upstreamUrl: string;
 let identityCalls: Array<{ path: string; sessionId: string | null }> = [];
-let identityResponse: { principal: PrincipalData | null; sessionActive: boolean } = { principal, sessionActive: true };
+let identityResponse: { principal: PrincipalData | null; sessionActive: boolean } = {
+  principal,
+  sessionActive: true,
+};
 let app: NestExpressApplication;
 let redis: Redis;
 let ns: RedisNamespace;
@@ -84,10 +87,16 @@ beforeAll(async () => {
   const namespace = testRedisNamespace('gateway');
   ns = new RedisNamespace(namespace);
   const urls = Object.fromEntries(
-    ['IDENTITY', 'LEARNING', 'MEDIA', 'ASSESSMENT', 'AI', 'CERTIFICATION', 'NOTIFICATION', 'ANALYTICS'].map((s) => [
-      `${s}_SERVICE_URL`,
-      upstreamUrl,
-    ]),
+    [
+      'IDENTITY',
+      'LEARNING',
+      'MEDIA',
+      'ASSESSMENT',
+      'AI',
+      'CERTIFICATION',
+      'NOTIFICATION',
+      'ANALYTICS',
+    ].map((s) => [`${s}_SERVICE_URL`, upstreamUrl]),
   );
   // A port nothing listens on, to exercise upstream outages.
   const dead = createServer();
@@ -106,7 +115,9 @@ beforeAll(async () => {
     MAX_BODY_BYTES: '1024',
     ...urls,
   });
-  app = await createTestApp(GatewayModule.register(config, testLogger()), config, undefined, { parseBodies: false });
+  app = await createTestApp(GatewayModule.register(config, testLogger()), config, undefined, {
+    parseBodies: false,
+  });
   redis = createRedis(TEST_REDIS_URL);
 });
 
@@ -122,7 +133,12 @@ beforeEach(async () => {
   identityCalls = [];
   identityResponse = { principal, sessionActive: true };
   await redis.set(ns.key('iam', 'sess', SESSION), '1', 'EX', 600);
-  await redis.set(ns.key('iam', 'principal', USER), JSON.stringify({ epoch: 0, data: principal }), 'EX', 600);
+  await redis.set(
+    ns.key('iam', 'principal', USER),
+    JSON.stringify({ epoch: 0, data: principal }),
+    'EX',
+    600,
+  );
   await redis.del(ns.key('iam', 'epoch', ORG));
 });
 
@@ -138,16 +154,23 @@ describe('authentication', () => {
   });
 
   it('rejects forged and expired tokens', async () => {
-    const forged = await request(app.getHttpServer()).get('/api/v1/enrollments').set('authorization', 'Bearer abc.def.ghi');
+    const forged = await request(app.getHttpServer())
+      .get('/api/v1/enrollments')
+      .set('authorization', 'Bearer abc.def.ghi');
     expect(forged.body.error.code).toBe('TOKEN_INVALID');
     const expired = await request(app.getHttpServer())
       .get('/api/v1/enrollments')
-      .set('authorization', `Bearer ${await signAccessToken({ sub: USER, sid: SESSION, org: ORG }, keys, -5)}`);
+      .set(
+        'authorization',
+        `Bearer ${await signAccessToken({ sub: USER, sid: SESSION, org: ORG }, keys, -5)}`,
+      );
     expect(expired.body.error.code).toBe('SESSION_EXPIRED');
   });
 
   it('forwards a signed principal from the Redis cache without calling identity', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/enrollments?status=active').set('authorization', await bearer());
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/enrollments?status=active')
+      .set('authorization', await bearer());
     expect(res.status).toBe(200);
     expect(res.body.path).toBe('/api/v1/enrollments?status=active');
     expect(res.body.authorization).toBeNull();
@@ -170,8 +193,13 @@ describe('authentication', () => {
 
   it('re-resolves the principal after the organization epoch changes', async () => {
     await redis.incr(ns.key('iam', 'epoch', ORG));
-    identityResponse = { principal: { ...principal, permissions: { 'training.participate': 'own' } }, sessionActive: true };
-    const res = await request(app.getHttpServer()).get('/api/v1/programs').set('authorization', await bearer());
+    identityResponse = {
+      principal: { ...principal, permissions: { 'training.participate': 'own' } },
+      sessionActive: true,
+    };
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/programs')
+      .set('authorization', await bearer());
     expect(identityCalls).toEqual([{ path: `/internal/principals/${USER}`, sessionId: null }]);
     const forwarded = await verifyPrincipalToken(res.body.principal, TEST_INTERNAL_SECRET);
     expect(forwarded.can('enrollments.view')).toBe(false);
@@ -180,7 +208,9 @@ describe('authentication', () => {
   it('asks identity to validate the session when its liveness key is missing', async () => {
     await redis.del(ns.key('iam', 'sess', SESSION));
     identityResponse = { principal: null, sessionActive: false };
-    const res = await request(app.getHttpServer()).get('/api/v1/programs').set('authorization', await bearer());
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/programs')
+      .set('authorization', await bearer());
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('SESSION_REVOKED');
     expect(identityCalls[0]?.sessionId).toBe(SESSION);
@@ -193,7 +223,9 @@ describe('authentication', () => {
   });
 
   it('passes the principal on optional routes when a valid token is present', async () => {
-    const res = await request(app.getHttpServer()).post('/api/v1/auth/logout').set('authorization', await bearer());
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/logout')
+      .set('authorization', await bearer());
     expect(res.body.principal).not.toBeNull();
   });
 });
@@ -202,7 +234,13 @@ describe('edge protections', () => {
   it('rate limits sign-in attempts per client', async () => {
     const statuses: number[] = [];
     for (let i = 0; i < 4; i++) {
-      statuses.push((await request(app.getHttpServer()).post('/api/v1/auth/login').send({ email: 'a@b.c', password: 'x' })).status);
+      statuses.push(
+        (
+          await request(app.getHttpServer())
+            .post('/api/v1/auth/login')
+            .send({ email: 'a@b.c', password: 'x' })
+        ).status,
+      );
     }
     expect(statuses).toEqual([200, 200, 200, 429]);
   });
@@ -216,19 +254,26 @@ describe('edge protections', () => {
   });
 
   it('returns 404 for unknown API paths', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/does-not-exist').set('authorization', await bearer());
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/does-not-exist')
+      .set('authorization', await bearer());
     expect(res.status).toBe(404);
   });
 
   it('streams server-sent events', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/notifications/stream').set('authorization', await bearer());
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/notifications/stream')
+      .set('authorization', await bearer());
     expect(res.headers['content-type']).toContain('text/event-stream');
     expect(res.text).toContain('"n":1');
     expect(res.text).toContain('"n":2');
   });
 
   it('propagates the request id to services', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/programs').set('authorization', await bearer()).set('x-request-id', 'client-req-123456');
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/programs')
+      .set('authorization', await bearer())
+      .set('x-request-id', 'client-req-123456');
     expect(res.body.requestId).toBe('client-req-123456');
     expect(res.headers['x-request-id']).toBe('client-req-123456');
   });
@@ -236,7 +281,9 @@ describe('edge protections', () => {
 
 describe('upstream failures', () => {
   it('returns a clear 503 when a service is unreachable', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/audit/logs').set('authorization', await bearer());
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/audit/logs')
+      .set('authorization', await bearer());
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
     expect(JSON.stringify(res.body)).not.toMatch(/ECONNREFUSED/);

@@ -1,5 +1,19 @@
-import { DynamicModule, Global, Inject, Injectable, Module, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
-import { createDatabase, migrateToLatest, type Database, type Kysely, type MigrationMap } from '@a5/database';
+import {
+  DynamicModule,
+  Global,
+  Inject,
+  Injectable,
+  Module,
+  OnApplicationShutdown,
+  OnModuleInit,
+} from '@nestjs/common';
+import {
+  createDatabase,
+  migrateToLatest,
+  type Database,
+  type Kysely,
+  type MigrationMap,
+} from '@a5/database';
 import type { Logger } from '@a5/observability';
 import { HealthRegistry } from './health.js';
 import { DATABASE, DATABASE_HANDLE, LOGGER, SERVICE_CONFIG } from './tokens.js';
@@ -26,7 +40,10 @@ class DatabaseLifecycle implements OnModuleInit, OnApplicationShutdown {
   async onModuleInit() {
     this.health.register('postgres', () => this.handle.ping());
     if (this.options.migrateOnStart) {
-      const applied = await migrateToLatest(this.handle.db as Kysely<unknown>, this.options.migrations);
+      const applied = await migrateToLatest(
+        this.handle.db as Kysely<unknown>,
+        this.options.migrations,
+      );
       if (applied.length) this.logger.info({ applied }, 'database migrations applied');
     }
   }
@@ -54,12 +71,17 @@ export class DatabaseModule {
               poolMax: config.databasePoolMax,
               statementTimeoutMs: config.databaseStatementTimeoutMs,
               applicationName: config.serviceName,
-              onSlowQuery: (e) => logger.warn({ durationMs: e.durationMs, sql: e.sql }, 'slow query'),
+              onSlowQuery: (e) =>
+                logger.warn({ durationMs: e.durationMs, sql: e.sql }, 'slow query'),
               onError: (e) => logger.debug({ err: e.error, sql: e.sql }, 'query error'),
             });
           },
         },
-        { provide: DATABASE, inject: [DATABASE_HANDLE], useFactory: (h: Database<unknown>) => h.db },
+        {
+          provide: DATABASE,
+          inject: [DATABASE_HANDLE],
+          useFactory: (h: Database<unknown>) => h.db,
+        },
         DatabaseLifecycle,
       ],
       exports: [DATABASE, DATABASE_HANDLE],

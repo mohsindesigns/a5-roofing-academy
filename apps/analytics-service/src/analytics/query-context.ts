@@ -52,10 +52,16 @@ export class QuerySql {
    * People restriction on a user id column: data scope (via `userScopeCondition`), people filters
    * and, unless disabled, the program population (people enrolled in the filtered program).
    */
-  people(userColumn: string, orgColumn: string, { programPopulation = true }: { programPopulation?: boolean } = {}): RawBuilder<SqlBool> {
+  people(
+    userColumn: string,
+    orgColumn: string,
+    { programPopulation = true }: { programPopulation?: boolean } = {},
+  ): RawBuilder<SqlBool> {
     const { scope, filters: f } = this.ctx;
     const user = sql.ref(userColumn);
-    const parts: Array<RawBuilder<SqlBool> | Expression<SqlBool>> = [userScopeCondition(scope, { userColumn, orgColumn })];
+    const parts: Array<RawBuilder<SqlBool> | Expression<SqlBool>> = [
+      userScopeCondition(scope, { userColumn, orgColumn }),
+    ];
     if (scope.kind === 'managed') {
       // Managed scope covers managed teams and direct reports, not the manager's own learning.
       const teams = scope.teamIds.length ? scope.teamIds : [NIL_UUID];
@@ -63,7 +69,10 @@ export class QuerySql {
         sql<SqlBool>`(${user} <> ${scope.userId} or ${user} in (select user_id from dir_user_teams where team_id = any(${sql.val(teams)}::uuid[])))`,
       );
     }
-    if (f.teamId) parts.push(sql<SqlBool>`${user} in (select user_id from dir_user_teams where team_id = ${f.teamId})`);
+    if (f.teamId)
+      parts.push(
+        sql<SqlBool>`${user} in (select user_id from dir_user_teams where team_id = ${f.teamId})`,
+      );
     if (f.managerId) {
       parts.push(sql<SqlBool>`${user} in (
         select ut.user_id from dir_user_teams ut join dir_team_managers tm on tm.team_id = ut.team_id where tm.user_id = ${f.managerId}
@@ -71,8 +80,14 @@ export class QuerySql {
         select s.user_id from dir_user_supervisors s where s.supervisor_id = ${f.managerId} and s.kind = 'manager'
       )`);
     }
-    if (f.departmentId) parts.push(sql<SqlBool>`${user} in (select id from dir_users where department_id = ${f.departmentId})`);
-    if (f.locationId) parts.push(sql<SqlBool>`${user} in (select id from dir_users where location_id = ${f.locationId})`);
+    if (f.departmentId)
+      parts.push(
+        sql<SqlBool>`${user} in (select id from dir_users where department_id = ${f.departmentId})`,
+      );
+    if (f.locationId)
+      parts.push(
+        sql<SqlBool>`${user} in (select id from dir_users where location_id = ${f.locationId})`,
+      );
     if (f.userId) parts.push(sql<SqlBool>`${user} = ${f.userId}`);
     if (programPopulation && f.programId) {
       parts.push(
@@ -160,7 +175,8 @@ export function ratio(numerator: number, denominator: number): analytics.Ratio {
   return {
     numerator: Number(numerator),
     denominator: Number(denominator),
-    percent: Number(denominator) > 0 ? round1((Number(numerator) / Number(denominator)) * 100) : null,
+    percent:
+      Number(denominator) > 0 ? round1((Number(numerator) / Number(denominator)) * 100) : null,
   };
 }
 

@@ -21,7 +21,10 @@ function withDatabase(url: string, database: string): string {
  * suites can run in parallel without sharing state.
  */
 export async function createTestDatabase(prefix: string): Promise<TestDatabase> {
-  const safe = prefix.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 30);
+  const safe = prefix
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .slice(0, 30);
   const name = `t_${safe}_${randomBytes(4).toString('hex')}`;
   const admin = new pg.Client({ connectionString: TEST_ADMIN_DATABASE_URL });
   await admin.connect();

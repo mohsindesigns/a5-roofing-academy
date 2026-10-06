@@ -11,7 +11,10 @@ export const managerApprovalLesson = defineLessonType<learning.ManagerApprovalLe
   configSchema: learning.managerApprovalLessonConfigSchema,
   completion: 'approval',
   learnerCompletion() {
-    return { allowed: false, reason: 'Your manager completes this step by approving your sign-off request.' };
+    return {
+      allowed: false,
+      reason: 'Your manager completes this step by approving your sign-off request.',
+    };
   },
   completionHint() {
     return 'Completes when your manager approves the sign-off request.';

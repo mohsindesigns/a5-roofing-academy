@@ -63,7 +63,13 @@ export interface NotificationTypeDef {
   nameFields: string[];
   variables: VariableDef[];
   defaults: Partial<Record<Channel, TemplateContent>>;
-  rule: { recipients: Recipient[]; channels: Channel[]; conditions: Conditions; priority: Priority; delayMinutes: number };
+  rule: {
+    recipients: Recipient[];
+    channels: Channel[];
+    conditions: Conditions;
+    priority: Priority;
+    delayMinutes: number;
+  };
   build(payload: unknown, ctx: BuildContext): BuiltNotification;
 }
 
@@ -118,19 +124,47 @@ export function allowedRecipientKinds(eventType: string): string[] {
 
 /** Variables every template can use. */
 export const COMMON_VARIABLES: VariableDef[] = [
-  { name: 'recipientFirstName', description: 'First name of the person receiving the message', sample: 'Andre' },
-  { name: 'recipientName', description: 'Full name of the person receiving the message', sample: 'Andre Coleman' },
-  { name: 'link', description: 'Full URL of the page the message points to', sample: 'https://academy.a5roofing.example/training' },
-  { name: 'appUrl', description: 'Address of the A5 Sales Academy', sample: 'https://academy.a5roofing.example' },
+  {
+    name: 'recipientFirstName',
+    description: 'First name of the person receiving the message',
+    sample: 'Andre',
+  },
+  {
+    name: 'recipientName',
+    description: 'Full name of the person receiving the message',
+    sample: 'Andre Coleman',
+  },
+  {
+    name: 'link',
+    description: 'Full URL of the page the message points to',
+    sample: 'https://academy.a5roofing.example/training',
+  },
+  {
+    name: 'appUrl',
+    description: 'Address of the A5 Sales Academy',
+    sample: 'https://academy.a5roofing.example',
+  },
 ];
 
 /** Variables available when the event is about a specific person. */
 export const LEARNER_VARIABLES: VariableDef[] = [
-  { name: 'learnerName', description: 'Full name of the person the event is about', sample: 'Brianna Castillo' },
-  { name: 'learnerFirstName', description: 'First name of the person the event is about', sample: 'Brianna' },
+  {
+    name: 'learnerName',
+    description: 'Full name of the person the event is about',
+    sample: 'Brianna Castillo',
+  },
+  {
+    name: 'learnerFirstName',
+    description: 'First name of the person the event is about',
+    sample: 'Brianna',
+  },
 ];
 
-const v = (name: string, description: string, sample: string): VariableDef => ({ name, description, sample });
+const v = (name: string, description: string, sample: string): VariableDef => ({
+  name,
+  description,
+  sample,
+});
 
 function score(n: number): string {
   return String(Math.round(n * 10) / 10);
@@ -158,13 +192,19 @@ const teamMember = (userId: string) => `/team/people/${userId}`;
 const certificate = (certificateId: string) => `/certifications/${certificateId}`;
 const aiSession = (sessionId: string) => `/ai-practice/sessions/${sessionId}`;
 
-type Def<E extends EventType> = Omit<NotificationTypeDef, 'build' | 'eventType' | 'mandatory' | 'sensitive' | 'fixedConditions' | 'nameFields' | 'rule'> & {
+type Def<E extends EventType> = Omit<
+  NotificationTypeDef,
+  'build' | 'eventType' | 'mandatory' | 'sensitive' | 'fixedConditions' | 'nameFields' | 'rule'
+> & {
   eventType: E;
   mandatory?: boolean;
   sensitive?: boolean;
   fixedConditions?: Conditions;
   nameFields?: string[];
-  rule: Omit<NotificationTypeDef['rule'], 'conditions' | 'delayMinutes'> & { conditions?: Conditions; delayMinutes?: number };
+  rule: Omit<NotificationTypeDef['rule'], 'conditions' | 'delayMinutes'> & {
+    conditions?: Conditions;
+    delayMinutes?: number;
+  };
   build(payload: EventPayload<E>, ctx: BuildContext): BuiltNotification;
 };
 
@@ -231,7 +271,10 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     },
     rule: { recipients: ['subject'], channels: ['email'], priority: 'high' },
     build: (p, ctx) => ({
-      vars: { inviterName: p.invitedByName ?? 'A5 Roofing', expiresAt: ctx.formatDateTime(p.expiresAt) },
+      vars: {
+        inviterName: p.invitedByName ?? 'A5 Roofing',
+        expiresAt: ctx.formatDateTime(p.expiresAt),
+      },
       secretLink: p.activationUrl,
       path: null,
       data: {},
@@ -282,9 +325,17 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     variables: [
       ...programVars,
       v('dueDate', 'Due date, or "no due date"', 'Oct 30, 2026'),
-      v('dueText', 'Sentence about the due date (empty without one)', 'Complete it by Oct 30, 2026.'),
+      v(
+        'dueText',
+        'Sentence about the due date (empty without one)',
+        'Complete it by Oct 30, 2026.',
+      ),
       v('assignedByName', 'Who assigned the training', 'Danielle Okafor'),
-      v('enrollmentText', 'Sentence saying how the person was enrolled', 'Danielle Okafor enrolled you in A5 New Hire Sales Academy.'),
+      v(
+        'enrollmentText',
+        'Sentence saying how the person was enrolled',
+        'Danielle Okafor enrolled you in A5 New Hire Sales Academy.',
+      ),
     ],
     defaults: {
       in_app: {
@@ -303,7 +354,9 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     rule: { recipients: ['subject'], channels: ['in_app', 'email'], priority: 'normal' },
     build: (p, ctx) => {
       const due = p.dueAt ? ctx.formatDate(p.dueAt) : null;
-      const assignedByName = p.assignedBy ? ctx.nameOf(p.assignedBy, 'A5 Sales Training') : 'A5 Sales Training';
+      const assignedByName = p.assignedBy
+        ? ctx.nameOf(p.assignedBy, 'A5 Sales Training')
+        : 'A5 Sales Training';
       const enrollmentText =
         p.source === 'self'
           ? `You enrolled in ${p.programTitle}.`
@@ -332,7 +385,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     eventType: 'enrollment.overdue',
     channels: ['in_app', 'email'],
     actionLabel: 'Continue training',
-    variables: [...programVars, v('dueDate', 'Due date', 'Sep 28, 2026'), v('progressPercent', 'Progress in percent', '45')],
+    variables: [
+      ...programVars,
+      v('dueDate', 'Due date', 'Sep 28, 2026'),
+      v('progressPercent', 'Progress in percent', '45'),
+    ],
     defaults: {
       in_app: {
         subject: '{{programTitle}} is overdue',
@@ -349,9 +406,17 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     },
     rule: { recipients: ['subject'], channels: ['in_app', 'email'], priority: 'high' },
     build: (p, ctx) => ({
-      vars: { programTitle: p.programTitle, dueDate: ctx.formatDate(p.dueAt), progressPercent: score(p.progressPercent) },
+      vars: {
+        programTitle: p.programTitle,
+        dueDate: ctx.formatDate(p.dueAt),
+        progressPercent: score(p.progressPercent),
+      },
       path: training(p.programId),
-      data: { programId: p.programId, enrollmentId: p.enrollmentId, progressPercent: p.progressPercent },
+      data: {
+        programId: p.programId,
+        enrollmentId: p.enrollmentId,
+        progressPercent: p.progressPercent,
+      },
     }),
   }),
   define({
@@ -363,7 +428,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     eventType: 'enrollment.overdue',
     channels: ['in_app', 'email'],
     actionLabel: 'View progress',
-    variables: [...programVars, v('dueDate', 'Due date', 'Sep 28, 2026'), v('progressPercent', 'Progress in percent', '45')],
+    variables: [
+      ...programVars,
+      v('dueDate', 'Due date', 'Sep 28, 2026'),
+      v('progressPercent', 'Progress in percent', '45'),
+    ],
     defaults: {
       in_app: {
         subject: '{{learnerName}} is overdue on {{programTitle}}',
@@ -380,9 +449,18 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     },
     rule: { recipients: ['managers'], channels: ['in_app', 'email'], priority: 'normal' },
     build: (p, ctx) => ({
-      vars: { programTitle: p.programTitle, dueDate: ctx.formatDate(p.dueAt), progressPercent: score(p.progressPercent) },
+      vars: {
+        programTitle: p.programTitle,
+        dueDate: ctx.formatDate(p.dueAt),
+        progressPercent: score(p.progressPercent),
+      },
       path: teamMember(p.userId),
-      data: { userId: p.userId, programId: p.programId, enrollmentId: p.enrollmentId, progressPercent: p.progressPercent },
+      data: {
+        userId: p.userId,
+        programId: p.programId,
+        enrollmentId: p.enrollmentId,
+        progressPercent: p.progressPercent,
+      },
     }),
   }),
   define({
@@ -445,7 +523,13 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
         attemptNumber: String(p.attemptNumber),
       },
       path: `/assessments/attempts/${p.attemptId}`,
-      data: { attemptId: p.attemptId, assessmentId: p.assessmentId, kind: p.kind, scorePercent: p.scorePercent, passed: true },
+      data: {
+        attemptId: p.attemptId,
+        assessmentId: p.assessmentId,
+        kind: p.kind,
+        scorePercent: p.scorePercent,
+        passed: true,
+      },
     }),
   }),
   define({
@@ -482,7 +566,13 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
         attemptNumber: String(p.attemptNumber),
       },
       path: `/assessments/attempts/${p.attemptId}`,
-      data: { attemptId: p.attemptId, assessmentId: p.assessmentId, kind: p.kind, scorePercent: p.scorePercent, passed: false },
+      data: {
+        attemptId: p.attemptId,
+        assessmentId: p.assessmentId,
+        kind: p.kind,
+        scorePercent: p.scorePercent,
+        passed: false,
+      },
     }),
   }),
   define({
@@ -510,7 +600,12 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
         ].join('\n\n'),
       },
     },
-    rule: { recipients: ['managers'], channels: ['in_app'], priority: 'normal', conditions: { kind: ['quiz', 'exam', 'final'] } },
+    rule: {
+      recipients: ['managers'],
+      channels: ['in_app'],
+      priority: 'normal',
+      conditions: { kind: ['quiz', 'exam', 'final'] },
+    },
     build: (p) => ({
       vars: {
         assessmentTitle: p.assessmentTitle,
@@ -519,7 +614,12 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
         attemptNumber: String(p.attemptNumber),
       },
       path: teamMember(p.userId),
-      data: { userId: p.userId, attemptId: p.attemptId, assessmentId: p.assessmentId, scorePercent: p.scorePercent },
+      data: {
+        userId: p.userId,
+        attemptId: p.attemptId,
+        assessmentId: p.assessmentId,
+        scorePercent: p.scorePercent,
+      },
     }),
   }),
 
@@ -533,7 +633,10 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     eventType: 'approval.requested',
     channels: ['in_app', 'email'],
     actionLabel: 'Review approval',
-    variables: [...programVars, v('lessonTitle', 'Step waiting for approval', 'Manager Field-Ready Sign-off')],
+    variables: [
+      ...programVars,
+      v('lessonTitle', 'Step waiting for approval', 'Manager Field-Ready Sign-off'),
+    ],
     defaults: {
       in_app: {
         subject: 'Approval needed: {{learnerName}}',
@@ -552,7 +655,12 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     build: (p) => ({
       vars: { programTitle: p.programTitle, lessonTitle: p.lessonTitle },
       path: '/team/approvals',
-      data: { approvalId: p.approvalId, userId: p.userId, programId: p.programId, lessonId: p.lessonId },
+      data: {
+        approvalId: p.approvalId,
+        userId: p.userId,
+        programId: p.programId,
+        lessonId: p.lessonId,
+      },
     }),
   }),
   define({
@@ -578,14 +686,27 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
       },
       email: {
         subject: 'Approved: {{lessonTitle}}',
-        body: ['Hi {{recipientFirstName}},', '{{deciderName}} approved {{lessonTitle}}. {{commentText}}', 'Your next steps are open in My Training.'].join('\n\n'),
+        body: [
+          'Hi {{recipientFirstName}},',
+          '{{deciderName}} approved {{lessonTitle}}. {{commentText}}',
+          'Your next steps are open in My Training.',
+        ].join('\n\n'),
       },
     },
     rule: { recipients: ['subject'], channels: ['in_app', 'email'], priority: 'normal' },
     build: (p, ctx) => ({
-      vars: { lessonTitle: p.lessonTitle, deciderName: ctx.nameOf(p.decidedBy, 'Your manager'), commentText: quoted(p.comment) },
+      vars: {
+        lessonTitle: p.lessonTitle,
+        deciderName: ctx.nameOf(p.decidedBy, 'Your manager'),
+        commentText: quoted(p.comment),
+      },
       path: training(p.programId),
-      data: { approvalId: p.approvalId, programId: p.programId, lessonId: p.lessonId, decision: p.decision },
+      data: {
+        approvalId: p.approvalId,
+        programId: p.programId,
+        lessonId: p.lessonId,
+        decision: p.decision,
+      },
     }),
   }),
   define({
@@ -602,7 +723,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     variables: [
       v('lessonTitle', 'Step that was sent back', 'Manager Field-Ready Sign-off'),
       v('deciderName', 'Who made the decision', 'Andre Coleman'),
-      v('commentText', 'The manager’s note, if any', 'Their note: “Let’s do one more ride-along first.” '),
+      v(
+        'commentText',
+        'The manager’s note, if any',
+        'Their note: “Let’s do one more ride-along first.” ',
+      ),
     ],
     defaults: {
       in_app: {
@@ -620,9 +745,18 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     },
     rule: { recipients: ['subject'], channels: ['in_app', 'email'], priority: 'high' },
     build: (p, ctx) => ({
-      vars: { lessonTitle: p.lessonTitle, deciderName: ctx.nameOf(p.decidedBy, 'Your manager'), commentText: quoted(p.comment) },
+      vars: {
+        lessonTitle: p.lessonTitle,
+        deciderName: ctx.nameOf(p.decidedBy, 'Your manager'),
+        commentText: quoted(p.comment),
+      },
       path: training(p.programId),
-      data: { approvalId: p.approvalId, programId: p.programId, lessonId: p.lessonId, decision: p.decision },
+      data: {
+        approvalId: p.approvalId,
+        programId: p.programId,
+        lessonId: p.lessonId,
+        decision: p.decision,
+      },
     }),
   }),
 
@@ -657,9 +791,18 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     },
     rule: { recipients: ['subject'], channels: ['in_app'], priority: 'low' },
     build: (p) => ({
-      vars: { scenarioTitle: p.scenarioTitle, overallScore: score(p.overallScore), passingScore: score(p.passingScore) },
+      vars: {
+        scenarioTitle: p.scenarioTitle,
+        overallScore: score(p.overallScore),
+        passingScore: score(p.passingScore),
+      },
       path: aiSession(p.sessionId),
-      data: { sessionId: p.sessionId, scenarioId: p.scenarioId, overallScore: p.overallScore, passed: p.passed },
+      data: {
+        sessionId: p.sessionId,
+        scenarioId: p.scenarioId,
+        overallScore: p.overallScore,
+        passed: p.passed,
+      },
     }),
   }),
   define({
@@ -672,7 +815,10 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     channels: ['in_app', 'email'],
     nameFields: ['reviewerId'],
     actionLabel: 'Read feedback',
-    variables: [v('scenarioTitle', 'Scenario title', 'Another Roofer Is Cheaper'), v('reviewerName', 'Who reviewed it', 'Hector Villanueva')],
+    variables: [
+      v('scenarioTitle', 'Scenario title', 'Another Roofer Is Cheaper'),
+      v('reviewerName', 'Who reviewed it', 'Hector Villanueva'),
+    ],
     defaults: {
       in_app: {
         subject: '{{reviewerName}} reviewed your {{scenarioTitle}} session',
@@ -689,7 +835,10 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     },
     rule: { recipients: ['subject'], channels: ['in_app', 'email'], priority: 'normal' },
     build: (p, ctx) => ({
-      vars: { scenarioTitle: p.scenarioTitle, reviewerName: ctx.nameOf(p.reviewerId, 'Your coach') },
+      vars: {
+        scenarioTitle: p.scenarioTitle,
+        reviewerName: ctx.nameOf(p.reviewerId, 'Your coach'),
+      },
       path: aiSession(p.sessionId),
       data: { sessionId: p.sessionId, reviewerId: p.reviewerId },
     }),
@@ -705,7 +854,10 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     eventType: 'certificate.eligible',
     channels: ['in_app', 'email'],
     actionLabel: 'View certifications',
-    variables: [certVars[0]!, v('nextStep', 'What happens next', 'Your manager will review it shortly.')],
+    variables: [
+      certVars[0]!,
+      v('nextStep', 'What happens next', 'Your manager will review it shortly.'),
+    ],
     defaults: {
       in_app: {
         subject: 'You met the requirements for {{definitionName}}',
@@ -713,7 +865,10 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
       },
       email: {
         subject: 'You met the requirements for {{definitionName}}',
-        body: ['Hi {{recipientFirstName}},', 'You completed every requirement for {{definitionName}}. {{nextStep}}'].join('\n\n'),
+        body: [
+          'Hi {{recipientFirstName}},',
+          'You completed every requirement for {{definitionName}}. {{nextStep}}',
+        ].join('\n\n'),
       },
     },
     rule: { recipients: ['subject'], channels: ['in_app'], priority: 'normal' },
@@ -725,7 +880,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
           : 'Your certificate will be issued shortly.',
       },
       path: '/certifications',
-      data: { definitionId: p.definitionId, candidateId: p.candidateId, requiresApproval: p.requiresApproval },
+      data: {
+        definitionId: p.definitionId,
+        candidateId: p.candidateId,
+        requiresApproval: p.requiresApproval,
+      },
     }),
   }),
   define({
@@ -773,7 +932,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     variables: [
       certVars[0]!,
       v('deciderName', 'Who made the decision', 'Danielle Okafor'),
-      v('commentText', 'The approver’s note, if any', 'Their note: “One more supervised appointment first.” '),
+      v(
+        'commentText',
+        'The approver’s note, if any',
+        'Their note: “One more supervised appointment first.” ',
+      ),
     ],
     defaults: {
       in_app: {
@@ -791,7 +954,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     },
     rule: { recipients: ['subject'], channels: ['in_app', 'email'], priority: 'high' },
     build: (p, ctx) => ({
-      vars: { definitionName: p.definitionName, deciderName: ctx.nameOf(p.decidedBy, 'Your manager'), commentText: quoted(p.comment) },
+      vars: {
+        definitionName: p.definitionName,
+        deciderName: ctx.nameOf(p.decidedBy, 'Your manager'),
+        commentText: quoted(p.comment),
+      },
       path: '/certifications',
       data: { approvalId: p.approvalId, definitionId: p.definitionId, decision: p.decision },
     }),
@@ -808,7 +975,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     variables: [
       ...certVars,
       v('issuedDate', 'Issue date', 'Oct 5, 2026'),
-      v('expiryText', 'Sentence about the expiry date (empty without one)', 'It is valid until Oct 5, 2028.'),
+      v(
+        'expiryText',
+        'Sentence about the expiry date (empty without one)',
+        'It is valid until Oct 5, 2028.',
+      ),
     ],
     defaults: {
       in_app: {
@@ -833,7 +1004,12 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
         expiryText: p.expiresAt ? `It is valid until ${ctx.formatDate(p.expiresAt)}.` : '',
       },
       path: certificate(p.certificateId),
-      data: { certificateId: p.certificateId, definitionId: p.definitionId, certificateNumber: p.certificateNumber, mode: p.mode },
+      data: {
+        certificateId: p.certificateId,
+        definitionId: p.definitionId,
+        certificateNumber: p.certificateNumber,
+        mode: p.mode,
+      },
     }),
   }),
   define({
@@ -853,12 +1029,24 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
       },
       email: {
         subject: '{{learnerName}} earned {{definitionName}}',
-        body: ['Hi {{recipientFirstName}},', '{{learnerName}} earned {{definitionName}} (certificate {{certificateNumber}}) on {{issuedDate}}.'].join('\n\n'),
+        body: [
+          'Hi {{recipientFirstName}},',
+          '{{learnerName}} earned {{definitionName}} (certificate {{certificateNumber}}) on {{issuedDate}}.',
+        ].join('\n\n'),
       },
     },
-    rule: { recipients: ['managers'], channels: ['in_app'], priority: 'normal', conditions: { mode: { ne: 'reissue' } } },
+    rule: {
+      recipients: ['managers'],
+      channels: ['in_app'],
+      priority: 'normal',
+      conditions: { mode: { ne: 'reissue' } },
+    },
     build: (p, ctx) => ({
-      vars: { definitionName: p.definitionName, certificateNumber: p.certificateNumber, issuedDate: ctx.formatDate(p.issuedAt) },
+      vars: {
+        definitionName: p.definitionName,
+        certificateNumber: p.certificateNumber,
+        issuedDate: ctx.formatDate(p.issuedAt),
+      },
       path: teamMember(p.userId),
       data: { userId: p.userId, certificateId: p.certificateId, definitionId: p.definitionId },
     }),
@@ -895,7 +1083,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     eventType: 'certificate.expiring',
     channels: ['in_app', 'email'],
     actionLabel: 'Plan renewal',
-    variables: [certVars[0]!, v('daysRemaining', 'Days until expiry', '48'), v('expiryDate', 'Expiry date', 'Nov 22, 2026')],
+    variables: [
+      certVars[0]!,
+      v('daysRemaining', 'Days until expiry', '48'),
+      v('expiryDate', 'Expiry date', 'Nov 22, 2026'),
+    ],
     defaults: {
       in_app: {
         subject: '{{definitionName}} expires in {{daysRemaining}} days',
@@ -912,9 +1104,18 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     },
     rule: { recipients: ['subject'], channels: ['in_app', 'email'], priority: 'high' },
     build: (p, ctx) => ({
-      vars: { definitionName: p.definitionName, daysRemaining: String(p.daysRemaining), expiryDate: ctx.formatDate(p.expiresAt) },
+      vars: {
+        definitionName: p.definitionName,
+        daysRemaining: String(p.daysRemaining),
+        expiryDate: ctx.formatDate(p.expiresAt),
+      },
       path: certificate(p.certificateId),
-      data: { certificateId: p.certificateId, definitionId: p.definitionId, expiresAt: p.expiresAt, daysRemaining: p.daysRemaining },
+      data: {
+        certificateId: p.certificateId,
+        definitionId: p.definitionId,
+        expiresAt: p.expiresAt,
+        daysRemaining: p.daysRemaining,
+      },
     }),
   }),
   define({
@@ -965,7 +1166,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
       },
       email: {
         subject: '{{learnerName}}’s {{definitionName}} expired',
-        body: ['Hi {{recipientFirstName}},', '{{learnerName}}’s {{definitionName}} certificate expired on {{expiredDate}}.', 'Help them plan the renewal.'].join('\n\n'),
+        body: [
+          'Hi {{recipientFirstName}},',
+          '{{learnerName}}’s {{definitionName}} certificate expired on {{expiredDate}}.',
+          'Help them plan the renewal.',
+        ].join('\n\n'),
       },
     },
     rule: { recipients: ['managers'], channels: ['in_app'], priority: 'normal' },
@@ -984,7 +1189,10 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     eventType: 'certificate.revoked',
     channels: ['in_app', 'email'],
     actionLabel: 'View certificate',
-    variables: [...certVars, v('reason', 'Reason for the revocation', 'Issued before the final assessment was regraded')],
+    variables: [
+      ...certVars,
+      v('reason', 'Reason for the revocation', 'Issued before the final assessment was regraded'),
+    ],
     defaults: {
       in_app: {
         subject: '{{definitionName}} was revoked',
@@ -1002,7 +1210,11 @@ export const NOTIFICATION_TYPE_DEFS: NotificationTypeDef[] = [
     },
     rule: { recipients: ['subject'], channels: ['in_app', 'email'], priority: 'high' },
     build: (p) => ({
-      vars: { definitionName: p.definitionName, certificateNumber: p.certificateNumber, reason: p.reason },
+      vars: {
+        definitionName: p.definitionName,
+        certificateNumber: p.certificateNumber,
+        reason: p.reason,
+      },
       path: certificate(p.certificateId),
       data: { certificateId: p.certificateId, definitionId: p.definitionId },
     }),

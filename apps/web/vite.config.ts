@@ -29,7 +29,8 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules')) {
             if (id.includes('hls.js')) return 'hls';
-            if (id.includes('react-router') || id.includes('/react-dom/') || id.includes('/react/')) return 'react';
+            if (id.includes('react-router') || id.includes('/react-dom/') || id.includes('/react/'))
+              return 'react';
             if (id.includes('@tanstack')) return 'query';
             if (id.includes('radix-ui') || id.includes('@radix-ui')) return 'radix';
             if (id.includes('zod')) return 'zod';

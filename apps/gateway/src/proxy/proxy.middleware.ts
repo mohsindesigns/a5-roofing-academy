@@ -2,7 +2,12 @@ import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
 import http, { type IncomingHttpHeaders } from 'node:http';
 import https from 'node:https';
 import type { NextFunction, Request, Response } from 'express';
-import { PRINCIPAL_HEADER, SERVICE_TOKEN_HEADER, signPrincipalToken, type PrincipalData } from '@a5/auth';
+import {
+  PRINCIPAL_HEADER,
+  SERVICE_TOKEN_HEADER,
+  signPrincipalToken,
+  type PrincipalData,
+} from '@a5/auth';
 import type { Producer } from '@a5/events';
 import { AppError, LOGGER, RateLimitedError, ServiceUnavailableError } from '@a5/nest-kit';
 import { RateLimiter } from '@a5/messaging';
@@ -32,7 +37,13 @@ const STRIP_REQUEST = new Set([
   'x-correlation-id',
 ]);
 
-const STRIP_RESPONSE = new Set(['connection', 'keep-alive', 'transfer-encoding', 'x-powered-by', 'server']);
+const STRIP_RESPONSE = new Set([
+  'connection',
+  'keep-alive',
+  'transfer-encoding',
+  'x-powered-by',
+  'server',
+]);
 
 const agents = {
   http: new http.Agent({ keepAlive: true, maxSockets: 512, keepAliveMsecs: 10_000 }),
@@ -48,7 +59,12 @@ function writeError(res: Response, err: AppError): void {
   }
   if (err instanceof RateLimitedError) res.setHeader('Retry-After', String(err.retryAfterSeconds));
   res.status(err.status).json({
-    error: { code: err.code, message: err.message, ...(err.details && { details: err.details }), requestId: getContext()?.requestId },
+    error: {
+      code: err.code,
+      message: err.message,
+      ...(err.details && { details: err.details }),
+      requestId: getContext()?.requestId,
+    },
   });
 }
 
@@ -82,7 +98,14 @@ export class ProxyMiddleware implements NestMiddleware {
     } catch (err) {
       if (err instanceof AppError) return writeError(res, err);
       this.logger.error({ err, path }, 'gateway pipeline failed');
-      writeError(res, new AppError(500, 'INTERNAL', 'An unexpected error occurred. Retry or contact support with the request id.'));
+      writeError(
+        res,
+        new AppError(
+          500,
+          'INTERNAL',
+          'An unexpected error occurred. Retry or contact support with the request id.',
+        ),
+      );
     }
   }
 
@@ -103,11 +126,16 @@ export class ProxyMiddleware implements NestMiddleware {
     return principal;
   }
 
-  private async rateLimit(req: Request, rule: RouteRule, principal: PrincipalData | null): Promise<void> {
+  private async rateLimit(
+    req: Request,
+    rule: RouteRule,
+    principal: PrincipalData | null,
+  ): Promise<void> {
     const limits = this.config.gateway.rateLimits;
     const limit = limits[rule.rate];
     // Authenticated traffic is limited per user, anonymous traffic per client IP.
-    const subject = rule.rate === 'default' && principal ? `u:${principal.userId}` : `ip:${req.ip ?? 'unknown'}`;
+    const subject =
+      rule.rate === 'default' && principal ? `u:${principal.userId}` : `ip:${req.ip ?? 'unknown'}`;
     let result;
     try {
       result = await this.limiter.hit(rule.rate, subject, limit, 60);
@@ -119,12 +147,17 @@ export class ProxyMiddleware implements NestMiddleware {
   }
 
   private assertBodySize(req: Request, rule: RouteRule): void {
-    const max = rule.upload ? this.config.gateway.maxUploadBodyBytes : this.config.gateway.maxBodyBytes;
+    const max = rule.upload
+      ? this.config.gateway.maxUploadBodyBytes
+      : this.config.gateway.maxBodyBytes;
     const length = Number(req.header('content-length') ?? 0);
     if (length > max) throw new AppError(413, 'PAYLOAD_TOO_LARGE', 'The request is too large.');
   }
 
-  private async upstreamHeaders(req: Request, principal: PrincipalData | null): Promise<IncomingHttpHeaders> {
+  private async upstreamHeaders(
+    req: Request,
+    principal: PrincipalData | null,
+  ): Promise<IncomingHttpHeaders> {
     const headers: IncomingHttpHeaders = {};
     for (const [key, value] of Object.entries(req.headers)) {
       if (!STRIP_REQUEST.has(key.toLowerCase())) headers[key] = value;
@@ -136,15 +169,28 @@ export class ProxyMiddleware implements NestMiddleware {
     }
     headers['x-forwarded-for'] = req.ip ?? '';
     headers['x-forwarded-proto'] = req.protocol;
-    if (principal) headers[PRINCIPAL_HEADER] = await signPrincipalToken(principal, this.config.internalAuthSecret, 60);
+    if (principal)
+      headers[PRINCIPAL_HEADER] = await signPrincipalToken(
+        principal,
+        this.config.internalAuthSecret,
+        60,
+      );
     return headers;
   }
 
-  private forward(req: Request, res: Response, rule: RouteRule, target: string, headers: IncomingHttpHeaders): void {
+  private forward(
+    req: Request,
+    res: Response,
+    rule: RouteRule,
+    target: string,
+    headers: IncomingHttpHeaders,
+  ): void {
     const url = new URL(req.originalUrl, target);
     const isHttps = url.protocol === 'https:';
     const started = Date.now();
-    const max = rule.upload ? this.config.gateway.maxUploadBodyBytes : this.config.gateway.maxBodyBytes;
+    const max = rule.upload
+      ? this.config.gateway.maxUploadBodyBytes
+      : this.config.gateway.maxBodyBytes;
 
     const upstream = (isHttps ? https : http).request(
       {
@@ -171,7 +217,10 @@ export class ProxyMiddleware implements NestMiddleware {
         upRes.pipe(res);
         upRes.on('end', () => {
           if (Date.now() - started > 2_000 && !rule.stream) {
-            this.logger.warn({ service: rule.service, path: url.pathname, ms: Date.now() - started }, 'slow upstream');
+            this.logger.warn(
+              { service: rule.service, path: url.pathname, ms: Date.now() - started },
+              'slow upstream',
+            );
           }
         });
       },
@@ -185,7 +234,9 @@ export class ProxyMiddleware implements NestMiddleware {
       writeError(
         res,
         timeout
-          ? new AppError(504, 'UPSTREAM_TIMEOUT', 'The request took too long. Retry in a moment.', { service })
+          ? new AppError(504, 'UPSTREAM_TIMEOUT', 'The request took too long. Retry in a moment.', {
+              service,
+            })
           : new ServiceUnavailableError(undefined, { service }),
       );
     });

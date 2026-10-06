@@ -34,7 +34,9 @@ export function encodeCursor(at: string, id: string): string {
 export function decodeCursor(cursor: string): { at: string; id: string } {
   const [at, id] = Buffer.from(cursor, 'base64url').toString('utf8').split('|');
   if (!at || !id || !TIMESTAMP.test(at) || !UUID.test(id)) {
-    throw new ValidationError([{ path: 'cursor', message: 'This cursor is invalid. Reload the list and try again.' }]);
+    throw new ValidationError([
+      { path: 'cursor', message: 'This cursor is invalid. Reload the list and try again.' },
+    ]);
   }
   return { at, id };
 }
@@ -79,7 +81,11 @@ export class NotificationsRepository {
     return counts;
   }
 
-  async list(userId: string, organizationId: string, options: ListOptions): Promise<{ items: NotificationDto[]; nextCursor: string | null }> {
+  async list(
+    userId: string,
+    organizationId: string,
+    options: ListOptions,
+  ): Promise<{ items: NotificationDto[]; nextCursor: string | null }> {
     let query = this.db
       .selectFrom('notifications as n')
       .selectAll('n')
@@ -89,12 +95,16 @@ export class NotificationsRepository {
       .where('n.available_at', '<=', sql<Date>`now()`);
     if (options.unread) query = query.where('n.read_at', 'is', null);
     if (options.category) {
-      const types = NOTIFICATION_TYPE_DEFS.filter((d) => d.category === options.category).map((d) => d.key);
+      const types = NOTIFICATION_TYPE_DEFS.filter((d) => d.category === options.category).map(
+        (d) => d.key,
+      );
       query = query.where('n.type', 'in', types);
     }
     if (options.cursor) {
       const c = decodeCursor(options.cursor);
-      query = query.where(sql<boolean>`(n.available_at, n.id) < (${c.at}::timestamptz, ${c.id}::uuid)`);
+      query = query.where(
+        sql<boolean>`(n.available_at, n.id) < (${c.at}::timestamptz, ${c.id}::uuid)`,
+      );
     }
     const rows = await query
       .orderBy('n.available_at', 'desc')
@@ -105,7 +115,8 @@ export class NotificationsRepository {
     const last = page[page.length - 1];
     return {
       items: page.map(toNotificationDto),
-      nextCursor: rows.length > options.limit && last ? encodeCursor(last.cursor_at, last.id) : null,
+      nextCursor:
+        rows.length > options.limit && last ? encodeCursor(last.cursor_at, last.id) : null,
     };
   }
 

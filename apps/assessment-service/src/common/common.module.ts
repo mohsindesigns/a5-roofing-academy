@@ -18,7 +18,8 @@ export class CommonModule {
         {
           provide: AttemptEngine,
           inject: [EventBus, DirectoryReader],
-          useFactory: (events: EventBus, directory: DirectoryReader) => new AttemptEngine(events, directory),
+          useFactory: (events: EventBus, directory: DirectoryReader) =>
+            new AttemptEngine(events, directory),
         },
       ],
       exports: [People, Clock, AttemptEngine],

@@ -32,7 +32,9 @@ export function placeholderValues(input: PlaceholderInput): Record<string, strin
     program_name: joinNames(input.programNames),
     completion_date: formatLongDate(input.completionDate ?? input.issuedAt, input.timezone),
     issue_date: formatLongDate(input.issuedAt, input.timezone),
-    expiration_date: input.expiresAt ? formatLongDate(input.expiresAt, input.timezone) : 'No expiration',
+    expiration_date: input.expiresAt
+      ? formatLongDate(input.expiresAt, input.timezone)
+      : 'No expiration',
     certificate_number: input.certificateNumber,
     verification_url: input.verificationUrl,
     organization_name: input.organizationName,

@@ -3,10 +3,23 @@ import type { z } from 'zod';
 import type { Principal } from '@a5/auth';
 import { learning } from '@a5/contracts';
 import { sql, type Selectable } from '@a5/database';
-import { EventBus, InjectDb, NotFoundError, PreconditionError, ValidationError } from '@a5/nest-kit';
+import {
+  EventBus,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+  ValidationError,
+} from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import type { Rule } from '@a5/rules';
-import type { Db, LessonsTable, ProgramModulesTable, ProgramPhasesTable, ProgramsTable, Trx } from '../database/index.js';
+import type {
+  Db,
+  LessonsTable,
+  ProgramModulesTable,
+  ProgramPhasesTable,
+  ProgramsTable,
+  Trx,
+} from '../database/index.js';
 import { ruleReferences } from '../engine/tree.js';
 import { TreeService } from '../engine/tree.service.js';
 import { lessonTypes } from '../lesson-types/registry.js';
@@ -62,7 +75,8 @@ export class StructureService {
       .forUpdate()
       .executeTakeFirst();
     if (!program) throw new NotFoundError('Program');
-    if (program.status === 'archived') throw new PreconditionError('PROGRAM_ARCHIVED', 'Restore the program before editing it.');
+    if (program.status === 'archived')
+      throw new PreconditionError('PROGRAM_ARCHIVED', 'Restore the program before editing it.');
     return program;
   }
 
@@ -75,20 +89,39 @@ export class StructureService {
       .execute();
   }
 
-  private async phaseOf(trx: Trx, p: Principal, programId: string, phaseId: string): Promise<PhaseRow> {
-    const phase = await trx.selectFrom('program_phases').selectAll().where('id', '=', phaseId).where('program_id', '=', programId).executeTakeFirst();
+  private async phaseOf(
+    trx: Trx,
+    p: Principal,
+    programId: string,
+    phaseId: string,
+  ): Promise<PhaseRow> {
+    const phase = await trx
+      .selectFrom('program_phases')
+      .selectAll()
+      .where('id', '=', phaseId)
+      .where('program_id', '=', programId)
+      .executeTakeFirst();
     if (!phase) throw new NotFoundError('Phase');
     return phase;
   }
 
   private async moduleOf(trx: Trx, programId: string, moduleId: string): Promise<ModuleRow> {
-    const module = await trx.selectFrom('program_modules').selectAll().where('id', '=', moduleId).where('program_id', '=', programId).executeTakeFirst();
+    const module = await trx
+      .selectFrom('program_modules')
+      .selectAll()
+      .where('id', '=', moduleId)
+      .where('program_id', '=', programId)
+      .executeTakeFirst();
     if (!module) throw new NotFoundError('Module');
     return module;
   }
 
   /** Lesson plus its (locked) program, scoped to the caller's organization. */
-  private async lessonForEdit(trx: Trx, p: Principal, lessonId: string): Promise<{ lesson: LessonRow; program: ProgramRow }> {
+  private async lessonForEdit(
+    trx: Trx,
+    p: Principal,
+    lessonId: string,
+  ): Promise<{ lesson: LessonRow; program: ProgramRow }> {
     const found = await trx
       .selectFrom('lessons')
       .select('program_id')
@@ -97,12 +130,23 @@ export class StructureService {
       .executeTakeFirst();
     if (!found) throw new NotFoundError('Lesson');
     const program = await this.editableProgram(trx, p, found.program_id);
-    const lesson = await trx.selectFrom('lessons').selectAll().where('id', '=', lessonId).forUpdate().executeTakeFirstOrThrow();
+    const lesson = await trx
+      .selectFrom('lessons')
+      .selectAll()
+      .where('id', '=', lessonId)
+      .forUpdate()
+      .executeTakeFirstOrThrow();
     return { lesson, program };
   }
 
   /** Unlock rules may only point at live nodes of the same program and never at the node itself. */
-  private async validateRule(trx: Trx, p: Principal, programId: string, rule: Rule | null | undefined, selfId?: string): Promise<void> {
+  private async validateRule(
+    trx: Trx,
+    p: Principal,
+    programId: string,
+    rule: Rule | null | undefined,
+    selfId?: string,
+  ): Promise<void> {
     if (!rule) return;
     const refs = ruleReferences([rule]);
     const errors: string[] = [];
@@ -119,24 +163,40 @@ export class StructureService {
         .where('program_id', '=', programId)
         .where('status', '!=', 'archived')
         .execute();
-      if (rows.length !== unique.length) errors.push(`The rule refers to a ${noun} that is not part of this program (or is archived).`);
+      if (rows.length !== unique.length)
+        errors.push(
+          `The rule refers to a ${noun} that is not part of this program (or is archived).`,
+        );
     };
     await check('lessons', refs.lessonIds, 'lesson');
     await check('program_modules', refs.moduleIds, 'module');
     await check('program_phases', refs.phaseIds, 'phase');
     const programs = [...new Set(refs.programIds)];
     if (programs.length) {
-      const rows = await trx.selectFrom('programs').select('id').where('id', 'in', programs).where('organization_id', '=', p.organizationId).execute();
-      if (rows.length !== programs.length) errors.push('The rule refers to a program that does not exist.');
+      const rows = await trx
+        .selectFrom('programs')
+        .select('id')
+        .where('id', 'in', programs)
+        .where('organization_id', '=', p.organizationId)
+        .execute();
+      if (rows.length !== programs.length)
+        errors.push('The rule refers to a program that does not exist.');
     }
-    if (errors.length) throw new ValidationError(errors.map((message) => ({ path: 'unlockRule', message })));
+    if (errors.length)
+      throw new ValidationError(errors.map((message) => ({ path: 'unlockRule', message })));
   }
 
   /**
    * Put `nodeId` at a 1-based position among its siblings (append when omitted) and renumber the
    * siblings densely. Pass `nodeId = null` to only renumber.
    */
-  private async place(trx: Trx, table: NodeTable, parentId: string, nodeId: string | null, position?: number): Promise<void> {
+  private async place(
+    trx: Trx,
+    table: NodeTable,
+    parentId: string,
+    nodeId: string | null,
+    position?: number,
+  ): Promise<void> {
     const siblings = await sql<{ id: string; position: number }>`
       select id, position from ${sql.table(table)}
       where ${sql.ref(PARENT[table])} = ${parentId}
@@ -145,13 +205,16 @@ export class StructureService {
     const current = new Map(siblings.rows.map((r) => [r.id, r.position]));
     const order = siblings.rows.map((r) => r.id).filter((id) => id !== nodeId);
     if (nodeId) {
-      const index = position === undefined ? order.length : Math.min(Math.max(position - 1, 0), order.length);
+      const index =
+        position === undefined ? order.length : Math.min(Math.max(position - 1, 0), order.length);
       order.splice(index, 0, nodeId);
     }
     for (let i = 0; i < order.length; i++) {
       const id = order[i]!;
       if (current.get(id) === i + 1) continue;
-      await sql`update ${sql.table(table)} set position = ${i + 1}, unpublished_changes = true where id = ${id}`.execute(trx);
+      await sql`update ${sql.table(table)} set position = ${i + 1}, unpublished_changes = true where id = ${id}`.execute(
+        trx,
+      );
     }
   }
 
@@ -186,8 +249,21 @@ export class StructureService {
     };
   }
 
-  private async audit(trx: Trx, p: Principal, action: string, resourceType: string, resourceId: string, extra: { before?: unknown; after?: unknown; metadata?: Record<string, unknown> } = {}) {
-    await this.events.audit(trx, { action, resourceType, resourceId, actorDisplay: p.displayName, ...extra });
+  private async audit(
+    trx: Trx,
+    p: Principal,
+    action: string,
+    resourceType: string,
+    resourceId: string,
+    extra: { before?: unknown; after?: unknown; metadata?: Record<string, unknown> } = {},
+  ) {
+    await this.events.audit(trx, {
+      action,
+      resourceType,
+      resourceId,
+      actorDisplay: p.displayName,
+      ...extra,
+    });
   }
 
   private async done(p: Principal, programId: string): Promise<learning.ProgramDetail> {
@@ -197,7 +273,11 @@ export class StructureService {
 
   // ---------------------------------------------------------------- phases
 
-  async createPhase(p: Principal, programId: string, input: NodeInput & { title: string; position?: number }): Promise<learning.ProgramDetail> {
+  async createPhase(
+    p: Principal,
+    programId: string,
+    input: NodeInput & { title: string; position?: number },
+  ): Promise<learning.ProgramDetail> {
     await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       await this.validateRule(trx, p, programId, input.unlockRule);
@@ -218,14 +298,22 @@ export class StructureService {
           updated_by: p.userId,
         })
         .execute();
-      if (input.position !== undefined) await this.place(trx, 'program_phases', programId, id, input.position);
+      if (input.position !== undefined)
+        await this.place(trx, 'program_phases', programId, id, input.position);
       await this.touch(trx, programId, p.userId);
-      await this.audit(trx, p, 'phase.created', 'program_phase', id, { after: { programId, title: input.title } });
+      await this.audit(trx, p, 'phase.created', 'program_phase', id, {
+        after: { programId, title: input.title },
+      });
     });
     return this.done(p, programId);
   }
 
-  async updatePhase(p: Principal, programId: string, phaseId: string, input: NodeInput): Promise<learning.ProgramDetail> {
+  async updatePhase(
+    p: Principal,
+    programId: string,
+    phaseId: string,
+    input: NodeInput,
+  ): Promise<learning.ProgramDetail> {
     await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       const phase = await this.phaseOf(trx, p, programId, phaseId);
@@ -244,34 +332,62 @@ export class StructureService {
     return this.done(p, programId);
   }
 
-  async movePhase(p: Principal, programId: string, phaseId: string, position: number): Promise<learning.ProgramDetail> {
+  async movePhase(
+    p: Principal,
+    programId: string,
+    phaseId: string,
+    position: number,
+  ): Promise<learning.ProgramDetail> {
     await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       const phase = await this.phaseOf(trx, p, programId, phaseId);
       await this.place(trx, 'program_phases', programId, phaseId, position);
       await this.touch(trx, programId, p.userId);
-      await this.audit(trx, p, 'phase.moved', 'program_phase', phaseId, { before: { position: phase.position }, after: { position } });
+      await this.audit(trx, p, 'phase.moved', 'program_phase', phaseId, {
+        before: { position: phase.position },
+        after: { position },
+      });
     });
     return this.done(p, programId);
   }
 
-  async setPhaseArchived(p: Principal, programId: string, phaseId: string, archived: boolean): Promise<learning.ProgramDetail> {
+  async setPhaseArchived(
+    p: Principal,
+    programId: string,
+    phaseId: string,
+    archived: boolean,
+  ): Promise<learning.ProgramDetail> {
     await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       const phase = await this.phaseOf(trx, p, programId, phaseId);
       await this.archiveNode(trx, 'program_phases', phase, archived, p.userId);
       await this.touch(trx, programId, p.userId);
-      await this.audit(trx, p, archived ? 'phase.archived' : 'phase.restored', 'program_phase', phaseId, { before: { status: phase.status } });
+      await this.audit(
+        trx,
+        p,
+        archived ? 'phase.archived' : 'phase.restored',
+        'program_phase',
+        phaseId,
+        { before: { status: phase.status } },
+      );
     });
     return this.done(p, programId);
   }
 
   /** Hard delete when the phase and everything in it was never published and has no learner activity; otherwise archive. */
-  async deletePhase(p: Principal, programId: string, phaseId: string): Promise<learning.DeleteResult> {
+  async deletePhase(
+    p: Principal,
+    programId: string,
+    phaseId: string,
+  ): Promise<learning.DeleteResult> {
     const outcome = await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       const phase = await this.phaseOf(trx, p, programId, phaseId);
-      const modules = await trx.selectFrom('program_modules').select(['id', 'first_published_at']).where('phase_id', '=', phaseId).execute();
+      const modules = await trx
+        .selectFrom('program_modules')
+        .select(['id', 'first_published_at'])
+        .where('phase_id', '=', phaseId)
+        .execute();
       const lessons = modules.length
         ? await trx
             .selectFrom('lessons')
@@ -283,17 +399,29 @@ export class StructureService {
             )
             .execute()
         : [];
-      const neverPublished = !phase.first_published_at && [...modules, ...lessons].every((n) => !n.first_published_at);
-      if (neverPublished && !(await this.hasActivity(trx, lessons.map((l) => l.id)))) {
+      const neverPublished =
+        !phase.first_published_at && [...modules, ...lessons].every((n) => !n.first_published_at);
+      if (
+        neverPublished &&
+        !(await this.hasActivity(
+          trx,
+          lessons.map((l) => l.id),
+        ))
+      ) {
         await trx.deleteFrom('program_phases').where('id', '=', phaseId).execute();
         await this.place(trx, 'program_phases', programId, null);
         await this.touch(trx, programId, p.userId);
-        await this.audit(trx, p, 'phase.deleted', 'program_phase', phaseId, { before: { title: phase.title, modules: modules.length, lessons: lessons.length } });
+        await this.audit(trx, p, 'phase.deleted', 'program_phase', phaseId, {
+          before: { title: phase.title, modules: modules.length, lessons: lessons.length },
+        });
         return 'deleted' as const;
       }
       await this.archiveNode(trx, 'program_phases', phase, true, p.userId);
       await this.touch(trx, programId, p.userId);
-      await this.audit(trx, p, 'phase.archived', 'program_phase', phaseId, { before: { status: phase.status }, metadata: { requestedDelete: true } });
+      await this.audit(trx, p, 'phase.archived', 'program_phase', phaseId, {
+        before: { status: phase.status },
+        metadata: { requestedDelete: true },
+      });
       return 'archived' as const;
     });
     await this.trees.bump(programId);
@@ -302,7 +430,11 @@ export class StructureService {
 
   // ---------------------------------------------------------------- modules
 
-  async createModule(p: Principal, programId: string, input: NodeInput & { phaseId: string; title: string; position?: number }): Promise<learning.ProgramDetail> {
+  async createModule(
+    p: Principal,
+    programId: string,
+    input: NodeInput & { phaseId: string; title: string; position?: number },
+  ): Promise<learning.ProgramDetail> {
     await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       await this.phaseOf(trx, p, programId, input.phaseId);
@@ -325,14 +457,22 @@ export class StructureService {
           updated_by: p.userId,
         })
         .execute();
-      if (input.position !== undefined) await this.place(trx, 'program_modules', input.phaseId, id, input.position);
+      if (input.position !== undefined)
+        await this.place(trx, 'program_modules', input.phaseId, id, input.position);
       await this.touch(trx, programId, p.userId);
-      await this.audit(trx, p, 'module.created', 'program_module', id, { after: { programId, phaseId: input.phaseId, title: input.title } });
+      await this.audit(trx, p, 'module.created', 'program_module', id, {
+        after: { programId, phaseId: input.phaseId, title: input.title },
+      });
     });
     return this.done(p, programId);
   }
 
-  async updateModule(p: Principal, programId: string, moduleId: string, input: NodeInput): Promise<learning.ProgramDetail> {
+  async updateModule(
+    p: Principal,
+    programId: string,
+    moduleId: string,
+    input: NodeInput,
+  ): Promise<learning.ProgramDetail> {
     await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       const module = await this.moduleOf(trx, programId, moduleId);
@@ -351,14 +491,23 @@ export class StructureService {
     return this.done(p, programId);
   }
 
-  async moveModule(p: Principal, programId: string, moduleId: string, input: { phaseId?: string; position: number }): Promise<learning.ProgramDetail> {
+  async moveModule(
+    p: Principal,
+    programId: string,
+    moduleId: string,
+    input: { phaseId?: string; position: number },
+  ): Promise<learning.ProgramDetail> {
     await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       const module = await this.moduleOf(trx, programId, moduleId);
       const target = input.phaseId ?? module.phase_id;
       if (target !== module.phase_id) {
         await this.phaseOf(trx, p, programId, target);
-        await trx.updateTable('program_modules').set({ phase_id: target, unpublished_changes: true, updated_by: p.userId }).where('id', '=', moduleId).execute();
+        await trx
+          .updateTable('program_modules')
+          .set({ phase_id: target, unpublished_changes: true, updated_by: p.userId })
+          .where('id', '=', moduleId)
+          .execute();
         await this.place(trx, 'program_modules', module.phase_id, null);
       }
       await this.place(trx, 'program_modules', target, moduleId, input.position);
@@ -371,33 +520,65 @@ export class StructureService {
     return this.done(p, programId);
   }
 
-  async setModuleArchived(p: Principal, programId: string, moduleId: string, archived: boolean): Promise<learning.ProgramDetail> {
+  async setModuleArchived(
+    p: Principal,
+    programId: string,
+    moduleId: string,
+    archived: boolean,
+  ): Promise<learning.ProgramDetail> {
     await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       const module = await this.moduleOf(trx, programId, moduleId);
       await this.archiveNode(trx, 'program_modules', module, archived, p.userId);
       await this.touch(trx, programId, p.userId);
-      await this.audit(trx, p, archived ? 'module.archived' : 'module.restored', 'program_module', moduleId, { before: { status: module.status } });
+      await this.audit(
+        trx,
+        p,
+        archived ? 'module.archived' : 'module.restored',
+        'program_module',
+        moduleId,
+        { before: { status: module.status } },
+      );
     });
     return this.done(p, programId);
   }
 
-  async deleteModule(p: Principal, programId: string, moduleId: string): Promise<learning.DeleteResult> {
+  async deleteModule(
+    p: Principal,
+    programId: string,
+    moduleId: string,
+  ): Promise<learning.DeleteResult> {
     const outcome = await this.db.transaction().execute(async (trx) => {
       await this.editableProgram(trx, p, programId);
       const module = await this.moduleOf(trx, programId, moduleId);
-      const lessons = await trx.selectFrom('lessons').select(['id', 'first_published_at']).where('module_id', '=', moduleId).execute();
-      const neverPublished = !module.first_published_at && lessons.every((l) => !l.first_published_at);
-      if (neverPublished && !(await this.hasActivity(trx, lessons.map((l) => l.id)))) {
+      const lessons = await trx
+        .selectFrom('lessons')
+        .select(['id', 'first_published_at'])
+        .where('module_id', '=', moduleId)
+        .execute();
+      const neverPublished =
+        !module.first_published_at && lessons.every((l) => !l.first_published_at);
+      if (
+        neverPublished &&
+        !(await this.hasActivity(
+          trx,
+          lessons.map((l) => l.id),
+        ))
+      ) {
         await trx.deleteFrom('program_modules').where('id', '=', moduleId).execute();
         await this.place(trx, 'program_modules', module.phase_id, null);
         await this.touch(trx, programId, p.userId);
-        await this.audit(trx, p, 'module.deleted', 'program_module', moduleId, { before: { title: module.title, lessons: lessons.length } });
+        await this.audit(trx, p, 'module.deleted', 'program_module', moduleId, {
+          before: { title: module.title, lessons: lessons.length },
+        });
         return 'deleted' as const;
       }
       await this.archiveNode(trx, 'program_modules', module, true, p.userId);
       await this.touch(trx, programId, p.userId);
-      await this.audit(trx, p, 'module.archived', 'program_module', moduleId, { before: { status: module.status }, metadata: { requestedDelete: true } });
+      await this.audit(trx, p, 'module.archived', 'program_module', moduleId, {
+        before: { status: module.status },
+        metadata: { requestedDelete: true },
+      });
       return 'archived' as const;
     });
     await this.trees.bump(programId);
@@ -412,7 +593,8 @@ export class StructureService {
     actorId: string,
   ): Promise<void> {
     if (archived && node.status === 'archived') return;
-    if (!archived && node.status !== 'archived') throw new PreconditionError('NOT_ARCHIVED', 'This item is not archived.');
+    if (!archived && node.status !== 'archived')
+      throw new PreconditionError('NOT_ARCHIVED', 'This item is not archived.');
     const status = archived ? 'archived' : node.first_published_at ? 'published' : 'draft';
     await sql`
       update ${sql.table(table)}
@@ -466,18 +648,31 @@ export class StructureService {
           updated_by: p.userId,
         })
         .execute();
-      if (input.position !== undefined) await this.place(trx, 'lessons', module.id, id, input.position);
+      if (input.position !== undefined)
+        await this.place(trx, 'lessons', module.id, id, input.position);
       await this.touch(trx, module.program_id, p.userId);
-      await this.audit(trx, p, 'lesson.created', 'lesson', id, { after: { programId: module.program_id, moduleId: module.id, type: input.type, title: input.title } });
+      await this.audit(trx, p, 'lesson.created', 'lesson', id, {
+        after: {
+          programId: module.program_id,
+          moduleId: module.id,
+          type: input.type,
+          title: input.title,
+        },
+      });
     });
     await this.trees.bump(module.program_id);
     return this.lesson(p, id);
   }
 
-  async updateLesson(p: Principal, lessonId: string, input: UpdateLessonInput): Promise<learning.AdminLesson> {
+  async updateLesson(
+    p: Principal,
+    lessonId: string,
+    input: UpdateLessonInput,
+  ): Promise<learning.AdminLesson> {
     const programId = await this.db.transaction().execute(async (trx) => {
       const { lesson, program } = await this.lessonForEdit(trx, p, lessonId);
-      const config = input.config !== undefined ? lessonTypes.parseConfig(lesson.type, input.config) : undefined;
+      const config =
+        input.config !== undefined ? lessonTypes.parseConfig(lesson.type, input.config) : undefined;
       await this.validateRule(trx, p, program.id, input.unlockRule, lessonId);
       await trx
         .updateTable('lessons')
@@ -487,7 +682,9 @@ export class StructureService {
           ...(input.body !== undefined && { body: input.body }),
           ...(config !== undefined && { config }),
           ...(input.isRequired !== undefined && { is_required: input.isRequired }),
-          ...(input.estimatedMinutes !== undefined && { estimated_minutes: input.estimatedMinutes }),
+          ...(input.estimatedMinutes !== undefined && {
+            estimated_minutes: input.estimatedMinutes,
+          }),
           ...(input.unlockRule !== undefined && { unlock_rule: input.unlockRule }),
           unpublished_changes: true,
           updated_by: p.userId,
@@ -503,7 +700,10 @@ export class StructureService {
           config: lesson.config,
           unlockRule: lesson.unlock_rule,
         },
-        after: { ...input, ...(input.body !== undefined && { body: `(${input.body?.length ?? 0} characters)` }) },
+        after: {
+          ...input,
+          ...(input.body !== undefined && { body: `(${input.body?.length ?? 0} characters)` }),
+        },
       });
       return program.id;
     });
@@ -511,13 +711,21 @@ export class StructureService {
     return this.lesson(p, lessonId);
   }
 
-  async moveLesson(p: Principal, lessonId: string, input: { moduleId?: string; position: number }): Promise<learning.ProgramDetail> {
+  async moveLesson(
+    p: Principal,
+    lessonId: string,
+    input: { moduleId?: string; position: number },
+  ): Promise<learning.ProgramDetail> {
     const programId = await this.db.transaction().execute(async (trx) => {
       const { lesson, program } = await this.lessonForEdit(trx, p, lessonId);
       const target = input.moduleId ?? lesson.module_id;
       if (target !== lesson.module_id) {
         await this.moduleOf(trx, program.id, target);
-        await trx.updateTable('lessons').set({ module_id: target, unpublished_changes: true, updated_by: p.userId }).where('id', '=', lessonId).execute();
+        await trx
+          .updateTable('lessons')
+          .set({ module_id: target, unpublished_changes: true, updated_by: p.userId })
+          .where('id', '=', lessonId)
+          .execute();
         await this.place(trx, 'lessons', lesson.module_id, null);
       }
       await this.place(trx, 'lessons', target, lessonId, input.position);
@@ -531,12 +739,23 @@ export class StructureService {
     return this.done(p, programId);
   }
 
-  async setLessonArchived(p: Principal, lessonId: string, archived: boolean): Promise<learning.AdminLesson> {
+  async setLessonArchived(
+    p: Principal,
+    lessonId: string,
+    archived: boolean,
+  ): Promise<learning.AdminLesson> {
     const programId = await this.db.transaction().execute(async (trx) => {
       const { lesson, program } = await this.lessonForEdit(trx, p, lessonId);
       await this.archiveNode(trx, 'lessons', lesson, archived, p.userId);
       await this.touch(trx, program.id, p.userId);
-      await this.audit(trx, p, archived ? 'lesson.archived' : 'lesson.restored', 'lesson', lessonId, { before: { status: lesson.status } });
+      await this.audit(
+        trx,
+        p,
+        archived ? 'lesson.archived' : 'lesson.restored',
+        'lesson',
+        lessonId,
+        { before: { status: lesson.status } },
+      );
       return program.id;
     });
     await this.trees.bump(programId);
@@ -550,12 +769,17 @@ export class StructureService {
         await trx.deleteFrom('lessons').where('id', '=', lessonId).execute();
         await this.place(trx, 'lessons', lesson.module_id, null);
         await this.touch(trx, program.id, p.userId);
-        await this.audit(trx, p, 'lesson.deleted', 'lesson', lessonId, { before: { title: lesson.title, type: lesson.type } });
+        await this.audit(trx, p, 'lesson.deleted', 'lesson', lessonId, {
+          before: { title: lesson.title, type: lesson.type },
+        });
         return { outcome: 'deleted' as const, programId: program.id };
       }
       await this.archiveNode(trx, 'lessons', lesson, true, p.userId);
       await this.touch(trx, program.id, p.userId);
-      await this.audit(trx, p, 'lesson.archived', 'lesson', lessonId, { before: { status: lesson.status }, metadata: { requestedDelete: true } });
+      await this.audit(trx, p, 'lesson.archived', 'lesson', lessonId, {
+        before: { status: lesson.status },
+        metadata: { requestedDelete: true },
+      });
       return { outcome: 'archived' as const, programId: program.id };
     });
     await this.trees.bump(programId);
@@ -589,7 +813,11 @@ export class StructureService {
           updated_by: p.userId,
         })
         .execute();
-      const resources = await trx.selectFrom('lesson_resources').selectAll().where('lesson_id', '=', lessonId).execute();
+      const resources = await trx
+        .selectFrom('lesson_resources')
+        .selectAll()
+        .where('lesson_id', '=', lessonId)
+        .execute();
       if (resources.length) {
         await trx
           .insertInto('lesson_resources')
@@ -610,7 +838,9 @@ export class StructureService {
       }
       await this.place(trx, 'lessons', lesson.module_id, id, lesson.position + 1);
       await this.touch(trx, program.id, p.userId);
-      await this.audit(trx, p, 'lesson.duplicated', 'lesson', id, { metadata: { sourceLessonId: lessonId } });
+      await this.audit(trx, p, 'lesson.duplicated', 'lesson', id, {
+        metadata: { sourceLessonId: lessonId },
+      });
       return program.id;
     });
     await this.trees.bump(programId);
@@ -620,26 +850,65 @@ export class StructureService {
   // ---------------------------------------------------------------- lesson resources
 
   async resources(p: Principal, lessonId: string): Promise<learning.LessonResource[]> {
-    const lesson = await this.db.selectFrom('lessons').select('id').where('id', '=', lessonId).where('organization_id', '=', p.organizationId).executeTakeFirst();
+    const lesson = await this.db
+      .selectFrom('lessons')
+      .select('id')
+      .where('id', '=', lessonId)
+      .where('organization_id', '=', p.organizationId)
+      .executeTakeFirst();
     if (!lesson) throw new NotFoundError('Lesson');
-    const rows = await this.db.selectFrom('lesson_resources').selectAll().where('lesson_id', '=', lessonId).orderBy('position').orderBy('id').execute();
+    const rows = await this.db
+      .selectFrom('lesson_resources')
+      .selectAll()
+      .where('lesson_id', '=', lessonId)
+      .orderBy('position')
+      .orderBy('id')
+      .execute();
     return rows.map(resourceDto);
   }
 
   private async resourcesChanged(trx: Trx, lessonId: string, programId: string, actorId: string) {
-    await trx.updateTable('lessons').set({ unpublished_changes: true, updated_by: actorId }).where('id', '=', lessonId).execute();
+    await trx
+      .updateTable('lessons')
+      .set({ unpublished_changes: true, updated_by: actorId })
+      .where('id', '=', lessonId)
+      .execute();
     await this.touch(trx, programId, actorId);
   }
 
-  async addResource(p: Principal, lessonId: string, input: ResourceInput): Promise<learning.LessonResource[]> {
+  async addResource(
+    p: Principal,
+    lessonId: string,
+    input: ResourceInput,
+  ): Promise<learning.LessonResource[]> {
     const programId = await this.db.transaction().execute(async (trx) => {
       const { program } = await this.lessonForEdit(trx, p, lessonId);
-      const count = await trx.selectFrom('lesson_resources').select((eb) => eb.fn.countAll<number>().as('n')).where('lesson_id', '=', lessonId).executeTakeFirstOrThrow();
-      if (Number(count.n) >= 50) throw new PreconditionError('TOO_MANY_RESOURCES', 'A lesson can have at most 50 resources.');
+      const count = await trx
+        .selectFrom('lesson_resources')
+        .select((eb) => eb.fn.countAll<number>().as('n'))
+        .where('lesson_id', '=', lessonId)
+        .executeTakeFirstOrThrow();
+      if (Number(count.n) >= 50)
+        throw new PreconditionError(
+          'TOO_MANY_RESOURCES',
+          'A lesson can have at most 50 resources.',
+        );
       const id = uuidv7();
-      const existing = await trx.selectFrom('lesson_resources').select(['id', 'position']).where('lesson_id', '=', lessonId).orderBy('position').orderBy('id').execute();
+      const existing = await trx
+        .selectFrom('lesson_resources')
+        .select(['id', 'position'])
+        .where('lesson_id', '=', lessonId)
+        .orderBy('position')
+        .orderBy('id')
+        .execute();
       const order = existing.map((r) => r.id);
-      order.splice(input.position === undefined ? order.length : Math.min(Math.max(input.position - 1, 0), order.length), 0, id);
+      order.splice(
+        input.position === undefined
+          ? order.length
+          : Math.min(Math.max(input.position - 1, 0), order.length),
+        0,
+        id,
+      );
       await trx
         .insertInto('lesson_resources')
         .values({
@@ -655,57 +924,113 @@ export class StructureService {
         })
         .execute();
       for (const [i, rid] of order.entries()) {
-        if (rid !== id) await trx.updateTable('lesson_resources').set({ position: i + 1 }).where('id', '=', rid).execute();
+        if (rid !== id)
+          await trx
+            .updateTable('lesson_resources')
+            .set({ position: i + 1 })
+            .where('id', '=', rid)
+            .execute();
       }
       await this.resourcesChanged(trx, lessonId, program.id, p.userId);
-      await this.audit(trx, p, 'lesson_resource.created', 'lesson', lessonId, { after: { resourceId: id, title: input.title, kind: input.kind } });
+      await this.audit(trx, p, 'lesson_resource.created', 'lesson', lessonId, {
+        after: { resourceId: id, title: input.title, kind: input.kind },
+      });
       return program.id;
     });
     await this.trees.bump(programId);
     return this.resources(p, lessonId);
   }
 
-  async updateResource(p: Principal, lessonId: string, resourceId: string, input: ResourcePatch): Promise<learning.LessonResource[]> {
+  async updateResource(
+    p: Principal,
+    lessonId: string,
+    resourceId: string,
+    input: ResourcePatch,
+  ): Promise<learning.LessonResource[]> {
     const programId = await this.db.transaction().execute(async (trx) => {
       const { program } = await this.lessonForEdit(trx, p, lessonId);
-      const resource = await trx.selectFrom('lesson_resources').selectAll().where('id', '=', resourceId).where('lesson_id', '=', lessonId).executeTakeFirst();
+      const resource = await trx
+        .selectFrom('lesson_resources')
+        .selectAll()
+        .where('id', '=', resourceId)
+        .where('lesson_id', '=', lessonId)
+        .executeTakeFirst();
       if (!resource) throw new NotFoundError('Resource');
-      if (resource.kind === 'link' && input.url === null) throw new ValidationError([{ path: 'url', message: 'Links need an address' }]);
-      if (resource.kind === 'media' && input.mediaAssetId === null) throw new ValidationError([{ path: 'mediaAssetId', message: 'Choose a file' }]);
+      if (resource.kind === 'link' && input.url === null)
+        throw new ValidationError([{ path: 'url', message: 'Links need an address' }]);
+      if (resource.kind === 'media' && input.mediaAssetId === null)
+        throw new ValidationError([{ path: 'mediaAssetId', message: 'Choose a file' }]);
       await trx
         .updateTable('lesson_resources')
         .set({
           ...(input.title !== undefined && { title: input.title }),
           ...(input.description !== undefined && { description: input.description }),
           ...(resource.kind === 'link' && input.url !== undefined && { url: input.url }),
-          ...(resource.kind === 'media' && input.mediaAssetId !== undefined && { media_asset_id: input.mediaAssetId }),
+          ...(resource.kind === 'media' &&
+            input.mediaAssetId !== undefined && { media_asset_id: input.mediaAssetId }),
         })
         .where('id', '=', resourceId)
         .execute();
       if (input.position !== undefined) {
-        const rows = await trx.selectFrom('lesson_resources').select('id').where('lesson_id', '=', lessonId).orderBy('position').orderBy('id').execute();
+        const rows = await trx
+          .selectFrom('lesson_resources')
+          .select('id')
+          .where('lesson_id', '=', lessonId)
+          .orderBy('position')
+          .orderBy('id')
+          .execute();
         const order = rows.map((r) => r.id).filter((id) => id !== resourceId);
         order.splice(Math.min(Math.max(input.position - 1, 0), order.length), 0, resourceId);
-        for (const [i, rid] of order.entries()) await trx.updateTable('lesson_resources').set({ position: i + 1 }).where('id', '=', rid).execute();
+        for (const [i, rid] of order.entries())
+          await trx
+            .updateTable('lesson_resources')
+            .set({ position: i + 1 })
+            .where('id', '=', rid)
+            .execute();
       }
       await this.resourcesChanged(trx, lessonId, program.id, p.userId);
-      await this.audit(trx, p, 'lesson_resource.updated', 'lesson', lessonId, { before: { resourceId, title: resource.title }, after: input });
+      await this.audit(trx, p, 'lesson_resource.updated', 'lesson', lessonId, {
+        before: { resourceId, title: resource.title },
+        after: input,
+      });
       return program.id;
     });
     await this.trees.bump(programId);
     return this.resources(p, lessonId);
   }
 
-  async deleteResource(p: Principal, lessonId: string, resourceId: string): Promise<learning.LessonResource[]> {
+  async deleteResource(
+    p: Principal,
+    lessonId: string,
+    resourceId: string,
+  ): Promise<learning.LessonResource[]> {
     const programId = await this.db.transaction().execute(async (trx) => {
       const { program } = await this.lessonForEdit(trx, p, lessonId);
-      const resource = await trx.selectFrom('lesson_resources').selectAll().where('id', '=', resourceId).where('lesson_id', '=', lessonId).executeTakeFirst();
+      const resource = await trx
+        .selectFrom('lesson_resources')
+        .selectAll()
+        .where('id', '=', resourceId)
+        .where('lesson_id', '=', lessonId)
+        .executeTakeFirst();
       if (!resource) throw new NotFoundError('Resource');
       await trx.deleteFrom('lesson_resources').where('id', '=', resourceId).execute();
-      const rows = await trx.selectFrom('lesson_resources').select('id').where('lesson_id', '=', lessonId).orderBy('position').orderBy('id').execute();
-      for (const [i, r] of rows.entries()) await trx.updateTable('lesson_resources').set({ position: i + 1 }).where('id', '=', r.id).execute();
+      const rows = await trx
+        .selectFrom('lesson_resources')
+        .select('id')
+        .where('lesson_id', '=', lessonId)
+        .orderBy('position')
+        .orderBy('id')
+        .execute();
+      for (const [i, r] of rows.entries())
+        await trx
+          .updateTable('lesson_resources')
+          .set({ position: i + 1 })
+          .where('id', '=', r.id)
+          .execute();
       await this.resourcesChanged(trx, lessonId, program.id, p.userId);
-      await this.audit(trx, p, 'lesson_resource.deleted', 'lesson', lessonId, { before: { resourceId, title: resource.title } });
+      await this.audit(trx, p, 'lesson_resource.deleted', 'lesson', lessonId, {
+        before: { resourceId, title: resource.title },
+      });
       return program.id;
     });
     await this.trees.bump(programId);

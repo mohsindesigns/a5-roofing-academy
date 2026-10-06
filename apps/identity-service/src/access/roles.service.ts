@@ -2,7 +2,14 @@ import { Injectable } from '@nestjs/common';
 import type { Principal } from '@a5/auth';
 import type { identity } from '@a5/contracts';
 import { isUniqueViolation, sql } from '@a5/database';
-import { ConflictError, EventBus, ForbiddenError, InjectDb, NotFoundError, PreconditionError } from '@a5/nest-kit';
+import {
+  ConflictError,
+  EventBus,
+  ForbiddenError,
+  InjectDb,
+  NotFoundError,
+  PreconditionError,
+} from '@a5/nest-kit';
 import { uuidv7 } from '@a5/observability';
 import {
   DEFAULT_ROLES,
@@ -76,7 +83,9 @@ export class RolesService {
           .whereRef('ur.role_id', '=', 'r.id')
           .where('u.status', '!=', 'deactivated')
           .as('user_count'),
-        sql<string[]>`coalesce((select array_agg(permission_key order by permission_key) from role_permissions rp where rp.role_id = r.id), '{}')`.as(
+        sql<
+          string[]
+        >`coalesce((select array_agg(permission_key order by permission_key) from role_permissions rp where rp.role_id = r.id), '{}')`.as(
           'permissions',
         ),
       ])
@@ -112,7 +121,9 @@ export class RolesService {
       catalog: this.catalog(),
       roles: roles.map((r) => ({
         ...r,
-        permissions: grants.filter((g) => g.role_id === r.id).map((g) => g.permission_key as PermissionKey),
+        permissions: grants
+          .filter((g) => g.role_id === r.id)
+          .map((g) => g.permission_key as PermissionKey),
       })),
     };
   }
@@ -159,16 +170,22 @@ export class RolesService {
         });
       });
     } catch (err) {
-      if (isUniqueViolation(err)) throw new ConflictError('ROLE_NAME_TAKEN', 'A role with this name already exists.');
+      if (isUniqueViolation(err))
+        throw new ConflictError('ROLE_NAME_TAKEN', 'A role with this name already exists.');
       throw err;
     }
     return this.get(actor.organizationId, id);
   }
 
-  async update(actor: Principal, id: string, input: { name?: string; description?: string | null; dataScope?: DataScope }) {
+  async update(
+    actor: Principal,
+    id: string,
+    input: { name?: string; description?: string | null; dataScope?: DataScope },
+  ) {
     const role = await this.get(actor.organizationId, id);
     if (role.locked) throw new ForbiddenError('This role is protected and cannot be edited.');
-    if (role.archived) throw new PreconditionError('ROLE_ARCHIVED', 'Archived roles cannot be edited.');
+    if (role.archived)
+      throw new PreconditionError('ROLE_ARCHIVED', 'Archived roles cannot be edited.');
     if (input.dataScope && input.dataScope !== role.dataScope) {
       AccessPolicy.assertCanUseScope(actor, input.dataScope);
       AccessPolicy.assertCanChangePermissions(actor, role.permissions, input.dataScope);
@@ -195,14 +212,21 @@ export class RolesService {
         });
       });
     } catch (err) {
-      if (isUniqueViolation(err)) throw new ConflictError('ROLE_NAME_TAKEN', 'A role with this name already exists.');
+      if (isUniqueViolation(err))
+        throw new ConflictError('ROLE_NAME_TAKEN', 'A role with this name already exists.');
       throw err;
     }
-    if (input.dataScope && input.dataScope !== role.dataScope) await this.cache.bumpEpoch(actor.organizationId);
+    if (input.dataScope && input.dataScope !== role.dataScope)
+      await this.cache.bumpEpoch(actor.organizationId);
     return this.get(actor.organizationId, id);
   }
 
-  async setPermissions(actor: Principal, id: string, permissions: PermissionKey[], reason?: string | null) {
+  async setPermissions(
+    actor: Principal,
+    id: string,
+    permissions: PermissionKey[],
+    reason?: string | null,
+  ) {
     await this.db.transaction().execute(async (trx) => {
       await this.applyPermissions(trx, actor, id, permissions, reason ?? null);
     });
@@ -211,9 +235,14 @@ export class RolesService {
   }
 
   /** Save several roles from the permission matrix atomically. */
-  async setMatrix(actor: Principal, changes: Array<{ roleId: string; permissions: PermissionKey[] }>, reason?: string | null) {
+  async setMatrix(
+    actor: Principal,
+    changes: Array<{ roleId: string; permissions: PermissionKey[] }>,
+    reason?: string | null,
+  ) {
     await this.db.transaction().execute(async (trx) => {
-      for (const change of changes) await this.applyPermissions(trx, actor, change.roleId, change.permissions, reason ?? null);
+      for (const change of changes)
+        await this.applyPermissions(trx, actor, change.roleId, change.permissions, reason ?? null);
     });
     await this.cache.bumpEpoch(actor.organizationId);
     return this.matrix(actor.organizationId);
@@ -222,12 +251,26 @@ export class RolesService {
   async resetToDefault(actor: Principal, id: string) {
     const role = await this.get(actor.organizationId, id);
     if (!role.isSystem || !isSystemRoleKey(role.key)) {
-      throw new PreconditionError('NOT_A_SYSTEM_ROLE', 'Only built-in roles can be reset to their defaults.');
+      throw new PreconditionError(
+        'NOT_A_SYSTEM_ROLE',
+        'Only built-in roles can be reset to their defaults.',
+      );
     }
     const defaults = DEFAULT_ROLES.find((r) => r.key === role.key)!;
     await this.db.transaction().execute(async (trx) => {
-      await this.applyPermissions(trx, actor, id, [...defaults.permissions], 'Reset to default', defaults.dataScope);
-      await trx.updateTable('roles').set({ data_scope: defaults.dataScope, updated_by: actor.userId }).where('id', '=', id).execute();
+      await this.applyPermissions(
+        trx,
+        actor,
+        id,
+        [...defaults.permissions],
+        'Reset to default',
+        defaults.dataScope,
+      );
+      await trx
+        .updateTable('roles')
+        .set({ data_scope: defaults.dataScope, updated_by: actor.userId })
+        .where('id', '=', id)
+        .execute();
     });
     await this.cache.bumpEpoch(actor.organizationId);
     return this.get(actor.organizationId, id);
@@ -235,7 +278,8 @@ export class RolesService {
 
   async archive(actor: Principal, id: string) {
     const role = await this.get(actor.organizationId, id);
-    if (role.isSystem) throw new PreconditionError('SYSTEM_ROLE', 'Built-in roles cannot be archived.');
+    if (role.isSystem)
+      throw new PreconditionError('SYSTEM_ROLE', 'Built-in roles cannot be archived.');
     if (role.userCount > 0) {
       throw new PreconditionError(
         'ROLE_IN_USE',
@@ -243,7 +287,11 @@ export class RolesService {
       );
     }
     await this.db.transaction().execute(async (trx) => {
-      await trx.updateTable('roles').set({ archived_at: new Date(), updated_by: actor.userId }).where('id', '=', id).execute();
+      await trx
+        .updateTable('roles')
+        .set({ archived_at: new Date(), updated_by: actor.userId })
+        .where('id', '=', id)
+        .execute();
       await this.events.audit(trx, {
         action: 'role.archived',
         resourceType: 'role',
@@ -272,8 +320,12 @@ export class RolesService {
       .forUpdate()
       .executeTakeFirst();
     if (!role) throw new NotFoundError('Role');
-    if (role.locked) throw new ForbiddenError(`"${role.name}" is protected and its permissions cannot be changed.`);
-    if (role.archived_at) throw new PreconditionError('ROLE_ARCHIVED', 'Archived roles cannot be edited.');
+    if (role.locked)
+      throw new ForbiddenError(
+        `"${role.name}" is protected and its permissions cannot be changed.`,
+      );
+    if (role.archived_at)
+      throw new PreconditionError('ROLE_ARCHIVED', 'Archived roles cannot be edited.');
     const scope = scopeOverride ?? role.data_scope;
     const current = await this.permissionsOf(trx, id);
     const unique = [...new Set(next)];
@@ -297,7 +349,12 @@ export class RolesService {
     });
   }
 
-  private async writePermissions(trx: Trx, roleId: string, permissions: readonly string[], actorId: string | null) {
+  private async writePermissions(
+    trx: Trx,
+    roleId: string,
+    permissions: readonly string[],
+    actorId: string | null,
+  ) {
     if (permissions.length === 0) return;
     await trx
       .insertInto('role_permissions')
@@ -306,7 +363,11 @@ export class RolesService {
   }
 
   private async permissionsOf(db: Db | Trx, roleId: string): Promise<string[]> {
-    const rows = await db.selectFrom('role_permissions').select('permission_key').where('role_id', '=', roleId).execute();
+    const rows = await db
+      .selectFrom('role_permissions')
+      .select('permission_key')
+      .where('role_id', '=', roleId)
+      .execute();
     return rows.map((r) => r.permission_key).sort();
   }
 

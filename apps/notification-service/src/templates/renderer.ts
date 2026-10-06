@@ -53,7 +53,13 @@ export function renderInline(template: string, vars: TemplateVars, maxLength = 2
   return line.length > maxLength ? `${line.slice(0, maxLength - 1).trimEnd()}…` : line;
 }
 
-const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
 
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]!);
@@ -97,7 +103,11 @@ export interface EmailRenderOptions {
   mandatory: boolean;
 }
 
-export function renderEmail(content: { subject: string; body: string }, vars: TemplateVars, options: EmailRenderOptions): RenderedEmail {
+export function renderEmail(
+  content: { subject: string; body: string },
+  vars: TemplateVars,
+  options: EmailRenderOptions,
+): RenderedEmail {
   const subject = renderInline(content.subject, vars, 200);
   const actionUrl = safeUrl(options.actionUrl);
   const settingsUrl = `${options.appUrl}/settings/notifications`;
@@ -147,6 +157,12 @@ ${button}
   return { subject, text, html };
 }
 
-export function renderInApp(content: { subject: string; body: string }, vars: TemplateVars): { title: string; body: string } {
-  return { title: renderInline(content.subject, vars, 200), body: renderPlain(content.body, vars).slice(0, 2000) };
+export function renderInApp(
+  content: { subject: string; body: string },
+  vars: TemplateVars,
+): { title: string; body: string } {
+  return {
+    title: renderInline(content.subject, vars, 200),
+    body: renderPlain(content.body, vars).slice(0, 2000),
+  };
 }

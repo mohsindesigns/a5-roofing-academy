@@ -1,4 +1,10 @@
-import { addUpdatedAtTrigger, createOutboxTable, createUpdatedAtFunction, sql, type Kysely } from '@a5/database';
+import {
+  addUpdatedAtTrigger,
+  createOutboxTable,
+  createUpdatedAtFunction,
+  sql,
+  type Kysely,
+} from '@a5/database';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
   await createUpdatedAtFunction(db);

@@ -1,4 +1,11 @@
-import { addUpdatedAtTrigger, createInboxTable, createOutboxTable, createUpdatedAtFunction, sql, type Kysely } from '@a5/database';
+import {
+  addUpdatedAtTrigger,
+  createInboxTable,
+  createOutboxTable,
+  createUpdatedAtFunction,
+  sql,
+  type Kysely,
+} from '@a5/database';
 import { createDirectoryTables, dropDirectoryTables } from '@a5/directory';
 
 export async function up(db: Kysely<unknown>): Promise<void> {

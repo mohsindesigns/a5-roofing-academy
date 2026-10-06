@@ -32,11 +32,21 @@ export class ZodValidationPipe<S extends z.ZodType> implements PipeTransform<unk
 }
 
 /** JSON Schema for OpenAPI docs, derived from the same Zod contract used at runtime. */
-export function jsonSchema(schema: z.ZodType, io: 'input' | 'output' = 'input'): Record<string, unknown> {
-  return z.toJSONSchema(schema, { target: 'openapi-3.0', io, unrepresentable: 'any' }) as Record<string, unknown>;
+export function jsonSchema(
+  schema: z.ZodType,
+  io: 'input' | 'output' = 'input',
+): Record<string, unknown> {
+  return z.toJSONSchema(schema, { target: 'openapi-3.0', io, unrepresentable: 'any' }) as Record<
+    string,
+    unknown
+  >;
 }
 
-function applyMethodDecorator(target: object, key: string | symbol | undefined, decorator: MethodDecorator): void {
+function applyMethodDecorator(
+  target: object,
+  key: string | symbol | undefined,
+  decorator: MethodDecorator,
+): void {
   if (key === undefined) return;
   const descriptor = Object.getOwnPropertyDescriptor(target, key);
   if (descriptor) decorator(target, key, descriptor);
@@ -57,7 +67,11 @@ export function ZQuery(schema: z.ZodObject): ParameterDecorator {
     const shape = (jsonSchema(schema).properties ?? {}) as Record<string, Record<string, unknown>>;
     const required = new Set((jsonSchema(schema).required as string[] | undefined) ?? []);
     for (const [name, prop] of Object.entries(shape)) {
-      applyMethodDecorator(target, key, ApiQuery({ name, required: required.has(name), schema: prop }));
+      applyMethodDecorator(
+        target,
+        key,
+        ApiQuery({ name, required: required.has(name), schema: prop }),
+      );
     }
   };
 }
@@ -67,7 +81,8 @@ export function ZParam(name: string, schema: z.ZodType = z.uuid()): ParameterDec
   const wrapped = z.object({ [name]: schema });
   return (target, key, index) => {
     Param(name, {
-      transform: (value: unknown) => new ZodValidationPipe(wrapped).transform({ [name]: value })[name],
+      transform: (value: unknown) =>
+        new ZodValidationPipe(wrapped).transform({ [name]: value })[name],
     })(target, key, index);
     applyMethodDecorator(target, key, ApiParam({ name, schema: jsonSchema(schema) }));
   };

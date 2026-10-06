@@ -42,26 +42,60 @@ export class LifecycleService {
     const due = await this.db
       .selectFrom('issued_certificates as c')
       .innerJoin('certification_definitions as d', 'd.id', 'c.definition_id')
-      .select(['c.id', 'c.organization_id', 'c.definition_id', 'c.user_id', 'c.issued_at', 'c.expires_at', 'c.certificate_number', 'd.name', 'd.renewal_policy'])
+      .select([
+        'c.id',
+        'c.organization_id',
+        'c.definition_id',
+        'c.user_id',
+        'c.issued_at',
+        'c.expires_at',
+        'c.certificate_number',
+        'd.name',
+        'd.renewal_policy',
+      ])
       .where('c.status', '=', 'issued')
       .where('d.status', '=', 'active')
       .where('c.expires_at', 'is not', null)
       .where('c.expires_at', '>', now)
-      .where(sql<boolean>`c.expires_at - make_interval(days => (d.renewal_policy->>'windowDays')::int) <= ${now}`)
+      .where(
+        sql<boolean>`c.expires_at - make_interval(days => (d.renewal_policy->>'windowDays')::int) <= ${now}`,
+      )
       .where(sql<boolean>`(d.renewal_policy->>'windowDays')::int > 0`)
-      .where((eb) => eb.not(eb.exists(eb.selectFrom('certificate_renewals as n').select('n.id').whereRef('n.certificate_id', '=', 'c.id'))))
+      .where((eb) =>
+        eb.not(
+          eb.exists(
+            eb
+              .selectFrom('certificate_renewals as n')
+              .select('n.id')
+              .whereRef('n.certificate_id', '=', 'c.id'),
+          ),
+        ),
+      )
       .limit(500)
       .execute();
     let opened = 0;
     for (const c of due) {
-      const windowStart = new Date(Math.max(addDays(c.expires_at!, -c.renewal_policy.windowDays).getTime(), c.issued_at.getTime()));
+      const windowStart = new Date(
+        Math.max(
+          addDays(c.expires_at!, -c.renewal_policy.windowDays).getTime(),
+          c.issued_at.getTime(),
+        ),
+      );
       if (await this.openRenewal(c, windowStart, 'open', now)) opened++;
     }
     return opened;
   }
 
   private async openRenewal(
-    c: { id: string; organization_id: string; definition_id: string; user_id: string; expires_at: Date | null; name: string; certificate_number: string },
+    c: {
+      id: string;
+      organization_id: string;
+      definition_id: string;
+      user_id: string;
+      expires_at: Date | null;
+      name: string;
+      certificate_number: string;
+    },
     windowStart: Date,
     status: 'open' | 'lapsed',
     now: Date,
@@ -120,12 +154,22 @@ export class LifecycleService {
           renewalId,
           dueAt: (c.expires_at ?? now).toISOString(),
         },
-        { organizationId: c.organization_id, subject: { type: 'certificate', id: c.id }, ...SYSTEM },
+        {
+          organizationId: c.organization_id,
+          subject: { type: 'certificate', id: c.id },
+          ...SYSTEM,
+        },
       );
-      await markDirty(trx, { organizationId: c.organization_id, userIds: [c.user_id], definitionIds: [c.definition_id], learnerActivity: false });
+      await markDirty(trx, {
+        organizationId: c.organization_id,
+        userIds: [c.user_id],
+        definitionIds: [c.definition_id],
+        learnerActivity: false,
+      });
       return true;
     });
-    if (created) await this.eligibility.processDirty({ userId: c.user_id, definitionId: c.definition_id });
+    if (created)
+      await this.eligibility.processDirty({ userId: c.user_id, definitionId: c.definition_id });
     return created;
   }
 
@@ -134,7 +178,16 @@ export class LifecycleService {
     const due = await this.db
       .selectFrom('issued_certificates as c')
       .innerJoin('certification_definitions as d', 'd.id', 'c.definition_id')
-      .select(['c.id', 'c.organization_id', 'c.definition_id', 'c.user_id', 'c.expires_at', 'c.certificate_number', 'd.name', 'd.status as definition_status'])
+      .select([
+        'c.id',
+        'c.organization_id',
+        'c.definition_id',
+        'c.user_id',
+        'c.expires_at',
+        'c.certificate_number',
+        'd.name',
+        'd.status as definition_status',
+      ])
       .where('c.status', '=', 'issued')
       .where('c.expires_at', '<=', now)
       .orderBy('c.expires_at')
@@ -150,7 +203,12 @@ export class LifecycleService {
           .where('status', '=', 'issued')
           .executeTakeFirst();
         if (Number(updated.numUpdatedRows) === 0) return false;
-        await trx.updateTable('certificate_renewals').set({ status: 'lapsed' }).where('certificate_id', '=', c.id).where('status', '=', 'open').execute();
+        await trx
+          .updateTable('certificate_renewals')
+          .set({ status: 'lapsed' })
+          .where('certificate_id', '=', c.id)
+          .where('status', '=', 'open')
+          .execute();
         await recordCertificateEvent(trx, {
           organizationId: c.organization_id,
           certificateId: c.id,
@@ -161,12 +219,28 @@ export class LifecycleService {
         await this.events.emit(
           trx,
           certificationEvents.expired,
-          { certificateId: c.id, definitionId: c.definition_id, definitionName: c.name, userId: c.user_id, expiredAt: c.expires_at!.toISOString() },
-          { organizationId: c.organization_id, subject: { type: 'certificate', id: c.id }, ...SYSTEM },
+          {
+            certificateId: c.id,
+            definitionId: c.definition_id,
+            definitionName: c.name,
+            userId: c.user_id,
+            expiredAt: c.expires_at!.toISOString(),
+          },
+          {
+            organizationId: c.organization_id,
+            subject: { type: 'certificate', id: c.id },
+            ...SYSTEM,
+          },
         );
         await this.events.audit(
           trx,
-          { action: 'certificate.expired', resourceType: 'certificate', resourceId: c.id, actorDisplay: null, after: { certificateNumber: c.certificate_number } },
+          {
+            action: 'certificate.expired',
+            resourceType: 'certificate',
+            resourceId: c.id,
+            actorDisplay: null,
+            after: { certificateNumber: c.certificate_number },
+          },
           { organizationId: c.organization_id, ...SYSTEM },
         );
         return true;
@@ -175,7 +249,11 @@ export class LifecycleService {
       expired++;
       // Windows of zero days (or certificates that never had one) still need a recertification path.
       if (c.definition_status === 'active') {
-        const existing = await this.db.selectFrom('certificate_renewals').select('id').where('certificate_id', '=', c.id).executeTakeFirst();
+        const existing = await this.db
+          .selectFrom('certificate_renewals')
+          .select('id')
+          .where('certificate_id', '=', c.id)
+          .executeTakeFirst();
         if (!existing) await this.openRenewal(c, c.expires_at!, 'lapsed', now);
       }
     }
@@ -190,7 +268,15 @@ export class LifecycleService {
     const rows = await this.db
       .selectFrom('issued_certificates as c')
       .innerJoin('certification_definitions as d', 'd.id', 'c.definition_id')
-      .select(['c.id', 'c.organization_id', 'c.definition_id', 'c.user_id', 'c.expires_at', 'd.name', 'd.renewal_policy'])
+      .select([
+        'c.id',
+        'c.organization_id',
+        'c.definition_id',
+        'c.user_id',
+        'c.expires_at',
+        'd.name',
+        'd.renewal_policy',
+      ])
       .where('c.status', '=', 'issued')
       .where('d.status', '=', 'active')
       .where('c.expires_at', '>', now)
@@ -199,7 +285,9 @@ export class LifecycleService {
     let sent = 0;
     for (const c of rows) {
       const remaining = daysBetween(now, c.expires_at!);
-      const reached = c.renewal_policy.reminderOffsets.filter((o) => remaining <= o).sort((a, b) => a - b);
+      const reached = c.renewal_policy.reminderOffsets
+        .filter((o) => remaining <= o)
+        .sort((a, b) => a - b);
       const target = reached[0];
       if (target === undefined) continue;
       const announced = await this.db.transaction().execute(async (trx) => {
@@ -207,7 +295,12 @@ export class LifecycleService {
         for (const offset of reached) {
           const inserted = await trx
             .insertInto('certificate_reminders')
-            .values({ certificate_id: c.id, offset_days: offset, days_remaining: remaining, sent: offset === target })
+            .values({
+              certificate_id: c.id,
+              offset_days: offset,
+              days_remaining: remaining,
+              sent: offset === target,
+            })
             .onConflict((oc) => oc.columns(['certificate_id', 'offset_days']).doNothing())
             .returning('offset_days')
             .executeTakeFirst();
@@ -232,7 +325,11 @@ export class LifecycleService {
             expiresAt: c.expires_at!.toISOString(),
             daysRemaining: remaining,
           },
-          { organizationId: c.organization_id, subject: { type: 'certificate', id: c.id }, ...SYSTEM },
+          {
+            organizationId: c.organization_id,
+            subject: { type: 'certificate', id: c.id },
+            ...SYSTEM,
+          },
         );
         return true;
       });

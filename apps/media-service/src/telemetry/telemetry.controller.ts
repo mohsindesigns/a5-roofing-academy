@@ -2,7 +2,16 @@ import { Body, HttpCode, Post } from '@nestjs/common';
 import { ApiBody } from '@nestjs/swagger';
 import type { Principal } from '@a5/auth';
 import { media } from '@a5/contracts';
-import { ApiController, AppError, CurrentPrincipal, Public, ZBody, ZodValidationPipe, ZResponse, jsonSchema } from '@a5/nest-kit';
+import {
+  ApiController,
+  AppError,
+  CurrentPrincipal,
+  Public,
+  ZBody,
+  ZodValidationPipe,
+  ZResponse,
+  jsonSchema,
+} from '@a5/nest-kit';
 import { TelemetryService } from './telemetry.service.js';
 
 const heartbeatPipe = new ZodValidationPipe(media.heartbeatRequestSchema);
@@ -15,7 +24,10 @@ export class TelemetryController {
   @Post('heartbeat')
   @HttpCode(200)
   @ZResponse(media.heartbeatResponseSchema)
-  heartbeat(@CurrentPrincipal() p: Principal, @ZBody(media.heartbeatRequestSchema) body: media.HeartbeatRequest) {
+  heartbeat(
+    @CurrentPrincipal() p: Principal,
+    @ZBody(media.heartbeatRequestSchema) body: media.HeartbeatRequest,
+  ) {
     return this.telemetry.heartbeat(body, p);
   }
 

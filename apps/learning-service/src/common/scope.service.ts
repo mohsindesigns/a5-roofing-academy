@@ -23,7 +23,11 @@ export class ScopeService {
   }
 
   /** SQL condition: same organization and admitted by at least one of the permissions' scopes. */
-  condition(p: Principal, permissions: PermissionKey | readonly PermissionKey[], cols: ScopeColumns): Expression<SqlBool> {
+  condition(
+    p: Principal,
+    permissions: PermissionKey | readonly PermissionKey[],
+    cols: ScopeColumns,
+  ): Expression<SqlBool> {
     const list = this.filters(p, typeof permissions === 'string' ? [permissions] : permissions);
     if (list.length === 0) return sql<SqlBool>`false`;
     const parts = list.map((f) => userScopeCondition(f, cols));
@@ -32,14 +36,20 @@ export class ScopeService {
   }
 
   /** Does at least one of the permissions admit this user? */
-  async admits(p: Principal, permissions: readonly PermissionKey[], target: { userId: string; organizationId: string }): Promise<boolean> {
+  async admits(
+    p: Principal,
+    permissions: readonly PermissionKey[],
+    target: { userId: string; organizationId: string },
+  ): Promise<boolean> {
     if (target.organizationId !== p.organizationId) return false;
     const list = this.filters(p, permissions);
     if (list.length === 0) return false;
     if (list.some((f) => f.kind === 'organization' || f.kind === 'platform')) return true;
     const user = await this.directory.getUser(target.userId);
     const teamIds = user?.teamIds ?? [];
-    return list.some((f) => scopeAdmitsUser(f, { userId: target.userId, organizationId: target.organizationId, teamIds }));
+    return list.some((f) =>
+      scopeAdmitsUser(f, { userId: target.userId, organizationId: target.organizationId, teamIds }),
+    );
   }
 
   /** 404 (not 403) for records outside the caller's scope so existence is not disclosed. */

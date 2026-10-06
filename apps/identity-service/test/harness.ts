@@ -7,7 +7,12 @@ import { createDatabase, migrateToLatest, type Database } from '@a5/database';
 import { createRedis, RedisNamespace, type Redis } from '@a5/messaging';
 import { TEST_INTERNAL_SECRET, closeApp, createTestApp, testLogger } from '@a5/nest-kit/testing';
 import { DEFAULT_SEED_PASSWORD, PEOPLE, emailOf, type PersonKey } from '@a5/seed-data';
-import { TEST_REDIS_URL, createTestDatabase, testRedisNamespace, type TestDatabase } from '@a5/testing';
+import {
+  TEST_REDIS_URL,
+  createTestDatabase,
+  testRedisNamespace,
+  type TestDatabase,
+} from '@a5/testing';
 import { AppModule, configureIdentityApp } from '../src/app.module.js';
 import { loadIdentityConfig, type IdentityConfig } from '../src/config.js';
 import { migrations } from '../src/database/migrations/index.js';
@@ -53,7 +58,11 @@ export async function createIdentityHarness(name: string): Promise<IdentityHarne
   await migrateToLatest(database.db as never, migrations);
   await seedIdentity(database.db, { fastHash: true });
 
-  const app = await createTestApp(AppModule.register(config, testLogger()), config, configureIdentityApp);
+  const app = await createTestApp(
+    AppModule.register(config, testLogger()),
+    config,
+    configureIdentityApp,
+  );
   const redis = createRedis(TEST_REDIS_URL);
   const ns = new RedisNamespace(namespace);
   const resolver = app.get(PrincipalResolver);

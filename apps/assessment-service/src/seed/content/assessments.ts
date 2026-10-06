@@ -24,9 +24,12 @@ export interface SeedAssessmentDefinition {
   items: SeedItem[];
 }
 
-const fixed = (...keys: string[]): SeedItem[] => keys.map((question) => ({ kind: 'question', question }));
+const fixed = (...keys: string[]): SeedItem[] =>
+  keys.map((question) => ({ kind: 'question', question }));
 
-export const ASSESSMENT_DEFINITIONS: Partial<Record<SeedAssessment['key'], SeedAssessmentDefinition>> = {
+export const ASSESSMENT_DEFINITIONS: Partial<
+  Record<SeedAssessment['key'], SeedAssessmentDefinition>
+> = {
   'quiz-w1': {
     description:
       'Checks that you know how A5 earns trust: the customer journey, the photo report, the permission rule and the two promises you must never make. You need 80% to pass; you can take it up to three times.',

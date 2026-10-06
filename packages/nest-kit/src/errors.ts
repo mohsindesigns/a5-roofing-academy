@@ -24,7 +24,10 @@ export class NotFoundError extends AppError {
 }
 
 export class ForbiddenError extends AppError {
-  constructor(message = 'You do not have permission to perform this action.', details?: Record<string, unknown>) {
+  constructor(
+    message = 'You do not have permission to perform this action.',
+    details?: Record<string, unknown>,
+  ) {
     super(403, 'FORBIDDEN', message, details);
   }
 }
@@ -54,13 +57,19 @@ export class ValidationError extends AppError {
 }
 
 export class RateLimitedError extends AppError {
-  constructor(readonly retryAfterSeconds: number, message = 'Too many requests. Wait a moment and try again.') {
+  constructor(
+    readonly retryAfterSeconds: number,
+    message = 'Too many requests. Wait a moment and try again.',
+  ) {
     super(429, 'RATE_LIMITED', message, { retryAfterSeconds });
   }
 }
 
 export class ServiceUnavailableError extends AppError {
-  constructor(message = 'A required service is temporarily unavailable. Retry in a moment.', details?: Record<string, unknown>) {
+  constructor(
+    message = 'A required service is temporarily unavailable. Retry in a moment.',
+    details?: Record<string, unknown>,
+  ) {
     super(503, 'SERVICE_UNAVAILABLE', message, details);
   }
 }

@@ -13,12 +13,19 @@ import { PartitionMaintenance } from './partitions/partition-maintenance.js';
 @Module({})
 class AuditConfigModule {
   static register(config: AuditConfig): DynamicModule {
-    return { module: AuditConfigModule, providers: [{ provide: AUDIT_CONFIG, useValue: config }], exports: [AUDIT_CONFIG] };
+    return {
+      module: AuditConfigModule,
+      providers: [{ provide: AUDIT_CONFIG, useValue: config }],
+      exports: [AUDIT_CONFIG],
+    };
   }
 }
 
 /** Consumption of `audit.recorded` from every producer and monthly partition upkeep. */
-@Module({ providers: [AuditIngest, PartitionMaintenance], exports: [AuditIngest, PartitionMaintenance] })
+@Module({
+  providers: [AuditIngest, PartitionMaintenance],
+  exports: [AuditIngest, PartitionMaintenance],
+})
 export class IngestModule {}
 
 /** Read API over the trail (audit_logs.view). */

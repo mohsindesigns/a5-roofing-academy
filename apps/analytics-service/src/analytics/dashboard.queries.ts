@@ -131,7 +131,10 @@ export class DashboardQueries {
 
   // ---------------------------------------------------------------- people lists
 
-  async fallingBehind(q: QuerySql, limit = 10): Promise<{ total: number; items: analytics.FallingBehindItem[] }> {
+  async fallingBehind(
+    q: QuerySql,
+    limit = 10,
+  ): Promise<{ total: number; items: analytics.FallingBehindItem[] }> {
     const now = sql`${q.now}::timestamptz`;
     const { inactivityDays, paceTolerancePercent } = q.ctx.settings;
     const rows = await this.rows(sql<{
@@ -208,7 +211,10 @@ export class DashboardQueries {
     };
   }
 
-  async requiringAttention(q: QuerySql, limit = 10): Promise<{ total: number; items: Array<AttentionItem> }> {
+  async requiringAttention(
+    q: QuerySql,
+    limit = 10,
+  ): Promise<{ total: number; items: Array<AttentionItem> }> {
     const { lowAiScore, attentionLookbackDays } = q.ctx.settings;
     const since = new Date(q.now.getTime() - attentionLookbackDays * DAY_MS);
     const rows = await this.rows(sql<{
@@ -287,7 +293,10 @@ export class DashboardQueries {
     };
   }
 
-  async expiringCertificates(q: QuerySql, limit = 10): Promise<analytics.TeamDashboard['expiringCertifications']> {
+  async expiringCertificates(
+    q: QuerySql,
+    limit = 10,
+  ): Promise<analytics.TeamDashboard['expiringCertifications']> {
     const now = sql`${q.now}::timestamptz`;
     const rows = await this.rows(sql<{
       certificate_id: string;
@@ -373,7 +382,12 @@ export class DashboardQueries {
         order by avg(c.score) asc, count(*) desc, c.category_key
         limit ${limit}
       `),
-      this.rows(sql<{ category_id: string | null; name: string | null; answered: number; incorrect: number }>`
+      this.rows(sql<{
+        category_id: string | null;
+        name: string | null;
+        answered: number;
+        incorrect: number;
+      }>`
         select coalesce(q.category_id, dq.category_id) as category_id, qc.name,
                count(*) as answered, count(*) filter (where not q.correct) as incorrect
         from fact_question_results q
@@ -389,7 +403,12 @@ export class DashboardQueries {
       `),
     ]);
     return {
-      aiCategories: ai.map((r) => ({ key: r.key, label: r.label, averageScore: round1(r.avg) ?? 0, sessions: Number(r.n) })),
+      aiCategories: ai.map((r) => ({
+        key: r.key,
+        label: r.label,
+        averageScore: round1(r.avg) ?? 0,
+        sessions: Number(r.n),
+      })),
       questionCategories: questions.map((r) => ({
         categoryId: r.category_id,
         name: r.name ?? 'Uncategorized',
@@ -502,8 +521,10 @@ export class DashboardQueries {
       headcount: Number(r.headcount),
       activeTrainees: Number(r.active_trainees),
       programCompletion: ratio(r.completed, r.enrollments),
-      averageProgressPercent: Number(r.enrollments) > 0 ? round1(Number(r.progress_sum) / Number(r.enrollments)) : null,
-      averageAssessmentScore: Number(r.att_n) > 0 ? round1(Number(r.att_sum) / Number(r.att_n)) : null,
+      averageProgressPercent:
+        Number(r.enrollments) > 0 ? round1(Number(r.progress_sum) / Number(r.enrollments)) : null,
+      averageAssessmentScore:
+        Number(r.att_n) > 0 ? round1(Number(r.att_sum) / Number(r.att_n)) : null,
       aiRolePlayAverage: Number(r.ai_n) > 0 ? round1(Number(r.ai_sum) / Number(r.ai_n)) : null,
       certifiedCount: Number(r.certified),
       overdueEnrollments: Number(r.overdue),
@@ -654,7 +675,13 @@ export class DashboardQueries {
     }));
   }
 
-  async certification(q: QuerySql): Promise<{ conversion: analytics.Ratio; averageDays: number | null; medianDays: number | null }> {
+  async certification(
+    q: QuerySql,
+  ): Promise<{
+    conversion: analytics.Ratio;
+    averageDays: number | null;
+    medianDays: number | null;
+  }> {
     const [conv] = await this.rows(sql<{ eligible: number; converted: number }>`
       select count(*) as eligible, count(*) filter (where c.first_issued_at is not null) as converted
       from fact_certification_candidates c

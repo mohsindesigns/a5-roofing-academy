@@ -52,10 +52,16 @@ function toItem(result: RuleResult, key: string, names: RuleLabelResolver): Requ
 }
 
 /** Evaluate a rule against preloaded facts and flatten it into a checklist ("6 / 8 complete"). */
-export function computeEligibility(rule: Rule, facts: RuleFacts, names: RuleLabelResolver): EligibilityOutcome {
+export function computeEligibility(
+  rule: Rule,
+  facts: RuleFacts,
+  names: RuleLabelResolver,
+): EligibilityOutcome {
   const result = evaluateRule(rule, facts);
   const auto = evaluateRule(rule, { ...facts, approval: () => true });
-  const items = isEmptyRule(rule) ? [] : checklist(result).map((r, i) => toItem(r, String(i), names));
+  const items = isEmptyRule(rule)
+    ? []
+    : checklist(result).map((r, i) => toItem(r, String(i), names));
   return {
     satisfied: !isEmptyRule(rule) && result.satisfied,
     autoSatisfied: !isEmptyRule(rule) && auto.satisfied,
@@ -66,7 +72,11 @@ export function computeEligibility(rule: Rule, facts: RuleFacts, names: RuleLabe
 }
 
 /** Renewal requirements may be empty (renewal granted on approval or automatically). */
-export function computeRenewalEligibility(rule: Rule, facts: RuleFacts, names: RuleLabelResolver): EligibilityOutcome {
+export function computeRenewalEligibility(
+  rule: Rule,
+  facts: RuleFacts,
+  names: RuleLabelResolver,
+): EligibilityOutcome {
   if (!isEmptyRule(rule)) return computeEligibility(rule, facts, names);
   return { satisfied: true, autoSatisfied: true, requirements: [], metCount: 0, totalCount: 0 };
 }
@@ -84,28 +94,47 @@ export function approvalKinds(rule: Rule): ApprovalKind[] {
  * approval requirement (appended when missing) and the rule may not ask for another approval kind.
  * Returns the normalized rule or a list of problems.
  */
-export function normalizeApprovalRule(rule: Rule, policy: certification.ApprovalPolicy): { rule: Rule; problems: string[] } {
+export function normalizeApprovalRule(
+  rule: Rule,
+  policy: certification.ApprovalPolicy,
+): { rule: Rule; problems: string[] } {
   const kinds = approvalKinds(rule);
   const problems: string[] = [];
   if (policy === 'none') {
-    if (kinds.length) problems.push('The requirements include an approval, but the approval policy is "none". Choose an approval policy or remove the approval requirement.');
+    if (kinds.length)
+      problems.push(
+        'The requirements include an approval, but the approval policy is "none". Choose an approval policy or remove the approval requirement.',
+      );
     return { rule, problems };
   }
   const other = kinds.filter((k) => k !== policy);
-  if (other.length) problems.push(`The requirements ask for a ${other.join(' / ').replace('_', ' ')} approval, but the approval policy is ${policy.replace('_', ' ')}.`);
+  if (other.length)
+    problems.push(
+      `The requirements ask for a ${other.join(' / ').replace('_', ' ')} approval, but the approval policy is ${policy.replace('_', ' ')}.`,
+    );
   if (kinds.includes(policy)) return { rule, problems };
   const approvalLeaf: Rule = { type: 'approval', kind: policy };
-  if (rule.type === 'all') return { rule: { ...rule, rules: [...rule.rules, approvalLeaf] }, problems };
+  if (rule.type === 'all')
+    return { rule: { ...rule, rules: [...rule.rules, approvalLeaf] }, problems };
   return { rule: { type: 'all', rules: [rule, approvalLeaf] }, problems };
 }
 
 /** Leaf types in a rule that certification cannot evaluate (no projected facts). */
 export function unsupportedLeafTypes(rule: Rule): string[] {
-  return [...new Set(leaves(rule).map((l) => l.type).filter((t) => !SUPPORTED_LEAF_TYPES.has(t)))];
+  return [
+    ...new Set(
+      leaves(rule)
+        .map((l) => l.type)
+        .filter((t) => !SUPPORTED_LEAF_TYPES.has(t)),
+    ),
+  ];
 }
 
 /** Plain-language requirement list for definitions. */
-export function describeRequirements(rule: Rule, names: RuleLabelResolver): Array<{ type: string; description: string }> {
+export function describeRequirements(
+  rule: Rule,
+  names: RuleLabelResolver,
+): Array<{ type: string; description: string }> {
   if (isEmptyRule(rule)) return [];
   const items = rule.type === 'all' ? rule.rules : [rule];
   return items.map((r) => ({ type: r.type, description: describeRule(r, names) }));

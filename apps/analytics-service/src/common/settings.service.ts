@@ -29,13 +29,18 @@ export class SettingsService {
     return { ...analytics.DEFAULT_ANALYTICS_SETTINGS, ...(parsed.success ? parsed.data : {}) };
   }
 
-  async get(organizationId: string): Promise<{ settings: AnalyticsSettings; updatedAt: string | null }> {
+  async get(
+    organizationId: string,
+  ): Promise<{ settings: AnalyticsSettings; updatedAt: string | null }> {
     const row = await this.db
       .selectFrom('analytics_settings')
       .select(['config', 'updated_at'])
       .where('organization_id', '=', organizationId)
       .executeTakeFirst();
-    return { settings: SettingsService.resolve(row?.config), updatedAt: row ? row.updated_at.toISOString() : null };
+    return {
+      settings: SettingsService.resolve(row?.config),
+      updatedAt: row ? row.updated_at.toISOString() : null,
+    };
   }
 
   async update(
@@ -55,7 +60,11 @@ export class SettingsService {
       await trx
         .insertInto('analytics_settings')
         .values({ organization_id: org, config: after, updated_by: actor.userId })
-        .onConflict((oc) => oc.column('organization_id').doUpdateSet({ config: sql`excluded.config`, updated_by: actor.userId }))
+        .onConflict((oc) =>
+          oc
+            .column('organization_id')
+            .doUpdateSet({ config: sql`excluded.config`, updated_by: actor.userId }),
+        )
         .execute();
       await this.events.audit(trx, {
         action: 'analytics.settings.updated',

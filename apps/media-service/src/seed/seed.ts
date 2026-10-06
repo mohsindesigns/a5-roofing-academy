@@ -16,9 +16,15 @@ if (process.env.NODE_ENV === 'production') {
 
 const storageConfig = loadStorageConfigForTools();
 const storage = createObjectStorage(storageConfig);
-const database = createDatabase<MediaDatabase>({ url, applicationName: 'media-seed', statementTimeoutMs: 120_000 });
+const database = createDatabase<MediaDatabase>({
+  url,
+  applicationName: 'media-seed',
+  statementTimeoutMs: 120_000,
+});
 try {
-  process.stdout.write(`media: storage driver ${storageConfig.driver}${storageConfig.driver === 'local' ? ` (${storageConfig.root})` : ` (bucket ${storageConfig.bucket})`}\n`);
+  process.stdout.write(
+    `media: storage driver ${storageConfig.driver}${storageConfig.driver === 'local' ? ` (${storageConfig.root})` : ` (bucket ${storageConfig.bucket})`}\n`,
+  );
   await seedMedia(database.db, storage, {
     log: (line) => process.stdout.write(`${line}\n`),
     ffmpegPath: process.env.FFMPEG_PATH,

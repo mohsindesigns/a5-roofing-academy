@@ -48,7 +48,14 @@ export interface SeedPhase {
   modules: SeedModule[];
 }
 
-const lesson = (key: string, title: string, type: LessonType, minutes: number, ref?: string, required = true): SeedLesson => ({
+const lesson = (
+  key: string,
+  title: string,
+  type: LessonType,
+  minutes: number,
+  ref?: string,
+  required = true,
+): SeedLesson => ({
   key,
   id: seedId(`lesson:${key}`),
   title,
@@ -58,7 +65,12 @@ const lesson = (key: string, title: string, type: LessonType, minutes: number, r
   ref,
 });
 
-const mod = (key: string, title: string, lessons: SeedLesson[]): SeedModule => ({ key, id: seedId(`module:${key}`), title, lessons });
+const mod = (key: string, title: string, lessons: SeedLesson[]): SeedModule => ({
+  key,
+  id: seedId(`module:${key}`),
+  title,
+  lessons,
+});
 
 export const PROGRAM = {
   id: seedId('program:new-hire-sales-academy'),
@@ -76,7 +88,8 @@ export const PHASES: SeedPhase[] = [
     key: 'w1',
     id: seedId('phase:w1'),
     title: 'A5 Fundamentals',
-    summary: 'Who A5 Roofing is, how we earn trust and how a customer moves from first knock to final walkthrough.',
+    summary:
+      'Who A5 Roofing is, how we earn trust and how a customer moves from first knock to final walkthrough.',
     modules: [
       mod('w1m1', 'Welcome to A5 Roofing', [
         lesson('w1-welcome', 'Welcome from Leadership', 'video', 8),
@@ -112,7 +125,8 @@ export const PHASES: SeedPhase[] = [
     key: 'w3',
     id: seedId('phase:w3'),
     title: 'Sales Execution',
-    summary: 'Opening conversations, discovery and the A5 objection framework, practised with the AI homeowner.',
+    summary:
+      'Opening conversations, discovery and the A5 objection framework, practised with the AI homeowner.',
     modules: [
       mod('w3m1', 'The A5 Sales Conversation', [
         lesson('w3-opening', 'Opening the Door: The First 30 Seconds', 'video', 10),
@@ -121,8 +135,20 @@ export const PHASES: SeedPhase[] = [
       ]),
       mod('w3m2', 'Handling Objections', [
         lesson('w3-framework', 'The A5 Objection Framework', 'video', 14),
-        lesson('w3-practice-spouse', 'Practice: "I need to talk to my spouse"', 'ai_simulation', 15, 'spouse'),
-        lesson('w3-practice-estimates', 'Practice: "I want three estimates"', 'ai_simulation', 15, 'three-estimates'),
+        lesson(
+          'w3-practice-spouse',
+          'Practice: "I need to talk to my spouse"',
+          'ai_simulation',
+          15,
+          'spouse',
+        ),
+        lesson(
+          'w3-practice-estimates',
+          'Practice: "I want three estimates"',
+          'ai_simulation',
+          15,
+          'three-estimates',
+        ),
         lesson('w3-quiz', 'Week 3 Knowledge Check', 'quiz', 15, 'quiz-w3'),
       ]),
     ],
@@ -136,8 +162,20 @@ export const PHASES: SeedPhase[] = [
       mod('w4m1', 'Ride-Along and Compliance', [
         lesson('w4-compliance', 'Compliance: What We Never Promise', 'article', 10),
         lesson('w4-ridealong', 'Field Ride-Along Reflection', 'assignment', 20),
-        lesson('w4-practice-claim', 'Practice: "I don\'t want to file a claim"', 'ai_simulation', 15, 'no-claim'),
-        lesson('w4-practice-cheaper', 'Practice: "Another roofer is cheaper"', 'ai_simulation', 15, 'cheaper'),
+        lesson(
+          'w4-practice-claim',
+          'Practice: "I don\'t want to file a claim"',
+          'ai_simulation',
+          15,
+          'no-claim',
+        ),
+        lesson(
+          'w4-practice-cheaper',
+          'Practice: "Another roofer is cheaper"',
+          'ai_simulation',
+          15,
+          'cheaper',
+        ),
       ]),
       mod('w4m2', 'Certification', [
         lesson('w4-final', 'Final Sales Readiness Assessment', 'final_assessment', 40, 'final'),
@@ -148,7 +186,9 @@ export const PHASES: SeedPhase[] = [
 ];
 
 export function allLessons(): Array<SeedLesson & { phaseKey: string; moduleKey: string }> {
-  return PHASES.flatMap((p) => p.modules.flatMap((m) => m.lessons.map((l) => ({ ...l, phaseKey: p.key, moduleKey: m.key }))));
+  return PHASES.flatMap((p) =>
+    p.modules.flatMap((m) => m.lessons.map((l) => ({ ...l, phaseKey: p.key, moduleKey: m.key }))),
+  );
 }
 
 // ---------------------------------------------------------------- assessments
@@ -164,10 +204,42 @@ export interface SeedAssessment {
 }
 
 export const ASSESSMENTS: SeedAssessment[] = [
-  { key: 'quiz-w1', id: seedId('assessment:quiz-w1'), title: 'Week 1 Knowledge Check', kind: 'quiz', passingPercent: 80, lessonKey: 'w1-quiz', questionCount: 8 },
-  { key: 'quiz-w2', id: seedId('assessment:quiz-w2'), title: 'Week 2 Knowledge Check', kind: 'quiz', passingPercent: 80, lessonKey: 'w2-quiz', questionCount: 10 },
-  { key: 'quiz-w3', id: seedId('assessment:quiz-w3'), title: 'Week 3 Knowledge Check', kind: 'quiz', passingPercent: 80, lessonKey: 'w3-quiz', questionCount: 10 },
-  { key: 'final', id: seedId('assessment:final'), title: 'Final Sales Readiness Assessment', kind: 'final', passingPercent: 85, lessonKey: 'w4-final', questionCount: 20 },
+  {
+    key: 'quiz-w1',
+    id: seedId('assessment:quiz-w1'),
+    title: 'Week 1 Knowledge Check',
+    kind: 'quiz',
+    passingPercent: 80,
+    lessonKey: 'w1-quiz',
+    questionCount: 8,
+  },
+  {
+    key: 'quiz-w2',
+    id: seedId('assessment:quiz-w2'),
+    title: 'Week 2 Knowledge Check',
+    kind: 'quiz',
+    passingPercent: 80,
+    lessonKey: 'w2-quiz',
+    questionCount: 10,
+  },
+  {
+    key: 'quiz-w3',
+    id: seedId('assessment:quiz-w3'),
+    title: 'Week 3 Knowledge Check',
+    kind: 'quiz',
+    passingPercent: 80,
+    lessonKey: 'w3-quiz',
+    questionCount: 10,
+  },
+  {
+    key: 'final',
+    id: seedId('assessment:final'),
+    title: 'Final Sales Readiness Assessment',
+    kind: 'final',
+    passingPercent: 85,
+    lessonKey: 'w4-final',
+    questionCount: 20,
+  },
 ];
 
 export const QUESTION_BANK = {
@@ -201,19 +273,112 @@ export const PERSONAS = [
 ] as const;
 
 export const SCENARIOS: SeedScenario[] = [
-  { key: 'no-time', id: seedId('scenario:no-time'), title: 'The Busy Homeowner', objection: "I don't have time.", category: 'Brush-off', difficulty: 'beginner', personaKey: 'busy', passingScore: 75 },
-  { key: 'spouse', id: seedId('scenario:spouse'), title: 'Talk to My Spouse', objection: 'I need to talk to my spouse.', category: 'Decision maker', difficulty: 'intermediate', personaKey: 'friendly', passingScore: 75 },
-  { key: 'three-estimates', id: seedId('scenario:three-estimates'), title: 'Three Estimates', objection: 'I want to get three estimates.', category: 'Comparison', difficulty: 'intermediate', personaKey: 'shopper', passingScore: 75 },
-  { key: 'no-claim', id: seedId('scenario:no-claim'), title: 'No Insurance Claim', objection: "I don't want to file an insurance claim.", category: 'Insurance', difficulty: 'advanced', personaKey: 'insurance', passingScore: 80 },
-  { key: 'cheaper', id: seedId('scenario:cheaper'), title: 'Another Roofer Is Cheaper', objection: 'Another roofer is cheaper.', category: 'Price', difficulty: 'advanced', personaKey: 'price', passingScore: 80 },
-  { key: 'have-roofer', id: seedId('scenario:have-roofer'), title: 'Already Have a Roofer', objection: 'I already have a roofer.', category: 'Loyalty', difficulty: 'intermediate', personaKey: 'skeptical', passingScore: 75 },
-  { key: 'roof-fine', id: seedId('scenario:roof-fine'), title: 'My Roof Looks Fine', objection: 'My roof looks fine.', category: 'Need', difficulty: 'beginner', personaKey: 'friendly', passingScore: 75 },
-  { key: 'leave-card', id: seedId('scenario:leave-card'), title: 'Just Leave Your Card', objection: 'Just leave your card.', category: 'Brush-off', difficulty: 'beginner', personaKey: 'busy', passingScore: 75 },
-  { key: 'not-signing', id: seedId('scenario:not-signing'), title: "I'm Not Signing Anything", objection: "I'm not signing anything.", category: 'Commitment', difficulty: 'expert', personaKey: 'burned', passingScore: 80 },
-  { key: 'already-inspected', id: seedId('scenario:already-inspected'), title: 'Insurance Already Inspected', objection: 'My insurance company already inspected it.', category: 'Insurance', difficulty: 'expert', personaKey: 'informed', passingScore: 80 },
+  {
+    key: 'no-time',
+    id: seedId('scenario:no-time'),
+    title: 'The Busy Homeowner',
+    objection: "I don't have time.",
+    category: 'Brush-off',
+    difficulty: 'beginner',
+    personaKey: 'busy',
+    passingScore: 75,
+  },
+  {
+    key: 'spouse',
+    id: seedId('scenario:spouse'),
+    title: 'Talk to My Spouse',
+    objection: 'I need to talk to my spouse.',
+    category: 'Decision maker',
+    difficulty: 'intermediate',
+    personaKey: 'friendly',
+    passingScore: 75,
+  },
+  {
+    key: 'three-estimates',
+    id: seedId('scenario:three-estimates'),
+    title: 'Three Estimates',
+    objection: 'I want to get three estimates.',
+    category: 'Comparison',
+    difficulty: 'intermediate',
+    personaKey: 'shopper',
+    passingScore: 75,
+  },
+  {
+    key: 'no-claim',
+    id: seedId('scenario:no-claim'),
+    title: 'No Insurance Claim',
+    objection: "I don't want to file an insurance claim.",
+    category: 'Insurance',
+    difficulty: 'advanced',
+    personaKey: 'insurance',
+    passingScore: 80,
+  },
+  {
+    key: 'cheaper',
+    id: seedId('scenario:cheaper'),
+    title: 'Another Roofer Is Cheaper',
+    objection: 'Another roofer is cheaper.',
+    category: 'Price',
+    difficulty: 'advanced',
+    personaKey: 'price',
+    passingScore: 80,
+  },
+  {
+    key: 'have-roofer',
+    id: seedId('scenario:have-roofer'),
+    title: 'Already Have a Roofer',
+    objection: 'I already have a roofer.',
+    category: 'Loyalty',
+    difficulty: 'intermediate',
+    personaKey: 'skeptical',
+    passingScore: 75,
+  },
+  {
+    key: 'roof-fine',
+    id: seedId('scenario:roof-fine'),
+    title: 'My Roof Looks Fine',
+    objection: 'My roof looks fine.',
+    category: 'Need',
+    difficulty: 'beginner',
+    personaKey: 'friendly',
+    passingScore: 75,
+  },
+  {
+    key: 'leave-card',
+    id: seedId('scenario:leave-card'),
+    title: 'Just Leave Your Card',
+    objection: 'Just leave your card.',
+    category: 'Brush-off',
+    difficulty: 'beginner',
+    personaKey: 'busy',
+    passingScore: 75,
+  },
+  {
+    key: 'not-signing',
+    id: seedId('scenario:not-signing'),
+    title: "I'm Not Signing Anything",
+    objection: "I'm not signing anything.",
+    category: 'Commitment',
+    difficulty: 'expert',
+    personaKey: 'burned',
+    passingScore: 80,
+  },
+  {
+    key: 'already-inspected',
+    id: seedId('scenario:already-inspected'),
+    title: 'Insurance Already Inspected',
+    objection: 'My insurance company already inspected it.',
+    category: 'Insurance',
+    difficulty: 'expert',
+    personaKey: 'informed',
+    passingScore: 80,
+  },
 ];
 
-export const RUBRIC = { id: seedId('rubric:a5-objection-handling'), title: 'A5 Objection Handling Rubric' };
+export const RUBRIC = {
+  id: seedId('rubric:a5-objection-handling'),
+  title: 'A5 Objection Handling Rubric',
+};
 
 // ---------------------------------------------------------------- certification
 
@@ -235,11 +400,23 @@ export const CERTIFICATE_TEMPLATES = [
 ] as const;
 
 export const SIGNATORIES = [
-  { key: 'priya', id: seedId('signatory:priya'), person: 'priya' as PersonKey, title: 'Director of Sales Enablement' },
-  { key: 'shelby', id: seedId('signatory:shelby'), person: 'shelby' as PersonKey, title: 'Sales Training Manager' },
+  {
+    key: 'priya',
+    id: seedId('signatory:priya'),
+    person: 'priya' as PersonKey,
+    title: 'Director of Sales Enablement',
+  },
+  {
+    key: 'shelby',
+    id: seedId('signatory:shelby'),
+    person: 'shelby' as PersonKey,
+    title: 'Sales Training Manager',
+  },
 ] as const;
 
-export const STAMPS = [{ key: 'company-seal', id: seedId('stamp:company-seal'), name: 'A5 Roofing Official Seal' }] as const;
+export const STAMPS = [
+  { key: 'company-seal', id: seedId('stamp:company-seal'), name: 'A5 Roofing Official Seal' },
+] as const;
 
 // ---------------------------------------------------------------- learner journeys
 
@@ -340,7 +517,11 @@ export const JOURNEYS: LearnerJourney[] = [
       { scenario: 'not-signing', score: 82, daysAgo: 120 },
     ],
     certificates: [
-      { issuedAt: '2025-07-03T16:00:00Z', status: 'superseded', reissueReason: 'Corrected legal name spelling' },
+      {
+        issuedAt: '2025-07-03T16:00:00Z',
+        status: 'superseded',
+        reissueReason: 'Corrected legal name spelling',
+      },
       { issuedAt: '2025-07-10T16:00:00Z', status: 'issued' },
     ],
   },
@@ -397,13 +578,55 @@ export const JOURNEYS: LearnerJourney[] = [
     attempts: { 'quiz-w1': [70, 84] },
     aiSessions: [],
   },
-  { person: 'kayla', enrolledAt: '2026-09-14T14:00:00Z', stage: 'week1', attempts: {}, aiSessions: [] },
-  { person: 'jordan', enrolledAt: '2026-09-14T14:00:00Z', stage: 'week1', attempts: {}, aiSessions: [] },
-  { person: 'isaiah', enrolledAt: '2026-09-14T14:00:00Z', stage: 'week1', attempts: {}, aiSessions: [] },
-  { person: 'colton', enrolledAt: '2026-09-14T14:00:00Z', stage: 'week1', attempts: {}, aiSessions: [] },
-  { person: 'devon', enrolledAt: '2026-09-28T14:00:00Z', stage: 'started', attempts: {}, aiSessions: [] },
-  { person: 'ethan', enrolledAt: '2026-09-28T14:00:00Z', stage: 'started', attempts: {}, aiSessions: [] },
-  { person: 'darius', enrolledAt: '2026-09-28T14:00:00Z', stage: 'started', attempts: {}, aiSessions: [] },
+  {
+    person: 'kayla',
+    enrolledAt: '2026-09-14T14:00:00Z',
+    stage: 'week1',
+    attempts: {},
+    aiSessions: [],
+  },
+  {
+    person: 'jordan',
+    enrolledAt: '2026-09-14T14:00:00Z',
+    stage: 'week1',
+    attempts: {},
+    aiSessions: [],
+  },
+  {
+    person: 'isaiah',
+    enrolledAt: '2026-09-14T14:00:00Z',
+    stage: 'week1',
+    attempts: {},
+    aiSessions: [],
+  },
+  {
+    person: 'colton',
+    enrolledAt: '2026-09-14T14:00:00Z',
+    stage: 'week1',
+    attempts: {},
+    aiSessions: [],
+  },
+  {
+    person: 'devon',
+    enrolledAt: '2026-09-28T14:00:00Z',
+    stage: 'started',
+    attempts: {},
+    aiSessions: [],
+  },
+  {
+    person: 'ethan',
+    enrolledAt: '2026-09-28T14:00:00Z',
+    stage: 'started',
+    attempts: {},
+    aiSessions: [],
+  },
+  {
+    person: 'darius',
+    enrolledAt: '2026-09-28T14:00:00Z',
+    stage: 'started',
+    attempts: {},
+    aiSessions: [],
+  },
 ];
 
 /** Reference "now" for seed data; ages (daysAgo) are relative to this instant. */

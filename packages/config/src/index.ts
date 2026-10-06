@@ -7,23 +7,22 @@ const booleanish = z
   .union([z.boolean(), z.enum(['true', 'false', '1', '0', 'yes', 'no'])])
   .transform((v) => v === true || v === 'true' || v === '1' || v === 'yes');
 
-const csv = z
-  .string()
-  .transform((v) =>
-    v
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
-  );
+const csv = z.string().transform((v) =>
+  v
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 
 export const env = {
-  boolean: (fallback?: boolean) => (fallback === undefined ? booleanish.optional() : booleanish.default(fallback)),
-  csv: (fallback?: string) => (fallback === undefined ? csv.optional() : z.string().default(fallback).pipe(csv)),
+  boolean: (fallback?: boolean) =>
+    fallback === undefined ? booleanish.optional() : booleanish.default(fallback),
+  csv: (fallback?: string) =>
+    fallback === undefined ? csv.optional() : z.string().default(fallback).pipe(csv),
   port: (fallback: number) => z.coerce.number().int().min(1).max(65535).default(fallback),
   int: (fallback: number) => z.coerce.number().int().default(fallback),
   url: () => z.url(),
-  secret: (minLength = 32) =>
-    z.string().min(minLength, `must be at least ${minLength} characters`),
+  secret: (minLength = 32) => z.string().min(minLength, `must be at least ${minLength} characters`),
 };
 
 /** Settings shared by every NestJS service. */

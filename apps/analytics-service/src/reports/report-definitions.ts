@@ -21,7 +21,12 @@ export interface ReportDefinition {
   query(q: QuerySql): RawBuilder<Record<string, unknown>>;
 }
 
-const col = (key: string, label: string, type: ColumnType, sortable = true): Column => ({ key, label, type, sortable });
+const col = (key: string, label: string, type: ColumnType, sortable = true): Column => ({
+  key,
+  label,
+  type,
+  sortable,
+});
 
 /** Employee name, number and teams for a user id expression (requires `left join dir_users u`). */
 const employeeColumns = sql`
@@ -32,7 +37,11 @@ const employeeColumns = sql`
     where ut.user_id = u.id and not t.archived) as "team"
 `;
 
-const employeeCols = [col('employee', 'Employee', 'string'), col('employeeId', 'Employee ID', 'string'), col('team', 'Team', 'string')];
+const employeeCols = [
+  col('employee', 'Employee', 'string'),
+  col('employeeId', 'Employee ID', 'string'),
+  col('team', 'Team', 'string'),
+];
 
 function overdueExpr(q: QuerySql, alias = 'e'): RawBuilder<boolean> {
   const e = (c: string) => sql.ref(`${alias}.${c}`);
@@ -86,7 +95,8 @@ export const REPORTS: ReportDefinition[] = [
   {
     key: 'assessment-performance',
     title: 'Assessment performance',
-    description: 'One row per learner and assessment: attempts, best and latest score, and when they passed.',
+    description:
+      'One row per learner and assessment: attempts, best and latest score, and when they passed.',
     columns: [
       ...employeeCols,
       col('assessment', 'Assessment', 'string'),
@@ -130,7 +140,8 @@ export const REPORTS: ReportDefinition[] = [
   {
     key: 'ai-coaching-performance',
     title: 'AI coaching performance',
-    description: 'One row per learner: role-play sessions, scores, pass rate and strongest / weakest rubric category.',
+    description:
+      'One row per learner: role-play sessions, scores, pass rate and strongest / weakest rubric category.',
     columns: [
       ...employeeCols,
       col('sessions', 'Sessions', 'integer'),
@@ -253,7 +264,8 @@ export const REPORTS: ReportDefinition[] = [
   {
     key: 'training-engagement',
     title: 'Training engagement',
-    description: 'One row per learner: lessons, assessments, AI practice and active days in the period.',
+    description:
+      'One row per learner: lessons, assessments, AI practice and active days in the period.',
     columns: [
       ...employeeCols,
       col('location', 'Location', 'string'),
@@ -311,7 +323,8 @@ export const REPORTS: ReportDefinition[] = [
   {
     key: 'course-effectiveness',
     title: 'Course effectiveness',
-    description: 'Assessments and AI scenarios with learners, scores, pass rates and attempts needed to pass.',
+    description:
+      'Assessments and AI scenarios with learners, scores, pass rates and attempts needed to pass.',
     columns: [
       col('itemType', 'Type', 'string'),
       col('item', 'Item', 'string'),
@@ -374,5 +387,11 @@ export const REPORTS: ReportDefinition[] = [
 export const REPORTS_BY_KEY = new Map(REPORTS.map((r) => [r.key, r]));
 
 export function reportDefinitionDto(def: ReportDefinition): analytics.ReportDefinitionDto {
-  return { key: def.key, title: def.title, description: def.description, columns: def.columns, defaultSort: def.defaultSort };
+  return {
+    key: def.key,
+    title: def.title,
+    description: def.description,
+    columns: def.columns,
+    defaultSort: def.defaultSort,
+  };
 }

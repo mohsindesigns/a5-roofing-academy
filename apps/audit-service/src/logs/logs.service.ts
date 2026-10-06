@@ -82,7 +82,10 @@ export class LogsService {
   ) {}
 
   async list(p: Principal, q: audit.ListAuditLogsQuery): Promise<audit.AuditLogPage> {
-    const { rows, nextCursor } = await this.repo.list(this.resolve(p, q), { limit: q.limit, cursor: q.cursor });
+    const { rows, nextCursor } = await this.repo.list(this.resolve(p, q), {
+      limit: q.limit,
+      cursor: q.cursor,
+    });
     return { items: rows.map(toSummary), nextCursor };
   }
 
@@ -92,8 +95,17 @@ export class LogsService {
     return toDetail(row);
   }
 
-  async history(p: Principal, resourceType: string, resourceId: string, q: audit.ResourceHistoryQuery): Promise<audit.AuditLogPage> {
-    const filter: ResolvedFilter = { organizationId: this.organizationFor(p, undefined), resourceType, resourceId };
+  async history(
+    p: Principal,
+    resourceType: string,
+    resourceId: string,
+    q: audit.ResourceHistoryQuery,
+  ): Promise<audit.AuditLogPage> {
+    const filter: ResolvedFilter = {
+      organizationId: this.organizationFor(p, undefined),
+      resourceType,
+      resourceId,
+    };
     const { rows, nextCursor } = await this.repo.list(filter, { limit: q.limit, cursor: q.cursor });
     return { items: rows.map(toSummary), nextCursor };
   }
@@ -101,10 +113,14 @@ export class LogsService {
   async facets(p: Principal, q: audit.AuditFacetsQuery): Promise<audit.AuditFacets> {
     const organizationId = this.organizationFor(p, q.organizationId);
     const to = q.to ? this.upperBound(q.to) : new Date();
-    const from = q.from ? this.lowerBound(q.from) : new Date(to.getTime() - DEFAULT_FACET_DAYS * DAY_MS);
+    const from = q.from
+      ? this.lowerBound(q.from)
+      : new Date(to.getTime() - DEFAULT_FACET_DAYS * DAY_MS);
     this.assertRange(from, to);
     if (to.getTime() - from.getTime() > MAX_FACET_DAYS * DAY_MS) {
-      throw new ValidationError([{ path: 'from', message: `Choose a range of at most ${MAX_FACET_DAYS} days.` }]);
+      throw new ValidationError([
+        { path: 'from', message: `Choose a range of at most ${MAX_FACET_DAYS} days.` },
+      ]);
     }
     const facets = await this.repo.facets(organizationId, from, to);
     return { from: from.toISOString(), to: to.toISOString(), ...facets };
@@ -118,7 +134,10 @@ export class LogsService {
   async exportCsv(p: Principal, q: audit.AuditFilter, res: Response): Promise<void> {
     const startedAt = new Date();
     const resolved = this.resolve(p, q);
-    const filter: ResolvedFilter = { ...resolved, to: resolved.to && resolved.to < startedAt ? resolved.to : startedAt };
+    const filter: ResolvedFilter = {
+      ...resolved,
+      to: resolved.to && resolved.to < startedAt ? resolved.to : startedAt,
+    };
     const max = this.config.exportMaxRows;
     const matches = await this.repo.countUpTo(filter, max + 1);
     if (matches > max) {
@@ -151,7 +170,10 @@ export class LogsService {
     });
     res.status(200);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="audit-log-${now.toISOString().slice(0, 10)}.csv"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="audit-log-${now.toISOString().slice(0, 10)}.csv"`,
+    );
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
 
@@ -196,7 +218,9 @@ export class LogsService {
   private organizationFor(p: Principal, requested: string | undefined): string {
     if (requested && requested !== p.organizationId) {
       if (!p.canCrossOrganizations('audit_logs.view')) {
-        throw new ForbiddenError('Only platform administrators can view another organization’s audit log.');
+        throw new ForbiddenError(
+          'Only platform administrators can view another organization’s audit log.',
+        );
       }
       return requested;
     }
@@ -209,12 +233,16 @@ export class LogsService {
 
   /** Exclusive upper bound: a plain date includes that whole day (UTC). */
   private upperBound(value: string): Date {
-    return DATE_ONLY.test(value) ? new Date(new Date(`${value}T00:00:00.000Z`).getTime() + DAY_MS) : new Date(value);
+    return DATE_ONLY.test(value)
+      ? new Date(new Date(`${value}T00:00:00.000Z`).getTime() + DAY_MS)
+      : new Date(value);
   }
 
   private assertRange(from: Date | undefined, to: Date | undefined): void {
     if (from && to && from.getTime() >= to.getTime()) {
-      throw new ValidationError([{ path: 'to', message: 'The end of the range must be after its start.' }]);
+      throw new ValidationError([
+        { path: 'to', message: 'The end of the range must be after its start.' },
+      ]);
     }
   }
 

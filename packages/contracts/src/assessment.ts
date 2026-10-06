@@ -60,11 +60,22 @@ export type AssessmentStatus = z.infer<typeof assessmentStatusSchema>;
  * submitted automatically) → `graded` | `pending_review` (open answers wait for a trainer) → `graded`.
  * Answers are frozen as soon as an attempt leaves `in_progress`.
  */
-export const ATTEMPT_STATUSES = ['in_progress', 'submitted', 'pending_review', 'graded', 'expired'] as const;
+export const ATTEMPT_STATUSES = [
+  'in_progress',
+  'submitted',
+  'pending_review',
+  'graded',
+  'expired',
+] as const;
 export const attemptStatusSchema = z.enum(ATTEMPT_STATUSES);
 export type AttemptStatus = z.infer<typeof attemptStatusSchema>;
 
-export const REVEAL_POLICIES = ['never', 'after_submit', 'after_pass', 'after_final_attempt'] as const;
+export const REVEAL_POLICIES = [
+  'never',
+  'after_submit',
+  'after_pass',
+  'after_final_attempt',
+] as const;
 export const revealPolicySchema = z.enum(REVEAL_POLICIES);
 export type RevealPolicy = z.infer<typeof revealPolicySchema>;
 
@@ -93,15 +104,29 @@ export const choiceIdSchema = z
 const choiceText = (max = 500) => z.string().trim().min(1, 'Required').max(max);
 const markdown = (max: number) => z.string().trim().min(1, 'Required').max(max);
 
-function checkUnique(ids: readonly string[], ctx: z.RefinementCtx, path: Array<string | number>, label: string): void {
+function checkUnique(
+  ids: readonly string[],
+  ctx: z.RefinementCtx,
+  path: Array<string | number>,
+  label: string,
+): void {
   const seen = new Set<string>();
   for (const id of ids) {
-    if (seen.has(id)) ctx.addIssue({ code: 'custom', path, message: `Each ${label} needs a unique id ("${id}" is repeated)` });
+    if (seen.has(id))
+      ctx.addIssue({
+        code: 'custom',
+        path,
+        message: `Each ${label} needs a unique id ("${id}" is repeated)`,
+      });
     seen.add(id);
   }
 }
 
-export const choiceOptionSchema = z.object({ id: choiceIdSchema, text: choiceText(), correct: z.boolean() });
+export const choiceOptionSchema = z.object({
+  id: choiceIdSchema,
+  text: choiceText(),
+  correct: z.boolean(),
+});
 export type ChoiceOption = z.infer<typeof choiceOptionSchema>;
 
 function singleCorrect(options: ChoiceOption[], ctx: z.RefinementCtx): void {
@@ -112,18 +137,30 @@ function singleCorrect(options: ChoiceOption[], ctx: z.RefinementCtx): void {
     'option',
   );
   if (options.filter((o) => o.correct).length !== 1) {
-    ctx.addIssue({ code: 'custom', path: ['options'], message: 'Mark exactly one option as correct' });
+    ctx.addIssue({
+      code: 'custom',
+      path: ['options'],
+      message: 'Mark exactly one option as correct',
+    });
   }
 }
 
 export const multipleChoiceConfigSchema = z
-  .object({ options: z.array(choiceOptionSchema).min(2, 'Add at least two options').max(10, 'Use at most 10 options') })
+  .object({
+    options: z
+      .array(choiceOptionSchema)
+      .min(2, 'Add at least two options')
+      .max(10, 'Use at most 10 options'),
+  })
   .superRefine((c, ctx) => singleCorrect(c.options, ctx));
 export type MultipleChoiceConfig = z.infer<typeof multipleChoiceConfigSchema>;
 
 export const multipleSelectConfigSchema = z
   .object({
-    options: z.array(choiceOptionSchema).min(2, 'Add at least two options').max(12, 'Use at most 12 options'),
+    options: z
+      .array(choiceOptionSchema)
+      .min(2, 'Add at least two options')
+      .max(12, 'Use at most 12 options'),
     /** `partial`: (correct picks − wrong picks) / correct options, never below zero. */
     scoring: scoringModeSchema.default('all_or_nothing'),
   })
@@ -135,7 +172,11 @@ export const multipleSelectConfigSchema = z
       'option',
     );
     if (!c.options.some((o) => o.correct)) {
-      ctx.addIssue({ code: 'custom', path: ['options'], message: 'Mark at least one option as correct' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['options'],
+        message: 'Mark at least one option as correct',
+      });
     }
   });
 export type MultipleSelectConfig = z.infer<typeof multipleSelectConfigSchema>;
@@ -157,7 +198,11 @@ export const shortAnswerConfigSchema = z
   })
   .superRefine((c, ctx) => {
     if (c.grading === 'auto' && c.acceptedAnswers.length === 0) {
-      ctx.addIssue({ code: 'custom', path: ['acceptedAnswers'], message: 'Add at least one accepted answer, or switch to manual review' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['acceptedAnswers'],
+        message: 'Add at least one accepted answer, or switch to manual review',
+      });
     }
   });
 export type ShortAnswerConfig = z.infer<typeof shortAnswerConfigSchema>;
@@ -172,7 +217,11 @@ export const longAnswerConfigSchema = z
   })
   .superRefine((c, ctx) => {
     if (c.minWords !== null && c.maxWords !== null && c.minWords > c.maxWords) {
-      ctx.addIssue({ code: 'custom', path: ['maxWords'], message: 'Maximum words must be at least the minimum' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['maxWords'],
+        message: 'Maximum words must be at least the minimum',
+      });
     }
   });
 export type LongAnswerConfig = z.infer<typeof longAnswerConfigSchema>;
@@ -204,7 +253,10 @@ export type ScenarioConfig = z.infer<typeof scenarioConfigSchema>;
 export const orderingConfigSchema = z
   .object({
     /** Items listed in the correct order. Learners always see them shuffled. */
-    items: z.array(z.object({ id: choiceIdSchema, text: choiceText(300) })).min(2, 'Add at least two items').max(10),
+    items: z
+      .array(z.object({ id: choiceIdSchema, text: choiceText(300) }))
+      .min(2, 'Add at least two items')
+      .max(10),
     /** `partial`: share of items in the correct position. */
     scoring: scoringModeSchema.default('all_or_nothing'),
   })
@@ -222,7 +274,14 @@ export const matchingConfigSchema = z
   .object({
     /** Correct pairs. Learners see the left side in this order and the right side shuffled. */
     pairs: z
-      .array(z.object({ leftId: choiceIdSchema, left: choiceText(300), rightId: choiceIdSchema, right: choiceText(300) }))
+      .array(
+        z.object({
+          leftId: choiceIdSchema,
+          left: choiceText(300),
+          rightId: choiceIdSchema,
+          right: choiceText(300),
+        }),
+      )
       .min(2, 'Add at least two pairs')
       .max(10),
     /** `partial`: share of pairs matched correctly. */
@@ -294,7 +353,11 @@ const versionFields = {
   tags: tagListSchema.default([]),
 };
 
-function versionInput<T extends QuestionType, C extends z.ZodType, E extends z.ZodRawShape>(type: T, config: C, extra: E) {
+function versionInput<T extends QuestionType, C extends z.ZodType, E extends z.ZodRawShape>(
+  type: T,
+  config: C,
+  extra: E,
+) {
   return z.object({ type: z.literal(type), config, ...versionFields, ...extra });
 }
 
@@ -336,7 +399,11 @@ export const answerResponseSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('short_answer'), text: z.string().max(500) }),
   z.object({ type: z.literal('long_answer'), text: z.string().max(30_000) }),
   z
-    .object({ type: z.literal('scenario'), optionId: choiceIdSchema.optional(), text: z.string().max(5000).optional() })
+    .object({
+      type: z.literal('scenario'),
+      optionId: choiceIdSchema.optional(),
+      text: z.string().max(5000).optional(),
+    })
     .refine((r) => (r.optionId === undefined) !== (r.text === undefined), {
       message: 'Answer a scenario with either an option or text',
     }),
@@ -352,7 +419,11 @@ export const correctAnswerSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('true_false'), value: z.boolean() }),
   z.object({ type: z.literal('short_answer'), acceptedAnswers: z.array(z.string()) }),
   z.object({ type: z.literal('long_answer'), sampleAnswer: z.string().nullable() }),
-  z.object({ type: z.literal('scenario'), optionId: z.string().nullable(), sampleAnswer: z.string().nullable() }),
+  z.object({
+    type: z.literal('scenario'),
+    optionId: z.string().nullable(),
+    sampleAnswer: z.string().nullable(),
+  }),
   z.object({ type: z.literal('ordering'), order: z.array(z.string()) }),
   z.object({ type: z.literal('matching'), matches: z.record(z.string(), z.string()) }),
 ]);
@@ -372,8 +443,16 @@ const learnerQuestionBase = {
 
 /** A drawn question as the learner sees it: options in the snapshotted order, no answer key. */
 export const learnerQuestionSchema = z.discriminatedUnion('type', [
-  z.object({ ...learnerQuestionBase, type: z.literal('multiple_choice'), options: z.array(choiceViewSchema) }),
-  z.object({ ...learnerQuestionBase, type: z.literal('multiple_select'), options: z.array(choiceViewSchema) }),
+  z.object({
+    ...learnerQuestionBase,
+    type: z.literal('multiple_choice'),
+    options: z.array(choiceViewSchema),
+  }),
+  z.object({
+    ...learnerQuestionBase,
+    type: z.literal('multiple_select'),
+    options: z.array(choiceViewSchema),
+  }),
   z.object({ ...learnerQuestionBase, type: z.literal('true_false') }),
   z.object({ ...learnerQuestionBase, type: z.literal('short_answer'), maxLength: z.int() }),
   z.object({
@@ -387,11 +466,19 @@ export const learnerQuestionSchema = z.discriminatedUnion('type', [
     type: z.literal('scenario'),
     scenario: z.string(),
     subQuestion: z.discriminatedUnion('kind', [
-      z.object({ kind: z.literal('multiple_choice'), prompt: z.string(), options: z.array(choiceViewSchema) }),
+      z.object({
+        kind: z.literal('multiple_choice'),
+        prompt: z.string(),
+        options: z.array(choiceViewSchema),
+      }),
       z.object({ kind: z.literal('open_response'), prompt: z.string(), maxLength: z.int() }),
     ]),
   }),
-  z.object({ ...learnerQuestionBase, type: z.literal('ordering'), items: z.array(choiceViewSchema) }),
+  z.object({
+    ...learnerQuestionBase,
+    type: z.literal('ordering'),
+    items: z.array(choiceViewSchema),
+  }),
   z.object({
     ...learnerQuestionBase,
     type: z.literal('matching'),
@@ -409,7 +496,13 @@ export const optionOrderSchema = z.object({
 });
 export type OptionOrder = z.infer<typeof optionOrderSchema>;
 
-export const QUESTION_OUTCOMES = ['correct', 'partial', 'incorrect', 'unanswered', 'pending_review'] as const;
+export const QUESTION_OUTCOMES = [
+  'correct',
+  'partial',
+  'incorrect',
+  'unanswered',
+  'pending_review',
+] as const;
 export const questionOutcomeSchema = z.enum(QUESTION_OUTCOMES);
 export type QuestionOutcome = z.infer<typeof questionOutcomeSchema>;
 
@@ -457,7 +550,9 @@ export type QuestionBankDetail = z.infer<typeof questionBankDetailSchema>;
 
 export const questionBankPageSchema = pageSchema(questionBankSummarySchema);
 
-export const listQuestionBanksQuerySchema = pageQuerySchema.extend({ includeArchived: queryBoolean });
+export const listQuestionBanksQuerySchema = pageQuerySchema.extend({
+  includeArchived: queryBoolean,
+});
 
 export const createQuestionBankRequestSchema = z.object({
   title: nameString(160),
@@ -605,14 +700,21 @@ export const assessmentConfigSchema = z.object({
   /** null = unlimited attempts. */
   maxAttempts: z.int().min(1).max(100).nullable(),
   /** null = untimed. Enforced by the server. */
-  timeLimitSeconds: z.int().min(60).max(8 * 3600).nullable(),
+  timeLimitSeconds: z
+    .int()
+    .min(60)
+    .max(8 * 3600)
+    .nullable(),
   randomizeQuestions: z.boolean(),
   randomizeOptions: z.boolean(),
   revealCorrectAnswers: revealPolicySchema,
   /** Show the score and per-question correctness to the learner. */
   revealScore: z.boolean(),
   /** Minutes a learner waits after an attempt before starting another (0 = no wait). */
-  retryCooldownMinutes: z.int().min(0).max(60 * 24 * 30),
+  retryCooldownMinutes: z
+    .int()
+    .min(0)
+    .max(60 * 24 * 30),
   /** Notify the learner's managers when an attempt ends with these outcomes. */
   notifyManagerOn: z.array(managerNotifyOutcomeSchema).transform((v) => [...new Set(v)]),
   /** Allow attempts outside a lesson (practice from the assessment library). */
@@ -634,15 +736,25 @@ export const DEFAULT_ASSESSMENT_CONFIG: AssessmentConfig = {
 };
 
 const configWithDefaults = z.object({
-  passingPercent: assessmentConfigSchema.shape.passingPercent.default(DEFAULT_ASSESSMENT_CONFIG.passingPercent),
-  maxAttempts: assessmentConfigSchema.shape.maxAttempts.default(DEFAULT_ASSESSMENT_CONFIG.maxAttempts),
-  timeLimitSeconds: assessmentConfigSchema.shape.timeLimitSeconds.default(DEFAULT_ASSESSMENT_CONFIG.timeLimitSeconds),
+  passingPercent: assessmentConfigSchema.shape.passingPercent.default(
+    DEFAULT_ASSESSMENT_CONFIG.passingPercent,
+  ),
+  maxAttempts: assessmentConfigSchema.shape.maxAttempts.default(
+    DEFAULT_ASSESSMENT_CONFIG.maxAttempts,
+  ),
+  timeLimitSeconds: assessmentConfigSchema.shape.timeLimitSeconds.default(
+    DEFAULT_ASSESSMENT_CONFIG.timeLimitSeconds,
+  ),
   randomizeQuestions: z.boolean().default(DEFAULT_ASSESSMENT_CONFIG.randomizeQuestions),
   randomizeOptions: z.boolean().default(DEFAULT_ASSESSMENT_CONFIG.randomizeOptions),
   revealCorrectAnswers: revealPolicySchema.default(DEFAULT_ASSESSMENT_CONFIG.revealCorrectAnswers),
   revealScore: z.boolean().default(DEFAULT_ASSESSMENT_CONFIG.revealScore),
-  retryCooldownMinutes: assessmentConfigSchema.shape.retryCooldownMinutes.default(DEFAULT_ASSESSMENT_CONFIG.retryCooldownMinutes),
-  notifyManagerOn: assessmentConfigSchema.shape.notifyManagerOn.default([...DEFAULT_ASSESSMENT_CONFIG.notifyManagerOn]),
+  retryCooldownMinutes: assessmentConfigSchema.shape.retryCooldownMinutes.default(
+    DEFAULT_ASSESSMENT_CONFIG.retryCooldownMinutes,
+  ),
+  notifyManagerOn: assessmentConfigSchema.shape.notifyManagerOn.default([
+    ...DEFAULT_ASSESSMENT_CONFIG.notifyManagerOn,
+  ]),
   allowStandalone: z.boolean().default(DEFAULT_ASSESSMENT_CONFIG.allowStandalone),
 });
 
@@ -681,7 +793,10 @@ const poolItemShape = {
 };
 
 /** Fixed question or pool rule. */
-export const assessmentItemInputSchema = z.discriminatedUnion('kind', [z.object(fixedItemShape), z.object(poolItemShape)]);
+export const assessmentItemInputSchema = z.discriminatedUnion('kind', [
+  z.object(fixedItemShape),
+  z.object(poolItemShape),
+]);
 export type AssessmentItemInput = z.input<typeof assessmentItemInputSchema>;
 
 /** Add one item; `position` inserts it (later items shift down), omitted appends it. */
@@ -921,7 +1036,12 @@ export const assessmentIntroSchema = z.object({
   /** null = unlimited. */
   attemptsRemaining: z.int().nullable(),
   inProgressAttempt: z
-    .object({ id: z.uuid(), attemptNumber: z.int(), startedAt: isoDateTime, expiresAt: isoDateTime.nullable() })
+    .object({
+      id: z.uuid(),
+      attemptNumber: z.int(),
+      startedAt: isoDateTime,
+      expiresAt: isoDateTime.nullable(),
+    })
     .nullable(),
   cooldownUntil: isoDateTime.nullable(),
   bestScorePercent: z.number().nullable(),

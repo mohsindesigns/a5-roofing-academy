@@ -18,7 +18,9 @@ export class PlatformController {
   constructor(@Inject(GATEWAY_CONFIG) private readonly config: GatewayConfig) {}
 
   private services(): Array<[Producer, string]> {
-    return Object.entries(this.config.serviceUrls).filter((e): e is [Producer, string] => Boolean(e[1]));
+    return Object.entries(this.config.serviceUrls).filter((e): e is [Producer, string] =>
+      Boolean(e[1]),
+    );
   }
 
   @Public()
@@ -26,7 +28,11 @@ export class PlatformController {
   async openapi() {
     const merged = {
       openapi: '3.0.0',
-      info: { title: 'A5 Roofing Sales Academy API', version: '1', description: 'Public API exposed through the gateway.' },
+      info: {
+        title: 'A5 Roofing Sales Academy API',
+        version: '1',
+        description: 'Public API exposed through the gateway.',
+      },
       servers: [{ url: '/' }],
       paths: {} as Record<string, unknown>,
       components: {
@@ -39,7 +45,9 @@ export class PlatformController {
     await Promise.all(
       this.services().map(async ([, url]) => {
         try {
-          const res = await fetch(new URL('/docs/json', url), { signal: AbortSignal.timeout(3_000) });
+          const res = await fetch(new URL('/docs/json', url), {
+            signal: AbortSignal.timeout(3_000),
+          });
           if (!res.ok) return;
           const doc = (await res.json()) as OpenApiDoc;
           Object.assign(merged.paths, doc.paths ?? {});
@@ -60,10 +68,18 @@ export class PlatformController {
       this.services().map(async ([name, url]) => {
         const started = Date.now();
         try {
-          const r = await fetch(new URL('/health/ready', url), { signal: AbortSignal.timeout(2_000) });
+          const r = await fetch(new URL('/health/ready', url), {
+            signal: AbortSignal.timeout(2_000),
+          });
           return { service: name, ok: r.ok, status: r.status, ms: Date.now() - started };
         } catch (err) {
-          return { service: name, ok: false, status: 0, ms: Date.now() - started, error: (err as Error).message };
+          return {
+            service: name,
+            ok: false,
+            status: 0,
+            ms: Date.now() - started,
+            error: (err as Error).message,
+          };
         }
       }),
     );

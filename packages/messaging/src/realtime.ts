@@ -27,7 +27,10 @@ export class RealtimeBus {
     await this.redis.publish(this.channel(userId), JSON.stringify(message));
   }
 
-  async subscribeUser(userId: string, listener: (msg: RealtimeMessage) => void): Promise<() => Promise<void>> {
+  async subscribeUser(
+    userId: string,
+    listener: (msg: RealtimeMessage) => void,
+  ): Promise<() => Promise<void>> {
     if (!this.subscriber) {
       this.subscriber = this.redis.duplicate();
       this.subscriber.on('message', (channel: string, raw: string) => {
