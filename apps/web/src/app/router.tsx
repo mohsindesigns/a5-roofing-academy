@@ -112,6 +112,48 @@ export const routes: RouteObject[] = [
                 lazy: page(() => import('@/features/learning/lesson-page'), 'LessonPage'),
               },
               {
+                path: 'training/:programId/lessons/:lessonId/assessment',
+                lazy: page(
+                  () => import('@/features/assessments/learner/assessment-page'),
+                  'AssessmentTakePage',
+                ),
+              },
+              {
+                path: 'content/assessments',
+                lazy: page(
+                  () => import('@/features/assessments/content/assessments-list-page'),
+                  'AssessmentsListPage',
+                ),
+              },
+              {
+                path: 'content/assessments/attempts',
+                lazy: page(
+                  () => import('@/features/assessments/content/attempts-review-page'),
+                  'AttemptsReviewPage',
+                ),
+              },
+              {
+                path: 'content/assessments/:id',
+                lazy: page(
+                  () => import('@/features/assessments/content/assessment-builder-page'),
+                  'AssessmentBuilderPage',
+                ),
+              },
+              {
+                path: 'content/questions',
+                lazy: page(
+                  () => import('@/features/assessments/content/question-bank-page'),
+                  'QuestionBankPage',
+                ),
+              },
+              {
+                path: 'content/questions/:id',
+                lazy: page(
+                  () => import('@/features/assessments/content/question-editor-page'),
+                  'QuestionEditorPage',
+                ),
+              },
+              {
                 path: 'notifications',
                 lazy: page(
                   () => import('@/features/notifications/notifications-page'),
