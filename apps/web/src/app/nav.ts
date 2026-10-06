@@ -3,11 +3,14 @@ import {
   Award,
   BarChart3,
   BookOpenCheck,
+  Bell,
   Building2,
   ClipboardList,
+  Film,
   GraduationCap,
   LayoutDashboard,
   MessagesSquare,
+  ScrollText,
   Settings,
   ShieldCheck,
   Users,
@@ -69,9 +72,9 @@ export const NAV: NavSection[] = [
     items: [
       {
         to: '/team',
-        ready: false,
         label: 'Team',
         icon: UsersRound,
+        mobile: true,
         visible: (p) =>
           p.hasAny(['enrollments.view', 'certificates.view']) &&
           p.scope('enrollments.view') !== 'own',
@@ -79,7 +82,6 @@ export const NAV: NavSection[] = [
       { to: '/people', label: 'People', icon: Users, visible: (p) => p.has('users.view') },
       {
         to: '/reports',
-        ready: false,
         label: 'Reports',
         icon: BarChart3,
         visible: (p) => p.hasAny(['reports.view', 'analytics.view']),
@@ -91,11 +93,16 @@ export const NAV: NavSection[] = [
     items: [
       {
         to: '/content/programs',
-        ready: false,
         label: 'Programs',
         icon: BookOpenCheck,
         visible: (p) => p.has('programs.view'),
         match: ['/content/programs'],
+      },
+      {
+        to: '/content/media',
+        label: 'Media library',
+        icon: Film,
+        visible: (p) => p.has('media.view'),
       },
       {
         to: '/content/assessments',
@@ -139,6 +146,18 @@ export const NAV: NavSection[] = [
         icon: ShieldCheck,
         visible: (p) => p.has('roles.view'),
         match: ['/admin/roles', '/admin/permissions'],
+      },
+      {
+        to: '/admin/notifications',
+        label: 'Notifications',
+        icon: Bell,
+        visible: (p) => p.has('notifications.manage'),
+      },
+      {
+        to: '/admin/audit',
+        label: 'Audit log',
+        icon: ScrollText,
+        visible: (p) => p.has('audit_logs.view'),
       },
       {
         to: '/admin/settings',

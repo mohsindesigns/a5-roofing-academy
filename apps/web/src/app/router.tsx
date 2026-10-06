@@ -1,4 +1,4 @@
-import { createBrowserRouter, type RouteObject } from 'react-router';
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { LoginPage } from '@/features/auth/login-page';
 import { ForgotPasswordPage } from '@/features/auth/forgot-password-page';
 import { SetPasswordPage } from '@/features/auth/set-password-page';
@@ -98,6 +98,54 @@ export const routes: RouteObject[] = [
               {
                 path: 'admin/settings',
                 lazy: page(() => import('@/features/settings/settings-page'), 'SettingsPage'),
+              },
+              {
+                path: 'team/approvals',
+                element: <Navigate to="/certification-center/approvals" replace />,
+              },
+              {
+                path: 'team',
+                lazy: page(() => import('@/features/team/team-page'), 'TeamPage'),
+              },
+              {
+                path: 'reports',
+                lazy: page(() => import('@/features/reports/reports-page'), 'ReportsPage'),
+              },
+              {
+                path: 'content/programs',
+                lazy: page(
+                  () => import('@/features/content/programs/programs-page'),
+                  'ProgramsPage',
+                ),
+              },
+              {
+                path: 'content/programs/:id',
+                lazy: page(
+                  () => import('@/features/content/programs/program-builder-page'),
+                  'ProgramBuilderPage',
+                ),
+              },
+              {
+                path: 'content/media',
+                lazy: page(
+                  () => import('@/features/content/media/media-library-page'),
+                  'MediaLibraryPage',
+                ),
+              },
+              {
+                path: 'admin/audit',
+                lazy: page(() => import('@/features/audit/audit-page'), 'AuditPage'),
+              },
+              {
+                path: 'admin/notifications',
+                lazy: page(
+                  () => import('@/features/notification-admin/notifications-admin-page'),
+                  'NotificationsAdminPage',
+                ),
+              },
+              {
+                path: 'admin/feature-flags',
+                element: <Navigate to="/admin/settings?tab=features" replace />,
               },
               {
                 path: 'training',

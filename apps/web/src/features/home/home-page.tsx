@@ -4,6 +4,7 @@ import { PageHeader, Section } from '@/components/ui';
 import { useMe, usePermissions } from '@/features/auth/session';
 import { visibleNav } from '@/app/nav';
 import { TraineeDashboard } from './trainee-dashboard';
+import { RoleDashboards } from './role-sections';
 
 /**
  * Starting point after sign-in. Role dashboards (trainee, manager, administrator) replace the
@@ -27,6 +28,7 @@ export function HomePage() {
           <TraineeDashboard />
         </div>
       )}
+      <RoleDashboards />
       {destinations.length > 1 && (
         <Section title="Go to">
           <ul className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">

@@ -10,6 +10,7 @@ import { useUi } from './ui-store';
 import { NotificationBell } from '@/features/notifications/notification-bell';
 import { useNotificationStream } from '@/features/notifications/use-notification-stream';
 import { UserMenu } from './user-menu';
+import { CommandPalette, SearchTrigger } from '@/features/search/command-palette';
 
 function isActive(item: NavItem, pathname: string): boolean {
   if (item.to === '/') return pathname === '/';
@@ -76,6 +77,9 @@ function Sidebar() {
           <BrandLockup collapsed={collapsed} />
         </NavLink>
       </div>
+      <div className="px-2.5 pb-3">
+        <SearchTrigger collapsed={collapsed} />
+      </div>
       <nav aria-label="Main" className="flex-1 overflow-y-auto px-2.5 pb-4">
         {sections.map((section, i) => (
           <div key={section.label ?? i} className={cn(i > 0 && 'mt-5')}>
@@ -127,6 +131,7 @@ function MobileTopBar() {
         <span className="text-sm font-semibold">Sales Academy</span>
       </NavLink>
       <div className="flex items-center gap-1">
+        <SearchTrigger collapsed className="size-9 w-9 border-0" />
         <NotificationBell />
         <UserMenu compact />
       </div>
@@ -207,6 +212,7 @@ export function AppLayout() {
         </main>
       </div>
       <MobileTabBar />
+      <CommandPalette />
     </div>
   );
 }
