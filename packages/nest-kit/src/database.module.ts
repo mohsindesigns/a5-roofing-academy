@@ -74,6 +74,7 @@ export class DatabaseModule {
               onSlowQuery: (e) =>
                 logger.warn({ durationMs: e.durationMs, sql: e.sql }, 'slow query'),
               onError: (e) => logger.debug({ err: e.error, sql: e.sql }, 'query error'),
+              onPoolError: (err) => logger.warn({ err }, 'idle database connection error'),
             });
           },
         },

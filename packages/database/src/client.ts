@@ -17,6 +17,8 @@ export interface DatabaseOptions {
   slowQueryMs?: number;
   onSlowQuery?: (event: { sql: string; durationMs: number }) => void;
   onError?: (event: { sql: string; error: unknown }) => void;
+  /** Errors on idle pooled connections (server restart, failover, terminated sessions). */
+  onPoolError?: (error: Error) => void;
 }
 
 export interface Database<DB> {
@@ -35,6 +37,9 @@ export function createDatabase<DB>(options: DatabaseOptions): Database<DB> {
     application_name: options.applicationName,
     statement_timeout: options.statementTimeoutMs ?? 15_000,
   });
+  // An idle client that the server terminates emits 'error' on the pool; without a listener Node
+  // treats it as uncaught and the process dies. The pool discards the client and reconnects.
+  pool.on('error', (error) => options.onPoolError?.(error));
   const slow = options.slowQueryMs ?? 500;
   const db = new Kysely<DB>({
     dialect: new PostgresDialect({ pool }),
