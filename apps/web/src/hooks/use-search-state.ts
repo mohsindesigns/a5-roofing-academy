@@ -22,7 +22,8 @@ export function useSearchState<T extends Record<string, string | undefined>>(def
         (prev) => {
           const next = new URLSearchParams(prev);
           for (const [k, v] of Object.entries(patch)) {
-            if (v === undefined || v === '' || v === defaults[k]) next.delete(k);
+            // An empty value is kept in the URL when the default is non-empty, so "all" stays selectable.
+            if (v === undefined || v === defaults[k] || (v === '' && !defaults[k])) next.delete(k);
             else next.set(k, String(v));
           }
           if (!('page' in patch)) next.delete('page');
