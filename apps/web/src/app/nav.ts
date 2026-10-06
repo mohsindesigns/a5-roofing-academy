@@ -57,7 +57,6 @@ export const NAV: NavSection[] = [
       },
       {
         to: '/certifications',
-        ready: false,
         label: 'Certifications',
         icon: Award,
         mobile: true,
@@ -114,10 +113,15 @@ export const NAV: NavSection[] = [
       },
       {
         to: '/certification-center',
-        ready: false,
         label: 'Certification center',
         icon: ShieldCheck,
-        visible: (p) => p.hasAny(['certifications.view', 'certificate_templates.view']),
+        visible: (p) =>
+          p.hasAny([
+            'certifications.view',
+            'certificate_templates.view',
+            'certificates.view',
+            'certificate_approvals.decide',
+          ]),
       },
     ],
   },
