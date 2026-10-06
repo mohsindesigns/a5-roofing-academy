@@ -86,6 +86,22 @@ export class UsersService {
     if (!admitted) throw new NotFoundError('User');
   }
 
+  /**
+   * Changing or disabling someone is only allowed when you could hold their roles yourself, so an
+   * administrator cannot edit (and then reset the password of) a more privileged account.
+   */
+  private async assertCanManageTarget(actor: Principal, targetId: string): Promise<void> {
+    if (targetId === actor.userId) return;
+    const roles = (await this.repo.rolesOf(this.db, [targetId])).get(targetId) ?? [];
+    AccessPolicy.assertCanManageUser(
+      actor,
+      await this.rolesWithPermissions(
+        this.db,
+        roles.map((r) => r.id),
+      ),
+    );
+  }
+
   private async rolesWithPermissions(trx: Db | Trx, roleIds: readonly string[]) {
     if (!roleIds.length) return [];
     const roles = await trx
@@ -246,6 +262,7 @@ export class UsersService {
     id: string,
   ): Promise<{ user: UserDetail; activationUrl: string | null }> {
     await this.assertInScope(actor, 'users.view', id);
+    await this.assertCanManageTarget(actor, id);
     const user = await this.db
       .selectFrom('users')
       .selectAll()
@@ -312,6 +329,7 @@ export class UsersService {
 
   async update(actor: Principal, id: string, input: UpdateUserInput): Promise<UserDetail> {
     await this.assertInScope(actor, 'users.update', id);
+    await this.assertCanManageTarget(actor, id);
     await assertOrgReferences(this.db, actor.organizationId, {
       locationId: input.locationId,
       departmentId: input.departmentId,
@@ -410,6 +428,7 @@ export class UsersService {
   async deactivate(actor: Principal, id: string, reason: string): Promise<UserDetail> {
     if (id === actor.userId) throw new ForbiddenError('You cannot deactivate your own account.');
     await this.assertInScope(actor, 'users.disable', id);
+    await this.assertCanManageTarget(actor, id);
     const user = await this.db
       .selectFrom('users')
       .select(['status'])
@@ -459,6 +478,7 @@ export class UsersService {
 
   async reactivate(actor: Principal, id: string): Promise<UserDetail> {
     await this.assertInScope(actor, 'users.disable', id);
+    await this.assertCanManageTarget(actor, id);
     const user = await this.db
       .selectFrom('users')
       .select(['status', 'activated_at'])
@@ -505,6 +525,7 @@ export class UsersService {
   async delete(actor: Principal, id: string): Promise<void> {
     if (id === actor.userId) throw new ForbiddenError('You cannot delete your own account.');
     await this.assertInScope(actor, 'users.view', id);
+    await this.assertCanManageTarget(actor, id);
     const user = await this.db
       .selectFrom('users')
       .select(['status', 'activated_at', 'email'])
@@ -572,7 +593,10 @@ export class UsersService {
   }
 
   async revokeSessions(actor: Principal, id: string, sessionId?: string): Promise<number> {
-    if (id !== actor.userId) await this.assertInScope(actor, 'sessions.revoke', id);
+    if (id !== actor.userId) {
+      await this.assertInScope(actor, 'sessions.revoke', id);
+      await this.assertCanManageTarget(actor, id);
+    }
     const revoked = await this.db.transaction().execute(async (trx) => {
       const rows = await trx
         .updateTable('sessions')

@@ -30,16 +30,9 @@ export interface IssuedSession {
 /** Window in which a just-rotated refresh token is still honoured (concurrent tabs). */
 const ROTATION_GRACE_MS = 20_000;
 
-class AccountLockedError extends AppError {
-  constructor(minutes: number) {
-    super(
-      423,
-      'ACCOUNT_LOCKED',
-      `Too many failed sign-in attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'} or reset your password.`,
-      { retryAfterMinutes: minutes },
-    );
-  }
-}
+/** One answer for unknown email, wrong password and locked account. */
+const GENERIC_LOGIN_FAILURE =
+  'The email or password is incorrect, or sign-in is paused for a few minutes after repeated attempts. Try again shortly or reset your password.';
 
 @Injectable()
 export class AuthService {
@@ -102,37 +95,49 @@ export class AuthService {
     if (!user) {
       await this.passwords.verifyAgainstDummy(password);
       await this.recordAttempt(email, null, false, 'unknown_email');
-      throw new UnauthenticatedError('INVALID_CREDENTIALS', 'The email or password is incorrect.');
+      throw new UnauthenticatedError('INVALID_CREDENTIALS', GENERIC_LOGIN_FAILURE);
     }
 
     const security = await this.securityOf(user.organization_id);
     if (user.locked_until && user.locked_until > new Date()) {
       await this.recordAttempt(email, user.id, false, 'locked');
-      throw new AccountLockedError(Math.ceil((user.locked_until.getTime() - Date.now()) / 60_000));
+      // Same answer as an unknown email or a wrong password, so lockout cannot reveal an account.
+      await this.passwords.verifyAgainstDummy(password);
+      throw new UnauthenticatedError('INVALID_CREDENTIALS', GENERIC_LOGIN_FAILURE);
     }
 
     const valid = await this.passwords.verify(user.password_hash, password);
     if (!valid) {
-      const failures = user.failed_login_count + 1;
-      const lock = failures >= security.lockoutThreshold;
-      await this.db
+      // One atomic statement: parallel guesses cannot all read the same counter and slip past
+      // the threshold.
+      const lockUntil = new Date(Date.now() + security.lockoutMinutes * 60_000);
+      const updated = await this.db
         .updateTable('users')
-        .set({
-          failed_login_count: lock ? 0 : failures,
-          locked_until: lock
-            ? new Date(Date.now() + security.lockoutMinutes * 60_000)
-            : user.locked_until,
-        })
+        .set((eb) => ({
+          failed_login_count: eb
+            .case()
+            .when(eb('failed_login_count', '+', 1), '>=', security.lockoutThreshold)
+            .then(0)
+            .else(eb('failed_login_count', '+', 1))
+            .end(),
+          locked_until: eb
+            .case()
+            .when(eb('failed_login_count', '+', 1), '>=', security.lockoutThreshold)
+            .then(lockUntil)
+            .else(eb.ref('locked_until'))
+            .end(),
+        }))
         .where('id', '=', user.id)
-        .execute();
+        .returning(['failed_login_count', 'locked_until'])
+        .executeTakeFirstOrThrow();
+      const lock = updated.failed_login_count === 0;
       await this.recordAttempt(
         email,
         user.id,
         false,
         lock ? 'locked_after_failures' : 'bad_password',
       );
-      if (lock) throw new AccountLockedError(security.lockoutMinutes);
-      throw new UnauthenticatedError('INVALID_CREDENTIALS', 'The email or password is incorrect.');
+      throw new UnauthenticatedError('INVALID_CREDENTIALS', GENERIC_LOGIN_FAILURE);
     }
 
     // Account state is only revealed after a correct password, so it cannot be probed.

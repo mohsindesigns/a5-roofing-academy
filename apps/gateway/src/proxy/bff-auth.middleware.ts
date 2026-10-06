@@ -30,11 +30,9 @@ export class BffAuthMiddleware implements NestMiddleware {
       next();
     } catch (err) {
       if (err instanceof AppError) {
-        res
-          .status(err.status)
-          .json({
-            error: { code: err.code, message: err.message, requestId: getContext()?.requestId },
-          });
+        res.status(err.status).json({
+          error: { code: err.code, message: err.message, requestId: getContext()?.requestId },
+        });
         return;
       }
       next(err);

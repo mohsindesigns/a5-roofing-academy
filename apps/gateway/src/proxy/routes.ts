@@ -99,3 +99,18 @@ export function matchRoute(path: string, method: string): RouteRule | null {
   }
   return null;
 }
+
+/**
+ * Whether a request path is already in canonical form. The gateway matches access rules on the
+ * raw path but upstream URLs are normalized, so `/public/rule/../../health` would otherwise be
+ * matched as one thing and forwarded as another. Anything that normalization would change (dot
+ * segments, encoded dots, slashes or backslashes, repeated slashes) is refused.
+ */
+export function isCanonicalPath(path: string): boolean {
+  if (/\\|%2e|%2f|%5c|%00|\/\/|\.\.?(\/|$)/i.test(path)) return false;
+  try {
+    return new URL(path, 'http://gateway.invalid').pathname === path;
+  } catch {
+    return false;
+  }
+}

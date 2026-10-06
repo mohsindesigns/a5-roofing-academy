@@ -138,6 +138,23 @@ describe('open answers go to review', () => {
 });
 
 describe('grading open answers', () => {
+  it('refuses to let a reviewer grade or override their own attempt', async () => {
+    const a = await submitWritten('shelby');
+    const detail = (await review(a.id, 'priya')).body as assessment.ReviewAttemptDetail;
+    const [essay] = openQuestions(detail);
+    const own = await h.as('shelby');
+    const grade = await h.http
+      .post(`/api/v1/attempts/${a.id}/grades`)
+      .set(own)
+      .send({ grades: [{ attemptQuestionId: essay!.attemptQuestionId, awardedPoints: 4 }] });
+    expect(grade.status).toBe(403);
+    const override = await h.http
+      .post(`/api/v1/attempts/${a.id}/override`)
+      .set(own)
+      .send({ scorePercent: 100, reason: 'Giving myself full marks' });
+    expect(override.status).toBe(403);
+  });
+
   it('finishes the attempt once every written answer is graded and publishes attempt.graded', async () => {
     const a = await submitWritten('tyler');
     const detail = (await review(a.id, 'shelby')).body as assessment.ReviewAttemptDetail;

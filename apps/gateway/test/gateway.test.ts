@@ -18,6 +18,7 @@ import { TEST_INTERNAL_SECRET, closeApp, createTestApp, testLogger } from '@a5/n
 import { TEST_REDIS_URL, testRedisNamespace } from '@a5/testing';
 import { GatewayModule } from '../src/app.module.js';
 import { loadGatewayConfig } from '../src/config.js';
+import { isCanonicalPath } from '../src/proxy/routes.js';
 
 const ORG = '0190a3b2-0000-7000-8000-00000000f001';
 const USER = '0190a3b2-0000-7000-8000-00000000f002';
@@ -227,6 +228,32 @@ describe('authentication', () => {
       .post('/api/v1/auth/logout')
       .set('authorization', await bearer());
     expect(res.body.principal).not.toBeNull();
+  });
+});
+
+describe('path canonicalization', () => {
+  it('accepts ordinary paths', () => {
+    expect(isCanonicalPath('/api/v1/programs/3f2a')).toBe(true);
+    expect(isCanonicalPath('/api/v1/media/hls/abc/master.m3u8')).toBe(true);
+  });
+
+  it.each([
+    '/api/v1/auth/password/../../../../health/ready',
+    '/api/v1/auth/password/%2e%2e/%2E%2e/health',
+    '/api/v1/auth//login',
+    '/api/v1/auth/password/..%2fhealth',
+    '/api/v1/auth\\login',
+    '/api/v1/auth/password/./x',
+  ])('refuses %s', (path) => {
+    expect(isCanonicalPath(path)).toBe(false);
+  });
+
+  it('answers 400 instead of forwarding a traversal path', async () => {
+    const res = await request(app.getHttpServer()).get(
+      '/api/v1/auth/password/%2e%2e/%2e%2e/health/ready',
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_PATH');
   });
 });
 

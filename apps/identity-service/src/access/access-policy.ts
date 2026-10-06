@@ -100,4 +100,24 @@ export const AccessPolicy = {
       }
     }
   },
+
+  /** Acting on another user (edit, disable, delete, end sessions) requires outranking their roles. */
+  assertCanManageUser(
+    actor: Principal,
+    targetRoles: ReadonlyArray<{
+      name: string;
+      data_scope: DataScope;
+      permissions: readonly string[];
+    }>,
+  ): void {
+    try {
+      AccessPolicy.assertCanAssignRoles(actor, targetRoles);
+    } catch (err) {
+      if (err instanceof ForbiddenError)
+        throw new ForbiddenError(
+          'This person holds access that is broader than yours, so only someone with at least their access can change their account.',
+        );
+      throw err;
+    }
+  },
 };

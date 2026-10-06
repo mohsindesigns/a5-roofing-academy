@@ -6,6 +6,7 @@ import { userScopeCondition } from '@a5/directory';
 import {
   ConflictError,
   EventBus,
+  ForbiddenError,
   InjectDb,
   NotFoundError,
   PreconditionError,
@@ -82,6 +83,12 @@ export class ReviewService {
       .executeTakeFirst();
     if (!row) throw new NotFoundError('Attempt');
     return row;
+  }
+
+  /** Anyone who takes assessments could otherwise award themselves a pass. */
+  private assertNotOwnAttempt(p: Principal, attempt: AttemptRow, verb: string): void {
+    if (attempt.user_id === p.userId)
+      throw new ForbiddenError(`You cannot ${verb} your own attempt. Ask another reviewer.`);
   }
 
   async list(p: Principal, f: AttemptListFilters): Promise<Page<assessment.ReviewAttemptSummary>> {
@@ -278,7 +285,11 @@ export class ReviewService {
       feedback?: string | null;
     }>,
   ): Promise<assessment.ReviewAttemptDetail> {
-    await this.scopedAttempt(this.db, p, 'assessment_attempts.grade', id);
+    this.assertNotOwnAttempt(
+      p,
+      await this.scopedAttempt(this.db, p, 'assessment_attempts.grade', id),
+      'grade',
+    );
     await withIntegrityErrors(() =>
       this.db.transaction().execute(async (trx) => {
         const now = this.clock.now();
@@ -383,7 +394,11 @@ export class ReviewService {
     id: string,
     input: { scorePercent: number; passed?: boolean; reason: string },
   ): Promise<assessment.ReviewAttemptDetail> {
-    await this.scopedAttempt(this.db, p, 'assessment_scores.override', id);
+    this.assertNotOwnAttempt(
+      p,
+      await this.scopedAttempt(this.db, p, 'assessment_scores.override', id),
+      'override the score of',
+    );
     await this.db.transaction().execute(async (trx) => {
       const attempt = await trx
         .selectFrom('attempts')

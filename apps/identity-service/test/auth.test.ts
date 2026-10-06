@@ -60,16 +60,30 @@ describe('login', () => {
     for (let i = 0; i < 4; i++)
       expect((await login(email, 'bad-password-attempt')).status).toBe(401);
     const locked = await login(email, 'bad-password-attempt');
-    expect(locked.status).toBe(423);
-    expect(locked.body.error.code).toBe('ACCOUNT_LOCKED');
+    // Indistinguishable from a wrong password, so lockout does not reveal that the account exists.
+    expect(locked.status).toBe(401);
+    expect(locked.body.error.code).toBe('INVALID_CREDENTIALS');
     // Even the right password is refused while locked.
-    expect((await login(email, h.password)).status).toBe(423);
+    const refused = await login(email, h.password);
+    expect(refused.status).toBe(401);
+    expect(refused.body.error.message).toBe(locked.body.error.message);
     const attempts = await h.db
       .selectFrom('login_attempts')
       .select('reason')
       .where('user_id', '=', PEOPLE.jordan.id)
       .execute();
     expect(attempts.map((a) => a.reason)).toContain('locked_after_failures');
+  });
+
+  it('counts parallel failed attempts atomically', async () => {
+    const target = h.email('hector');
+    await Promise.all(Array.from({ length: 5 }, () => login(target, 'bad-password-attempt')));
+    const row = await h.db
+      .selectFrom('users')
+      .select('locked_until')
+      .where('id', '=', PEOPLE.hector.id)
+      .executeTakeFirstOrThrow();
+    expect(row.locked_until).not.toBeNull();
   });
 
   it('refuses deactivated accounts only after a correct password', async () => {

@@ -14,7 +14,7 @@ import { RateLimiter } from '@a5/messaging';
 import { getContext, patchContext, type Logger } from '@a5/observability';
 import { GATEWAY_CONFIG, type GatewayConfig } from '../config.js';
 import { Authenticator } from './authenticator.js';
-import { matchRoute, type RouteRule } from './routes.js';
+import { isCanonicalPath, matchRoute, type RouteRule } from './routes.js';
 
 /** Hop-by-hop and internal headers that must never be forwarded from the client. */
 const STRIP_REQUEST = new Set([
@@ -86,6 +86,9 @@ export class ProxyMiddleware implements NestMiddleware {
     const path = req.originalUrl.split('?')[0]!;
     const rule = matchRoute(path, req.method);
     if (!rule) return next();
+    if (!isCanonicalPath(path)) {
+      return writeError(res, new AppError(400, 'INVALID_PATH', 'The request path is not valid.'));
+    }
 
     try {
       const principal = await this.authenticate(req, rule);

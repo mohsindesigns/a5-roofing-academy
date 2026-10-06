@@ -165,6 +165,32 @@ describe('user lifecycle', () => {
   });
 });
 
+describe('acting on more privileged accounts', () => {
+  it('stops an administrator from changing or disabling the super administrator', async () => {
+    const admin = await h.as('grant');
+    const target = `/api/v1/users/${PEOPLE.priya.id}`;
+    const edit = await h.http.patch(target).set(admin).send({ email: 'takeover@example.com' });
+    expect(edit.status).toBe(403);
+    const disable = await h.http
+      .post(`${target}/deactivate`)
+      .set(admin)
+      .send({ reason: 'Testing the boundary' });
+    expect(disable.status).toBe(403);
+    const revoke = await h.http.delete(`${target}/sessions`).set(admin);
+    expect(revoke.status).toBe(403);
+    const unchanged = await h.http.get(target).set(await h.as('priya'));
+    expect(unchanged.body.email).toBe('priya.raman@a5roofing.example');
+  });
+
+  it('lets the super administrator edit an administrator', async () => {
+    const res = await h.http
+      .patch(`/api/v1/users/${PEOPLE.grant.id}`)
+      .set(await h.as('priya'))
+      .send({ jobTitle: 'Director of Training Operations' });
+    expect(res.status).toBe(200);
+  });
+});
+
 describe('organization structure', () => {
   it('creates teams and changes members', async () => {
     const admin = await h.as('grant');
