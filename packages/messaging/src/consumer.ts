@@ -1,6 +1,16 @@
 import { hostname } from 'node:os';
 import type { Redis } from 'ioredis';
-import { EventContractError, parseEnvelope, type EventEnvelope, type EventType } from '@a5/events';
+import {
+  EventContractError,
+  PRODUCERS,
+  envelopeSchema,
+  parseEnvelope,
+  streamFor,
+  type EventEnvelope,
+  type EventType,
+  type Producer,
+} from '@a5/events';
+import { verifyEvent } from './signature.js';
 import { runWithContext, type Logger } from '@a5/observability';
 import type { RedisNamespace } from './redis.js';
 
@@ -19,6 +29,10 @@ export interface StreamConsumerOptions {
   group: string;
   /** Unprefixed stream names to read, e.g. `events:identity`. */
   streams: string[];
+  /** Producer verification secrets for streams this consumer is allowed to read. */
+  signingKeys?: Partial<Record<Producer, string>>;
+  /** Permit legacy unsigned envelopes only when explicitly enabled by configuration. */
+  allowUnsignedEvents?: boolean;
   logger: Logger;
   consumerName?: string;
   batchSize?: number;
@@ -204,7 +218,31 @@ export class StreamConsumer {
     const map = fieldsToMap(fields);
     let event: EventEnvelope | null;
     try {
-      event = parseEnvelope(JSON.parse(map.envelope ?? 'null'));
+      const raw = JSON.parse(map.envelope ?? 'null') as unknown;
+      const envelope = envelopeSchema.safeParse(raw);
+      if (!envelope.success) {
+        throw new EventContractError(`Malformed envelope: ${envelope.error.message}`);
+      }
+      const unprefixedStream = stream.startsWith(`${this.options.ns.prefix}:`)
+        ? stream.slice(this.options.ns.prefix.length + 1)
+        : '';
+      const expectedProducer = PRODUCERS.find((producer) => {
+        const root = streamFor(producer);
+        return unprefixedStream === root || unprefixedStream.startsWith(`${root}:`);
+      });
+      if (!expectedProducer) throw new EventContractError('Event arrived on an unknown producer stream');
+      if (envelope.data.producer !== expectedProducer) {
+        throw new EventContractError('Event producer does not match its stream');
+      }
+      if (envelope.data.signature) {
+        const secret = this.options.signingKeys?.[expectedProducer];
+        if (!secret || !verifyEvent(envelope.data as EventEnvelope, secret)) {
+          throw new EventContractError('Event signature is missing a trusted producer key or is invalid');
+        }
+      } else if (!this.options.allowUnsignedEvents) {
+        throw new EventContractError('Unsigned event envelopes are disabled');
+      }
+      event = parseEnvelope(envelope.data);
     } catch (err) {
       // Contract violations will never succeed on retry.
       await this.deadLetter(

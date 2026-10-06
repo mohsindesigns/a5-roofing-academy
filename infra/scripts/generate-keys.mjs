@@ -1,12 +1,16 @@
 #!/usr/bin/env node
-// Generates development secrets: an Ed25519 key pair for access tokens and an internal HMAC secret.
-// Writes them into .env (created from .env.example when missing). Never use these keys in production.
+// Generates development secrets: Ed25519 JWT keys, service auth secrets, and producer HMAC keys.
+// It creates .env from .env.example and refuses to replace an existing file. Never use these keys
+// in production.
 import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 
 const envPath = new URL('../../.env', import.meta.url);
 const examplePath = new URL('../../.env.example', import.meta.url);
-if (!existsSync(envPath)) copyFileSync(examplePath, envPath);
+if (existsSync(envPath)) {
+  throw new Error('.env already exists; refusing to overwrite local configuration or secrets.');
+}
+copyFileSync(examplePath, envPath);
 
 const { privateKey, publicKey } = generateKeyPairSync('ed25519', {
   publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -19,6 +23,21 @@ const values = {
   INTERNAL_AUTH_SECRET: randomBytes(32).toString('base64url'),
   STORAGE_SIGNING_SECRET: randomBytes(32).toString('base64url'),
 };
+for (const producer of [
+  'identity-service',
+  'learning-service',
+  'media-service',
+  'assessment-service',
+  'ai-coaching-service',
+  'certification-service',
+  'notification-service',
+  'analytics-service',
+  'audit-service',
+  'gateway',
+]) {
+  values[`EVENT_SIGNING_SECRET_${producer.toUpperCase().replace(/-/g, '_')}`] =
+    randomBytes(32).toString('base64url');
+}
 
 let content = readFileSync(envPath, 'utf8');
 for (const [key, value] of Object.entries(values)) {

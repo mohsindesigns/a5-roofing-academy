@@ -10,7 +10,12 @@ import {
   type InboxSchema,
   type OutboxSchema,
 } from '@a5/database';
-import { buildEvent, identityEvents, streamFor, type EventEnvelope } from '@a5/events';
+import {
+  buildEvent,
+  identityEvents,
+  streamFor,
+  type EventEnvelope,
+} from '@a5/events';
 import { uuidv7 } from '@a5/observability';
 import {
   TEST_REDIS_URL,
@@ -30,14 +35,28 @@ import {
   StreamPublisher,
   createRedis,
   processOnce,
+  signEvent,
+  verifyEvent,
   type Redis,
 } from './index.js';
 
 const logger = pino({ level: 'silent' });
 const ORG = '0190a3b2-0000-7000-8000-0000000000a1';
+const EVENT_SECRET = 'identity-event-signing-secret-for-tests-123456789';
+
+describe('event signatures', () => {
+  it('uses canonical envelope fields and detects altered events', () => {
+    const signed = userActivated();
+    const reordered = Object.fromEntries(Object.entries(signed).reverse()) as EventEnvelope;
+    expect(verifyEvent(signed, EVENT_SECRET)).toBe(true);
+    expect(verifyEvent(reordered, EVENT_SECRET)).toBe(true);
+    expect(verifyEvent(signed, 'another-event-signing-secret-for-tests-123456789')).toBe(false);
+    expect(verifyEvent({ ...signed, organizationId: null }, EVENT_SECRET)).toBe(false);
+  });
+});
 
 function userActivated(userId = uuidv7()): EventEnvelope {
-  return buildEvent(
+  return signEvent(buildEvent(
     identityEvents.userActivated,
     { userId },
     {
@@ -46,7 +65,7 @@ function userActivated(userId = uuidv7()): EventEnvelope {
       organizationId: ORG,
       actor: { type: 'system', id: null },
     },
-  );
+  ), EVENT_SECRET);
 }
 
 let tdb: TestDatabase;
@@ -93,6 +112,7 @@ describe('outbox → stream → consumer', () => {
       ns,
       group: 'test-consumer',
       streams: [stream],
+      signingKeys: { 'identity-service': EVENT_SECRET },
       logger,
       blockMs: 100,
     });
@@ -141,12 +161,13 @@ describe('outbox → stream → consumer', () => {
 
   it('retries failing handlers and dead-letters after max deliveries', async () => {
     const publisher = new StreamPublisher(redis, ns);
-    const stream = 'events:retry-test';
+    const stream = `${streamFor('identity-service')}:retry-test`;
     const consumer = new StreamConsumer({
       redis,
       ns,
       group: 'retry-group',
       streams: [stream],
+      signingKeys: { 'identity-service': EVENT_SECRET },
       logger,
       blockMs: 50,
       claimIdleMs: 1,
@@ -175,7 +196,7 @@ describe('outbox → stream → consumer', () => {
   });
 
   it('dead-letters malformed envelopes immediately', async () => {
-    const stream = 'events:malformed';
+    const stream = `${streamFor('identity-service')}:malformed-test`;
     const consumer = new StreamConsumer({
       redis,
       ns,
@@ -198,6 +219,82 @@ describe('outbox → stream → consumer', () => {
     await consumer.start();
     await waitFor(async () => (await redis.xlen(consumer.dlqKey)) === 1, {
       message: 'malformed dead letter',
+    });
+    await consumer.stop();
+  });
+
+  it('dead-letters producer mismatches and invalid signatures', async () => {
+    const identityStream = `${streamFor('identity-service')}:signature-test`;
+    const learningStream = `${streamFor('learning-service')}:producer-mismatch-test`;
+    const consumer = new StreamConsumer({
+      redis,
+      ns,
+      group: 'signature-checks',
+      streams: [identityStream, learningStream],
+      signingKeys: { 'identity-service': EVENT_SECRET },
+      logger,
+      blockMs: 50,
+    });
+    let calls = 0;
+    consumer.on('user.activated', async () => {
+      calls += 1;
+    });
+    await consumer.ensureGroups();
+    const signed = userActivated();
+    await redis.xadd(
+      ns.stream(learningStream),
+      '*',
+      'id',
+      signed.id,
+      'type',
+      signed.type,
+      'envelope',
+      JSON.stringify(signed),
+    );
+    await redis.xadd(
+      ns.stream(identityStream),
+      '*',
+      'id',
+      signed.id,
+      'type',
+      signed.type,
+      'envelope',
+      JSON.stringify({ ...signed, organizationId: null }),
+    );
+    await consumer.start();
+    await waitFor(async () => (await redis.xlen(consumer.dlqKey)) === 2, {
+      message: 'invalid producer and signature dead letters',
+    });
+    await consumer.stop();
+    expect(calls).toBe(0);
+  });
+
+  it('rejects unsigned envelopes unless the consumer explicitly allows compatibility mode', async () => {
+    const stream = `${streamFor('identity-service')}:unsigned-test`;
+    const consumer = new StreamConsumer({
+      redis,
+      ns,
+      group: 'unsigned-disabled',
+      streams: [stream],
+      signingKeys: { 'identity-service': EVENT_SECRET },
+      logger,
+      blockMs: 50,
+    });
+    const unsigned = buildEvent(
+      identityEvents.userActivated,
+      { userId: uuidv7() },
+      {
+        id: uuidv7(),
+        producer: 'identity-service',
+        organizationId: ORG,
+        actor: { type: 'system', id: null },
+      },
+    );
+    await consumer.ensureGroups();
+    await new StreamPublisher(redis, ns).publish([{ stream, envelope: unsigned }]);
+    await consumer.start();
+    await waitFor(async () => (await redis.xlen(consumer.dlqKey)) === 1, {
+      message: 'unsigned envelope dead letter',
     });
     await consumer.stop();
   });

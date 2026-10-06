@@ -8,7 +8,7 @@ test.describe('team progress for a manager', () => {
     // Home carries the manager section next to the learner view.
     await expect(page.getByRole('heading', { name: 'Your team' })).toBeVisible();
 
-    await page.getByRole('link', { name: 'Team', exact: true }).first().click();
+    await page.getByRole('link', { name: 'Trainees', exact: true }).click();
     await expect(page).toHaveURL(/\/team/);
     await expect(page.getByRole('heading', { name: 'Team', exact: true })).toBeVisible();
 

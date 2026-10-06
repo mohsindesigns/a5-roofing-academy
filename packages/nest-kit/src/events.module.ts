@@ -14,6 +14,7 @@ import {
   PRODUCERS,
   auditEvents,
   buildEvent,
+  eventSigningSecretEnvName,
   streamFor,
   type AuditRecord,
   type EventDefinition,
@@ -26,6 +27,7 @@ import {
   RedisNamespace,
   StreamConsumer,
   StreamPublisher,
+  signEvent,
   type DeliveryInfo,
   type Redis,
 } from '@a5/messaging';
@@ -58,7 +60,7 @@ export class EventBus {
     options: EmitOptions = {},
   ): EventEnvelope<z.infer<S>, T> {
     const ctx = getContext();
-    return buildEvent(def, payload, {
+    const event = buildEvent(def, payload, {
       id: uuidv7(),
       producer: this.config.serviceName,
       organizationId:
@@ -72,6 +74,9 @@ export class EventBus {
       causationId: ctx?.causationId ?? null,
       subject: options.subject ?? null,
     });
+    return this.config.eventSigningSecret
+      ? signEvent(event, this.config.eventSigningSecret)
+      : event;
   }
 
   async emit<T extends string, S extends z.ZodType>(
@@ -185,12 +190,26 @@ class EventsLifecycle implements OnApplicationBootstrap, BeforeApplicationShutdo
       const producers = h.meta.producers === 'all' ? PRODUCERS : h.meta.producers;
       for (const p of producers) streams.add(streamFor(p));
     }
+    if (!this.config.allowUnsignedEvents) {
+      for (const producer of PRODUCERS) {
+        if (
+          streams.has(streamFor(producer)) &&
+          !this.config.eventSigningKeys[producer]
+        ) {
+          throw new Error(
+            `Invalid event configuration: ${eventSigningSecretEnvName(producer)} is required to consume ${streamFor(producer)}`,
+          );
+        }
+      }
+    }
     this.consumer = new StreamConsumer({
       redis: this.redis,
       ns: this.ns,
       group: this.config.serviceName,
       streams: [...streams],
       logger: this.logger,
+      signingKeys: this.config.eventSigningKeys,
+      allowUnsignedEvents: this.config.allowUnsignedEvents,
     });
     for (const h of handlers) this.consumer.on(h.meta.type, h.handler);
     await this.consumer.start();

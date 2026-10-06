@@ -662,11 +662,17 @@ Typography: IBM Plex Sans / IBM Plex Mono (self-hosted), 13–14 px UI text,
 | Output         | Response DTO mapping; no DB rows returned directly                                                                   |
 | Transport      | Helmet headers, strict CORS allow-list, HSTS in production                                                           |
 | Abuse          | Redis rate limits per route class, login throttling, upload size limits                                              |
+| Events         | Producer-specific HMAC signatures; consumers bind the envelope producer to its Redis stream and verify the signature |
 | Files          | Type allow-list, magic-byte sniffing, generated keys, private buckets, signed URLs, scanning hook, no SVG for images |
 | Secrets        | Env-only, validated at boot, never logged (logger redaction)                                                         |
 | Audit          | Outbox-backed audit events for every sensitive mutation                                                              |
 | Public surface | Verification endpoint returns an allow-listed DTO; tokens are 192-bit random                                         |
 | AI             | Prompts never include other users' data; transcripts visible only to owner, trainers/managers in scope               |
+
+Event signatures use `EVENT_SIGNING_SECRET_<PRODUCER>` keys. Consumers receive the keys for the
+producer streams they read. `EVENTS_ALLOW_UNSIGNED` exists only for staged compatibility; it
+defaults on in development and tests, and off in staging and production. New deployments must
+keep it off after every producer has been configured with its signing secret.
 
 ---
 

@@ -1,4 +1,5 @@
 export * from './redis.js';
+export * from './signature.js';
 export * from './publisher.js';
 export * from './outbox-relay.js';
 export * from './consumer.js';

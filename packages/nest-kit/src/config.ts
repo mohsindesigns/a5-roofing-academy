@@ -1,5 +1,5 @@
 import { databaseEnvSchema, env, loadEnv, serviceEnvSchema, z } from '@a5/config';
-import type { Producer } from '@a5/events';
+import { eventSigningSecretEnvName, PRODUCERS, type Producer } from '@a5/events';
 
 export interface ServiceRuntimeConfig {
   serviceName: Producer;
@@ -11,6 +11,9 @@ export interface ServiceRuntimeConfig {
   redisUrl: string;
   redisNamespace: string;
   internalAuthSecret: string;
+  eventSigningSecret?: string;
+  eventSigningKeys: Partial<Record<Producer, string>>;
+  allowUnsignedEvents: boolean;
   databaseUrl?: string | undefined;
   databasePoolMax: number;
   databaseStatementTimeoutMs: number;
@@ -24,7 +27,13 @@ export interface ServiceRuntimeConfig {
   publicAppUrl: string;
 }
 
+const signingSecretShape = Object.fromEntries(
+  PRODUCERS.map((producer) => [eventSigningSecretEnvName(producer), z.string().min(32).optional()]),
+);
+
 const baseSchema = serviceEnvSchema.extend({
+  ...signingSecretShape,
+  EVENTS_ALLOW_UNSIGNED: env.boolean(),
   REDIS_NAMESPACE: z
     .string()
     .regex(/^[a-zA-Z0-9:_-]+$/)
@@ -59,6 +68,16 @@ export function loadServiceConfig<S extends z.ZodObject>(
     .extend(extra.shape);
   const raw = loadEnv(schema, options.source) as Record<string, unknown>;
   const nodeEnv = raw.NODE_ENV as ServiceRuntimeConfig['nodeEnv'];
+  const eventSigningKeys = Object.fromEntries(
+    PRODUCERS.flatMap((producer) => {
+      const secret = raw[eventSigningSecretEnvName(producer)] as string | undefined;
+      return secret ? [[producer, secret]] : [];
+    }),
+  ) as Partial<Record<Producer, string>>;
+  const eventSigningSecret = eventSigningKeys[serviceName];
+  if ((nodeEnv === 'production' || nodeEnv === 'staging') && !eventSigningSecret) {
+    throw new Error(`Invalid configuration:\n  - ${eventSigningSecretEnvName(serviceName)} is required`);
+  }
   return {
     serviceName,
     nodeEnv,
@@ -69,6 +88,11 @@ export function loadServiceConfig<S extends z.ZodObject>(
     redisUrl: raw.REDIS_URL as string,
     redisNamespace: raw.REDIS_NAMESPACE as string,
     internalAuthSecret: raw.INTERNAL_AUTH_SECRET as string,
+    eventSigningSecret,
+    eventSigningKeys,
+    allowUnsignedEvents:
+      (raw.EVENTS_ALLOW_UNSIGNED as boolean | undefined) ??
+      (nodeEnv === 'development' || nodeEnv === 'test'),
     databaseUrl: raw.DATABASE_URL as string | undefined,
     databasePoolMax: (raw.DATABASE_POOL_MAX as number | undefined) ?? 10,
     databaseStatementTimeoutMs: (raw.DATABASE_STATEMENT_TIMEOUT_MS as number | undefined) ?? 15_000,

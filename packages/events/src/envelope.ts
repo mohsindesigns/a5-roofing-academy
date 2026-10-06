@@ -14,6 +14,10 @@ export const PRODUCERS = [
 ] as const;
 export type Producer = (typeof PRODUCERS)[number];
 
+export function eventSigningSecretEnvName(producer: Producer): string {
+  return `EVENT_SIGNING_SECRET_${producer.toUpperCase().replace(/-/g, '_')}`;
+}
+
 /** Redis stream (without environment namespace) that carries a producer's events. */
 export function streamFor(producer: Producer): string {
   return `events:${producer.replace(/-service$/, '')}`;
@@ -37,6 +41,8 @@ export const envelopeSchema = z.object({
   causationId: z.string().nullable(),
   subject: z.object({ type: z.string(), id: z.string() }).nullable(),
   payload: z.unknown(),
+  /** HMAC-SHA256 over the canonical envelope fields, excluding this signature. */
+  signature: z.string().regex(/^[A-Za-z0-9_-]{43}$/).optional(),
 });
 
 export interface EventEnvelope<P = unknown, T extends string = string> {
@@ -51,4 +57,5 @@ export interface EventEnvelope<P = unknown, T extends string = string> {
   causationId: string | null;
   subject: { type: string; id: string } | null;
   payload: P;
+  signature?: string;
 }

@@ -72,14 +72,14 @@ export const NAV: NavSection[] = [
     items: [
       {
         to: '/team',
-        label: 'Team',
+        label: 'Trainees',
         icon: UsersRound,
         mobile: true,
         visible: (p) =>
           p.hasAny(['enrollments.view', 'certificates.view']) &&
           p.scope('enrollments.view') !== 'own',
       },
-      { to: '/people', label: 'People', icon: Users, visible: (p) => p.has('users.view') },
+      { to: '/people', label: 'Team', icon: Users, visible: (p) => p.has('users.view') },
       {
         to: '/reports',
         label: 'Reports',

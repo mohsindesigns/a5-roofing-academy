@@ -1,4 +1,4 @@
-# A5 Roofing Sales Academy — local environment.
+# A5 Roofing Sales Academy â€” local environment.
 #
 #   pnpm keys:generate                       # writes secrets into .env (read by compose)
 #   docker compose up -d postgres redis minio mailpit   # infrastructure only (run apps with `pnpm dev`)
@@ -11,6 +11,7 @@
 x-service-env: &service-env
   NODE_ENV: ${NODE_ENV:-development}
   SERVICE_ROLE: all
+  EVENTS_ALLOW_UNSIGNED: 'false'
   LOG_LEVEL: ${LOG_LEVEL:-info}
   REDIS_URL: redis://redis:6379
   REDIS_NAMESPACE: a5
@@ -50,7 +51,7 @@ services:
       POSTGRES_USER: a5
       POSTGRES_PASSWORD: a5_dev_password
       POSTGRES_DB: postgres
-    ports: ['5432:5432']
+    ports: ['5433:5432']
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/001-databases.sql:ro
@@ -104,6 +105,7 @@ services:
       <<: *service-env
       PORT: 4010
       DATABASE_URL: postgres://a5:a5_dev_password@postgres:5432/a5_identity
+      EVENT_SIGNING_SECRET_IDENTITY_SERVICE: ${EVENT_SIGNING_SECRET_IDENTITY_SERVICE:?run pnpm keys:generate}
       AUTH_JWT_PRIVATE_KEY: ${AUTH_JWT_PRIVATE_KEY:?run pnpm keys:generate}
       AUTH_JWT_PUBLIC_KEY: ${AUTH_JWT_PUBLIC_KEY:?run pnpm keys:generate}
       COOKIE_SECURE: 'false'
@@ -118,6 +120,11 @@ services:
         <<: *service-env,
         PORT: 4020,
         DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_learning',
+        EVENT_SIGNING_SECRET_LEARNING_SERVICE: '${EVENT_SIGNING_SECRET_LEARNING_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_IDENTITY_SERVICE: '${EVENT_SIGNING_SECRET_IDENTITY_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_MEDIA_SERVICE: '${EVENT_SIGNING_SECRET_MEDIA_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE: '${EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_AI_COACHING_SERVICE: '${EVENT_SIGNING_SECRET_AI_COACHING_SERVICE:?run pnpm keys:generate}',
       }
 
   media-service:
@@ -133,6 +140,7 @@ services:
         <<: *service-env,
         PORT: 4030,
         DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_media',
+        EVENT_SIGNING_SECRET_MEDIA_SERVICE: '${EVENT_SIGNING_SECRET_MEDIA_SERVICE:?run pnpm keys:generate}',
       }
 
   assessment-service:
@@ -144,6 +152,7 @@ services:
         <<: *service-env,
         PORT: 4040,
         DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_assessment',
+        EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE: '${EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE:?run pnpm keys:generate}',
       }
 
   ai-coaching-service:
@@ -158,6 +167,7 @@ services:
       <<: *service-env
       PORT: 4050
       DATABASE_URL: postgres://a5:a5_dev_password@postgres:5432/a5_ai
+      EVENT_SIGNING_SECRET_AI_COACHING_SERVICE: ${EVENT_SIGNING_SECRET_AI_COACHING_SERVICE:?run pnpm keys:generate}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 
@@ -174,6 +184,10 @@ services:
         <<: *service-env,
         PORT: 4060,
         DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_certification',
+        EVENT_SIGNING_SECRET_CERTIFICATION_SERVICE: '${EVENT_SIGNING_SECRET_CERTIFICATION_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_LEARNING_SERVICE: '${EVENT_SIGNING_SECRET_LEARNING_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE: '${EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_AI_COACHING_SERVICE: '${EVENT_SIGNING_SECRET_AI_COACHING_SERVICE:?run pnpm keys:generate}',
       }
 
   notification-service:
@@ -188,6 +202,12 @@ services:
       <<: *service-env
       PORT: 4070
       DATABASE_URL: postgres://a5:a5_dev_password@postgres:5432/a5_notification
+      EVENT_SIGNING_SECRET_NOTIFICATION_SERVICE: ${EVENT_SIGNING_SECRET_NOTIFICATION_SERVICE:?run pnpm keys:generate}
+      EVENT_SIGNING_SECRET_IDENTITY_SERVICE: ${EVENT_SIGNING_SECRET_IDENTITY_SERVICE:?run pnpm keys:generate}
+      EVENT_SIGNING_SECRET_LEARNING_SERVICE: ${EVENT_SIGNING_SECRET_LEARNING_SERVICE:?run pnpm keys:generate}
+      EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE: ${EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE:?run pnpm keys:generate}
+      EVENT_SIGNING_SECRET_AI_COACHING_SERVICE: ${EVENT_SIGNING_SECRET_AI_COACHING_SERVICE:?run pnpm keys:generate}
+      EVENT_SIGNING_SECRET_CERTIFICATION_SERVICE: ${EVENT_SIGNING_SECRET_CERTIFICATION_SERVICE:?run pnpm keys:generate}
       SMTP_URL: smtp://mailpit:1025
       EMAIL_FROM: 'A5 Sales Academy <academy@a5roofing.example>'
 
@@ -200,6 +220,11 @@ services:
         <<: *service-env,
         PORT: 4080,
         DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_analytics',
+        EVENT_SIGNING_SECRET_ANALYTICS_SERVICE: '${EVENT_SIGNING_SECRET_ANALYTICS_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_LEARNING_SERVICE: '${EVENT_SIGNING_SECRET_LEARNING_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE: '${EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_AI_COACHING_SERVICE: '${EVENT_SIGNING_SECRET_AI_COACHING_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_CERTIFICATION_SERVICE: '${EVENT_SIGNING_SECRET_CERTIFICATION_SERVICE:?run pnpm keys:generate}',
       }
 
   audit-service:
@@ -210,6 +235,16 @@ services:
         <<: *service-env,
         PORT: 4090,
         DATABASE_URL: 'postgres://a5:a5_dev_password@postgres:5432/a5_audit',
+        EVENT_SIGNING_SECRET_AUDIT_SERVICE: '${EVENT_SIGNING_SECRET_AUDIT_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_IDENTITY_SERVICE: '${EVENT_SIGNING_SECRET_IDENTITY_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_LEARNING_SERVICE: '${EVENT_SIGNING_SECRET_LEARNING_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_MEDIA_SERVICE: '${EVENT_SIGNING_SECRET_MEDIA_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE: '${EVENT_SIGNING_SECRET_ASSESSMENT_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_AI_COACHING_SERVICE: '${EVENT_SIGNING_SECRET_AI_COACHING_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_CERTIFICATION_SERVICE: '${EVENT_SIGNING_SECRET_CERTIFICATION_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_NOTIFICATION_SERVICE: '${EVENT_SIGNING_SECRET_NOTIFICATION_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_ANALYTICS_SERVICE: '${EVENT_SIGNING_SECRET_ANALYTICS_SERVICE:?run pnpm keys:generate}',
+        EVENT_SIGNING_SECRET_GATEWAY: '${EVENT_SIGNING_SECRET_GATEWAY:?run pnpm keys:generate}',
       }
 
   gateway:
@@ -221,6 +256,7 @@ services:
     environment:
       <<: *service-env
       PORT: 4000
+      EVENT_SIGNING_SECRET_GATEWAY: ${EVENT_SIGNING_SECRET_GATEWAY:?run pnpm keys:generate}
       AUTH_JWT_PUBLIC_KEY: ${AUTH_JWT_PUBLIC_KEY:?run pnpm keys:generate}
       CORS_ORIGINS: http://localhost:8080,http://localhost:5173
     ports: ['4000:4000']

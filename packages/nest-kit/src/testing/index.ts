@@ -35,6 +35,8 @@ export function testServiceConfig(
     redisUrl: process.env.TEST_REDIS_URL ?? 'redis://127.0.0.1:6379',
     redisNamespace: `test:${serviceName}:${Math.random().toString(36).slice(2, 10)}`,
     internalAuthSecret: TEST_INTERNAL_SECRET,
+    eventSigningKeys: {},
+    allowUnsignedEvents: true,
     databasePoolMax: 5,
     databaseStatementTimeoutMs: 10_000,
     swaggerEnabled: false,
