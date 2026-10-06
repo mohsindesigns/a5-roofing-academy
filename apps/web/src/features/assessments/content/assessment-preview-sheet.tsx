@@ -3,7 +3,7 @@ import { assessment } from '@a5/contracts';
 import { DialogRoot, ErrorState, Notice, SheetContent, Skeleton, Tag } from '@/components/ui';
 import { Markdown } from '@/components/markdown';
 import { errorMessage } from '@/lib/api/errors';
-import { CorrectAnswerView, lookupFromLearner } from '../answer-view';
+import { CorrectAnswerView, correctAnswerLabel, lookupFromLearner } from '../answer-view';
 import { usePreviewAssessment } from '../api';
 import { DIFFICULTY_LABELS, formatPoints } from '../labels';
 
@@ -80,7 +80,9 @@ export function AssessmentPreviewSheet({
                     </div>
                   )}
                   <div className="mt-2">
-                    <p className="mb-0.5 text-xs font-medium text-text-tertiary">Correct answer</p>
+                    <p className="mb-0.5 text-xs font-medium text-text-tertiary">
+                      {correctAnswerLabel(q.correctAnswer)}
+                    </p>
                     <CorrectAnswerView
                       correct={q.correctAnswer}
                       lookup={lookupFromLearner(q.question)}

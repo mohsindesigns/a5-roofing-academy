@@ -180,7 +180,7 @@ function ExistingQuestion({ id }: { id: string }) {
             { value: 'usage', label: 'Usage', count: q.usage.length },
           ]}
         />
-        <TabsContent value="edit" forceMount>
+        <TabsContent value="edit" forceMount className="data-[state=inactive]:hidden">
           <QuestionForm
             key={`${current.id}:${seed?.id ?? ''}`}
             initial={initial!}

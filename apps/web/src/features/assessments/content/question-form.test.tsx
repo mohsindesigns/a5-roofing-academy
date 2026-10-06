@@ -5,7 +5,7 @@ import { assessment } from '@a5/contracts';
 import { api } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import { renderWithDataRouter } from '../test-render';
-import { BANK_ID, bankDetail, bankSummary, questionDetail } from '../test-fixtures';
+import { BANK_ID, CATEGORY_ID, bankDetail, bankSummary, questionDetail } from '../test-fixtures';
 import { emptyForm, fromVersion } from './question-form-model';
 import { QuestionForm } from './question-form';
 
@@ -183,6 +183,12 @@ describe('editing a question', () => {
         {...props}
       />,
     );
+
+  it('shows the saved category once the bank categories have loaded', async () => {
+    renderEdit();
+    const category = await screen.findByRole('combobox', { name: /^Category/ });
+    await waitFor(() => expect(category).toHaveValue(CATEGORY_ID));
+  });
 
   it('shows the saved content and offers no save until something changes', () => {
     renderEdit();

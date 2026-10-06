@@ -21,6 +21,7 @@ import { errorMessage } from '@/lib/api/errors';
 import { formatDateTime } from '@/lib/format';
 import {
   CorrectAnswerView,
+  correctAnswerLabel,
   correctAnswerOf,
   lookupFromDefinition,
   ResponseView,
@@ -257,7 +258,7 @@ function Body({ a }: { a: Detail }) {
                   </div>
                   <div className="min-w-0">
                     <dt className="mb-0.5 text-xs font-medium text-text-tertiary">
-                      Correct answer
+                      {correctAnswerLabel(correctAnswerOf(q.definition))}
                     </dt>
                     <dd>
                       <CorrectAnswerView correct={correctAnswerOf(q.definition)} lookup={lookup} />

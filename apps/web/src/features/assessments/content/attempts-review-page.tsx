@@ -178,7 +178,12 @@ function AttemptsReview() {
                 </SortTh>
                 <Th className="hidden text-right sm:table-cell">Attempt</Th>
                 <Th>Status</Th>
-                <SortTh field="score" sort={state.sort} onSort={(sort) => setState({ sort })}>
+                <SortTh
+                  field="score"
+                  sort={state.sort}
+                  onSort={(sort) => setState({ sort })}
+                  className="hidden sm:table-cell"
+                >
                   Score
                 </SortTh>
                 <SortTh
@@ -216,18 +221,24 @@ function AttemptsReview() {
                     </Td>
                     <Td className="tabular hidden text-right sm:table-cell">{a.attemptNumber}</Td>
                     <Td>
-                      <StatusText tone={status.tone}>{status.label}</StatusText>
-                      {a.pendingReviewCount > 0 && (
-                        <Tag tone="warning" className="ml-2">
-                          {a.pendingReviewCount} to review
-                        </Tag>
-                      )}
+                      <span className="flex flex-col items-start gap-1">
+                        <StatusText tone={status.tone}>{status.label}</StatusText>
+                        {a.pendingReviewCount > 0 && (
+                          <Tag tone="warning">{a.pendingReviewCount} to review</Tag>
+                        )}
+                        {a.scorePercent !== null && (
+                          <span className="tabular text-sm text-text-secondary sm:hidden">
+                            {formatScore(a.scorePercent)}
+                            {a.passed !== null && ` · ${a.passed ? 'Passed' : 'Not passed'}`}
+                          </span>
+                        )}
+                      </span>
                     </Td>
-                    <Td>
+                    <Td className="hidden sm:table-cell">
                       {a.scorePercent === null ? (
                         <span className="text-text-tertiary">—</span>
                       ) : (
-                        <span className="inline-flex flex-wrap items-baseline gap-x-2">
+                        <span className="flex flex-col items-start">
                           <span className="tabular font-medium">{formatScore(a.scorePercent)}</span>
                           {a.passed !== null && (
                             <StatusText tone={a.passed ? 'success' : 'danger'}>

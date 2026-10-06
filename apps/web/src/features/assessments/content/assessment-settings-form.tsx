@@ -120,8 +120,13 @@ export function AssessmentSettingsForm({
         title="Passing and attempts"
         description="These values are what learners see on the intro screen and what the results use."
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Pass mark (%)" required error={errors.passingPercent?.message}>
+        <div className="grid gap-4">
+          <Field
+            label="Pass mark (%)"
+            required
+            className="max-w-[200px]"
+            error={errors.passingPercent?.message}
+          >
             <Input
               type="number"
               inputMode="decimal"
@@ -132,33 +137,35 @@ export function AssessmentSettingsForm({
               {...register('passingPercent')}
             />
           </Field>
-          <div className="grid content-start gap-2">
-            <Controller
-              control={control}
-              name="limitAttempts"
-              render={({ field }) => (
-                <SwitchRow
-                  checked={field.value}
-                  onChange={field.onChange}
-                  disabled={locked}
-                  title="Limit attempts"
-                  hint="Turn off to allow unlimited attempts."
-                />
-              )}
-            />
-            {limitAttempts && (
-              <Field label="Attempts allowed" hideLabel error={errors.maxAttempts?.message}>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={100}
-                  disabled={locked}
-                  {...register('maxAttempts')}
-                />
-              </Field>
+          <Controller
+            control={control}
+            name="limitAttempts"
+            render={({ field }) => (
+              <SwitchRow
+                checked={field.value}
+                onChange={field.onChange}
+                disabled={locked}
+                title="Limit attempts"
+                hint="Turn off to allow unlimited attempts."
+              />
             )}
-          </div>
+          />
+          {limitAttempts && (
+            <Field
+              label="Attempts allowed"
+              className="max-w-[200px]"
+              error={errors.maxAttempts?.message}
+            >
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={100}
+                disabled={locked}
+                {...register('maxAttempts')}
+              />
+            </Field>
+          )}
         </div>
         <Field
           label="Wait between attempts"

@@ -5,7 +5,7 @@ import { Button, EmptyState, ErrorState, Notice, Skeleton, StatusText, Tag } fro
 import { Markdown } from '@/components/markdown';
 import { errorMessage } from '@/lib/api/errors';
 import { formatDateTime } from '@/lib/format';
-import { CorrectAnswerView, lookupFromLearner } from '../answer-view';
+import { CorrectAnswerView, correctAnswerLabel, lookupFromLearner } from '../answer-view';
 import { useCheckAnswer, useQuestionPreview, useQuestionVersions } from '../api';
 import { QuestionInput } from '../learner/question-inputs';
 import { isAnswered, type Answer } from '../learner/quiz-state';
@@ -99,7 +99,9 @@ export function PreviewPanel({
               </p>
             )}
             <div className="mt-3">
-              <p className="mb-0.5 text-xs font-medium text-text-tertiary">Correct answer</p>
+              <p className="mb-0.5 text-xs font-medium text-text-tertiary">
+                {correctAnswerLabel(result.correctAnswer)}
+              </p>
               <CorrectAnswerView
                 correct={result.correctAnswer}
                 lookup={lookupFromLearner(p.question)}

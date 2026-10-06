@@ -225,3 +225,10 @@ export function correctAnswerOf(def: assessment.QuestionDefinition): Correct {
       };
   }
 }
+
+/** Heading for the answer key: written answers have a sample, not a single correct answer. */
+export function correctAnswerLabel(correct: Correct): string {
+  if (correct.type === 'long_answer') return 'Sample answer';
+  if (correct.type === 'scenario' && correct.optionId === null) return 'Sample answer';
+  return 'Correct answer';
+}

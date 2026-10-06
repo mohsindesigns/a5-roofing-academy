@@ -396,7 +396,7 @@ function ScenarioInput({
     <div className="grid gap-5">
       <div className="rounded-lg border border-border bg-surface-sunken/60 px-4 py-3">
         <p className="mb-1 text-xs font-medium text-text-tertiary">Scenario</p>
-        <Markdown>{question.scenario}</Markdown>
+        <Markdown className="text-base [&_p]:mb-2">{question.scenario}</Markdown>
       </div>
       <div>
         <div id={promptId} className="mb-3 font-medium">

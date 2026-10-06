@@ -135,13 +135,12 @@ function QuestionBank() {
         </Select>
         <Select
           aria-label="Category"
+          title={state.bankId ? undefined : 'Pick a bank to filter by category'}
           value={state.categoryId}
           disabled={!state.bankId}
           onChange={(e) => setState({ categoryId: e.target.value })}
         >
-          <option value="">
-            {state.bankId ? 'All categories' : 'Pick a bank to filter by category'}
-          </option>
+          <option value="">All categories</option>
           {bank.data?.categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -295,7 +294,7 @@ function QuestionBank() {
                   <Td className="hidden text-text-secondary md:table-cell">
                     {assessment.QUESTION_TYPE_LABELS[row.type]}
                   </Td>
-                  <Td className="hidden text-text-secondary lg:table-cell">
+                  <Td className="hidden whitespace-nowrap text-text-secondary lg:table-cell">
                     {row.category?.name ?? '—'}
                   </Td>
                   <Td className="hidden text-text-secondary sm:table-cell">

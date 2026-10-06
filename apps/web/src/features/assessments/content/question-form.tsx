@@ -265,7 +265,11 @@ export function QuestionForm({
             </Select>
           </Field>
           <Field label="Category" optional error={errorAt(form, 'categoryId')}>
-            <Select disabled={readOnly || !bankId} {...register('categoryId')}>
+            <Select
+              disabled={readOnly || !bankId}
+              value={watch('categoryId')}
+              onChange={(e) => form.setValue('categoryId', e.target.value, { shouldDirty: true })}
+            >
               <option value="">No category</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>

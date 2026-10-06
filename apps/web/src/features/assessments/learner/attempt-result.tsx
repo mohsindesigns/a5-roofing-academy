@@ -17,6 +17,7 @@ import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import {
   CorrectAnswerView,
+  correctAnswerLabel,
   lookupFromLearner,
   ResponseView,
   type ChoiceLookup,
@@ -47,7 +48,7 @@ function ScoreMeter({
 }) {
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
   return (
-    <div className="mt-3 w-full max-w-sm">
+    <div className="mt-3 w-72 max-w-full">
       <div
         role="img"
         aria-label={`Score ${score}%, pass mark ${passMark}%`}
@@ -124,7 +125,9 @@ function QuestionResult({
         </div>
         {q.correctAnswer && (
           <div className="min-w-0">
-            <dt className="mb-0.5 text-xs font-medium text-text-tertiary">Correct answer</dt>
+            <dt className="mb-0.5 text-xs font-medium text-text-tertiary">
+              {correctAnswerLabel(q.correctAnswer)}
+            </dt>
             <dd>
               <CorrectAnswerView correct={q.correctAnswer} lookup={lookup} />
             </dd>

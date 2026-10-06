@@ -33,7 +33,7 @@ function ItemRow({
 }) {
   const label = item.kind === 'question' ? 'this question' : 'this random draw';
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 px-4 py-3.5">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-4 py-3.5 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
       <span
         aria-hidden
         className="tabular mt-0.5 flex size-6 items-center justify-center rounded-full bg-surface-sunken text-sm font-medium text-text-secondary"
@@ -68,9 +68,11 @@ function ItemRow({
           </>
         ) : (
           <>
-            <p className="flex flex-wrap items-center gap-x-2 font-medium">
-              <Shuffle aria-hidden className="size-4 text-text-tertiary" />
-              Draw {item.count} at random from {item.bank.title}
+            <p className="flex items-start gap-2 font-medium">
+              <Shuffle aria-hidden className="mt-1 size-4 shrink-0 text-text-tertiary" />
+              <span>
+                Draw {item.count} at random from {item.bank.title}
+              </span>
             </p>
             <p className="mt-0.5 text-sm text-text-secondary">
               {describePoolFilters(item)}
@@ -92,7 +94,7 @@ function ItemRow({
         )}
       </div>
       {canEdit && (
-        <div className="flex items-center gap-0.5">
+        <div className="col-start-2 -ml-1.5 flex items-center gap-0.5 sm:col-start-3 sm:row-start-1 sm:ml-0">
           <IconButton
             label={`Move ${label} up`}
             size="sm"
@@ -109,10 +111,12 @@ function ItemRow({
           >
             <ArrowDown className="size-4" />
           </IconButton>
-          {item.kind === 'pool' && (
+          {item.kind === 'pool' ? (
             <IconButton label="Edit random draw" size="sm" disabled={busy} onClick={onEdit}>
               <Pencil className="size-4" />
             </IconButton>
+          ) : (
+            <span aria-hidden className="hidden w-[var(--a5-control-height-sm)] sm:block" />
           )}
           <IconButton label={`Remove ${label}`} size="sm" disabled={busy} onClick={onRemove}>
             <Trash2 className="size-4" />

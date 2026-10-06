@@ -153,7 +153,10 @@ export function PoolRuleDialog({
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Category" optional error={formState.errors.categoryId?.message}>
-              <Select {...register('categoryId')}>
+              <Select
+                value={categoryId}
+                onChange={(e) => setValue('categoryId', e.target.value, { shouldDirty: true })}
+              >
                 <option value="">Any category</option>
                 {bank.data?.categories.map((c) => (
                   <option key={c.id} value={c.id}>
