@@ -45,7 +45,9 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
+      # Every service suite creates throw-away databases and pools; cap parallelism so the default
+      # 100-connection PostgreSQL limit is not exhausted.
+      - run: pnpm test --concurrency=3
       - run: pnpm build
 
   audit:

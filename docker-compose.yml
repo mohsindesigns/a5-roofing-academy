@@ -45,6 +45,7 @@ x-service: &service
 services:
   postgres:
     image: postgres:16-alpine
+    command: ['postgres', '-c', 'max_connections=300']
     environment:
       POSTGRES_USER: a5
       POSTGRES_PASSWORD: a5_dev_password

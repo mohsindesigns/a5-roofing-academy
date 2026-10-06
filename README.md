@@ -98,7 +98,9 @@ pnpm test:e2e      # Playwright against a running, seeded stack (desktop + mobil
 
 Integration tests create a throw-away database per test file on the server in
 `TEST_DATABASE_URL` (default `postgres://a5:a5_dev_password@127.0.0.1:5432/postgres`) and use an
-isolated Redis key namespace, so suites run in parallel safely.
+isolated Redis key namespace, so suites run in parallel safely. Running every suite at once opens
+many connections: use `pnpm test --concurrency=3` against a default PostgreSQL (100 connections), or
+raise `max_connections` (the compose file sets 300).
 
 ## Configuration
 
