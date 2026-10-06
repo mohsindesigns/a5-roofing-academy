@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router';
 import { Ban, FilePlus2, RotateCw } from 'lucide-react';
 import {
   Button,
-  DescriptionList,
   EmptyState,
   ErrorState,
   Notice,
@@ -25,6 +24,7 @@ import type { CertificateDetail, CertificateEvent } from '../types';
 import { VerificationPanel } from '../verification-share';
 import { ReissueDialog, RevokeDialog } from './certificate-dialogs';
 import { CENTER_ROOT } from './nav';
+import { FactList } from '../fact-list';
 
 const EVENT_LABEL: Record<string, string> = {
   issued: 'Issued',
@@ -245,7 +245,7 @@ function Details({ c }: { c: CertificateDetail }) {
 
       <Section title="Certificate">
         <Panel>
-          <DescriptionList
+          <FactList
             columns={3}
             items={[
               { label: 'Recipient', value: c.recipientName },
@@ -285,7 +285,7 @@ function Details({ c }: { c: CertificateDetail }) {
       {c.renewal && (
         <Section title="Renewal">
           <Panel>
-            <DescriptionList
+            <FactList
               columns={3}
               items={[
                 {
@@ -314,7 +314,11 @@ function Details({ c }: { c: CertificateDetail }) {
       >
         {c.publicVerificationEnabled && (
           <Panel>
-            <VerificationPanel url={c.verificationUrl} certificateNumber={c.certificateNumber} />
+            <VerificationPanel
+              url={c.verificationUrl}
+              certificateNumber={c.certificateNumber}
+              audience="admin"
+            />
           </Panel>
         )}
       </Section>

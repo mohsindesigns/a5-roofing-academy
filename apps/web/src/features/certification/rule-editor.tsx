@@ -18,6 +18,7 @@ import {
   Select,
 } from '@/components/ui';
 import { ApiError } from '@/lib/api/errors';
+import { ReadOnlyChips } from './read-only-chips';
 import { cn } from '@/lib/cn';
 import {
   programStructureQuery,
@@ -188,7 +189,7 @@ function NumberField({
         aria-describedby={describedBy}
         trailing={
           unit ? (
-            <span className="pointer-events-none text-sm text-text-tertiary">{unit}</span>
+            <span className="pointer-events-none text-sm text-text-secondary">{unit}</span>
           ) : undefined
         }
         onChange={(e) => onChange(e.target.value === '' ? UNSET : Number(e.target.value))}
@@ -295,14 +296,21 @@ function ScenarioFilter({
           : 'Leave empty to count every scenario.'
       }
     >
-      <MultiSelect
-        options={scenarios.options.map((o) => ({ value: o.id, label: o.label }))}
-        value={selected}
-        onChange={onChange}
-        placeholder="Search scenarios"
-        loading={scenarios.state === 'loading'}
-        emptyText={disabled ? '' : 'No scenarios'}
-      />
+      {disabled ? (
+        <ReadOnlyChips
+          ids={selected}
+          labels={Object.fromEntries(scenarios.options.map((o) => [o.id, o.label]))}
+          empty="Every scenario counts."
+        />
+      ) : (
+        <MultiSelect
+          options={scenarios.options.map((o) => ({ value: o.id, label: o.label }))}
+          value={selected}
+          onChange={onChange}
+          placeholder="Search scenarios"
+          loading={scenarios.state === 'loading'}
+        />
+      )}
     </Field>
   );
 }
@@ -662,25 +670,35 @@ function LeafRow({
           invalid={Boolean(problem)}
         />
         {rule.type !== 'approval' && (
-          <div className="mt-3 sm:max-w-sm">
-            <Field
-              label="Custom wording"
-              optional
-              hint="Replaces the automatic description people see."
+          <div className="mt-3">
+            <OptionalToggle
+              label="Use my own wording"
+              checked={rule.label !== undefined}
+              disabled={disabled}
+              onChange={(on) => onRule(path, { ...rule, label: on ? '' : undefined } as Rule)}
             >
-              <Input
-                disabled={disabled}
-                maxLength={200}
-                value={rule.label ?? ''}
-                onChange={(e) =>
-                  onRule(path, { ...rule, label: e.target.value || undefined } as Rule)
-                }
-              />
-            </Field>
+              <div className="sm:max-w-md">
+                <Field
+                  label="Wording shown to people"
+                  hint="Replaces the automatic description. Leave empty to use the automatic one."
+                >
+                  <Input
+                    disabled={disabled}
+                    maxLength={200}
+                    value={rule.label ?? ''}
+                    onChange={(e) => onRule(path, { ...rule, label: e.target.value } as Rule)}
+                  />
+                </Field>
+              </div>
+            </OptionalToggle>
           </div>
         )}
       </div>
-      {problem && <p className="mt-2 text-sm font-medium text-danger">{problem}</p>}
+      {problem && (
+        <p data-problem className="mt-2 text-sm font-medium text-danger">
+          {problem}
+        </p>
+      )}
     </li>
   );
 }
@@ -813,7 +831,11 @@ function GroupEditor({
           })}
         </ul>
       )}
-      {own && <p className="px-4 pb-2 text-sm font-medium text-danger">{own.message}</p>}
+      {own && (
+        <p data-problem className="px-4 pb-2 text-sm font-medium text-danger">
+          {own.message}
+        </p>
+      )}
       {!disabled && (
         <div className="border-t border-divider px-4 py-2.5">
           <AddMenu

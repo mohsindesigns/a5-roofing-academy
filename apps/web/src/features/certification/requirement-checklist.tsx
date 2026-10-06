@@ -51,7 +51,7 @@ function Row({ item }: { item: RequirementItem }) {
           </span>
         </p>
         {item.unknown ? (
-          <p aria-hidden className="text-xs text-text-tertiary">
+          <p aria-hidden className="text-xs text-text-secondary">
             Status not available yet.
           </p>
         ) : (
@@ -66,7 +66,7 @@ function Row({ item }: { item: RequirementItem }) {
                   className="max-w-[220px] flex-1"
                 />
               )}
-              {detail && <span className="tabular text-xs text-text-tertiary">{detail}</span>}
+              {detail && <span className="tabular text-xs text-text-secondary">{detail}</span>}
             </div>
           )
         )}

@@ -1,7 +1,6 @@
 import { Link, useParams } from 'react-router';
 import {
   Button,
-  DescriptionList,
   EmptyState,
   ErrorState,
   Notice,
@@ -20,6 +19,7 @@ import { renewalAction } from './mine';
 import { RequirementChecklist } from './requirement-checklist';
 import { CertificateStatus } from './status';
 import { VerificationPanel } from './verification-share';
+import { FactList } from './fact-list';
 
 function MyCertificate() {
   const { id = '' } = useParams();
@@ -119,7 +119,7 @@ function MyCertificate() {
 
       <Section title="Certificate">
         <Panel>
-          <DescriptionList
+          <FactList
             columns={3}
             items={[
               { label: 'Awarded to', value: c.recipientName },

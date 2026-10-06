@@ -78,7 +78,7 @@ function ProgressCell({ row }: { row: TeamStatusRow }) {
       </span>
     );
   }
-  if (row.totalCount === 0) return <span className="text-sm text-text-tertiary">—</span>;
+  if (row.totalCount === 0) return <span className="text-sm text-text-secondary">—</span>;
   return (
     <div className="flex min-w-[140px] items-center gap-3">
       <ProgressBar
@@ -271,7 +271,7 @@ function TeamCertifications() {
               <tr>
                 <Th>Person</Th>
                 <Th className="hidden md:table-cell">Certification</Th>
-                <Th>Status</Th>
+                <Th className="hidden sm:table-cell">Status</Th>
                 <Th className="hidden sm:table-cell">Progress or validity</Th>
                 <Th className="hidden lg:table-cell">Certificate</Th>
               </tr>
@@ -304,11 +304,14 @@ function TeamCertifications() {
                       <span className="mt-1 block text-sm text-text-secondary md:hidden">
                         {row.definition.name}
                       </span>
+                      <span className="mt-1 block sm:hidden">
+                        <TeamStateStatus state={row.state} />
+                      </span>
                     </Td>
                     <Td className="hidden text-text-secondary md:table-cell">
                       {row.definition.name}
                     </Td>
-                    <Td>
+                    <Td className="hidden sm:table-cell">
                       <TeamStateStatus state={row.state} />
                     </Td>
                     <Td className="hidden sm:table-cell">
@@ -324,7 +327,7 @@ function TeamCertifications() {
                           {row.certificate.certificateNumber}
                         </Link>
                       ) : (
-                        <span className="text-text-tertiary">—</span>
+                        <span className="text-text-secondary">—</span>
                       )}
                     </Td>
                   </Tr>

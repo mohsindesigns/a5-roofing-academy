@@ -15,7 +15,7 @@ export function PersonCell({
       <Avatar name={name} size={size} />
       <span className="min-w-0">
         <span className="block truncate font-medium">{name}</span>
-        {detail && <span className="block truncate text-sm text-text-tertiary">{detail}</span>}
+        {detail && <span className="block truncate text-sm text-text-secondary">{detail}</span>}
       </span>
     </span>
   );

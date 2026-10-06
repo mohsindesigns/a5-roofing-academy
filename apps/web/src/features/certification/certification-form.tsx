@@ -27,6 +27,7 @@ import {
 import { organizationToken, type DefinitionFormValues } from './definition-form';
 import { ImageUploader } from './image-upload';
 import { APPROVAL_POLICY_LABEL } from './labels';
+import { ReadOnlyChips } from './read-only-chips';
 import { RuleEditor } from './rule-editor';
 import { stripApprovals } from './rule-model';
 import type { CertificationDetail } from './types';
@@ -139,15 +140,23 @@ function ProgramsSection({ values, patch, errors, readOnly, detail }: FormProps)
           error={errors['programIds']}
           hint={deniedHint(programs.error, 'programs')}
         >
-          <MultiSelect
-            options={options}
-            value={values.programIds}
-            selectedLabels={known}
-            onChange={(programIds) => patch({ programIds })}
-            loading={programs.isPending}
-            placeholder={readOnly ? '' : 'Search programs'}
-            max={20}
-          />
+          {readOnly ? (
+            <ReadOnlyChips
+              ids={values.programIds}
+              labels={{ ...Object.fromEntries(options.map((o) => [o.value, o.label])), ...known }}
+              empty="No programs linked."
+            />
+          ) : (
+            <MultiSelect
+              options={options}
+              value={values.programIds}
+              selectedLabels={known}
+              onChange={(programIds) => patch({ programIds })}
+              loading={programs.isPending}
+              placeholder="Search programs"
+              max={20}
+            />
+          )}
         </Field>
       </Panel>
     </Section>
@@ -215,7 +224,7 @@ function RequirementsSection({
               >
                 Issue automatically
               </label>
-              <p className="text-xs text-text-tertiary">
+              <p className="text-xs text-text-secondary">
                 {values.automaticIssuance
                   ? 'The certificate is issued as soon as requirements (and approval) are complete.'
                   : 'An administrator issues each certificate by hand from the issued list.'}
@@ -337,7 +346,7 @@ function ValiditySection({ values, patch, errors, showProblems, readOnly, detail
               disabled={readOnly}
               value={Number.isFinite(values.windowDays) ? values.windowDays : ''}
               trailing={
-                <span className="pointer-events-none text-sm text-text-tertiary">days</span>
+                <span className="pointer-events-none text-sm text-text-secondary">days</span>
               }
               onChange={(e) =>
                 patch({ windowDays: e.target.value === '' ? Number.NaN : Number(e.target.value) })
@@ -566,7 +575,7 @@ function CertificateSection(props: FormProps) {
               className={
                 errors['badgeColor']
                   ? 'mt-1.5 text-xs font-medium text-danger'
-                  : 'mt-1.5 text-xs text-text-tertiary'
+                  : 'mt-1.5 text-xs text-text-secondary'
               }
             >
               {errors['badgeColor'] ?? 'Six-digit hex, for example #B87333.'}
@@ -596,7 +605,7 @@ function CertificateSection(props: FormProps) {
             >
               Allow public verification
             </label>
-            <p className="text-xs text-text-tertiary">
+            <p className="text-xs text-text-secondary">
               Anyone with a certificate&rsquo;s link or QR code can check it. The page shows the
               holder&rsquo;s name, the certification, dates and status. Turn this off and the link
               stops working.
@@ -731,12 +740,12 @@ function NumberingSection({
         </Field>
         <dl className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-medium text-text-tertiary">Example</dt>
+            <dt className="text-xs font-medium text-text-secondary">Example</dt>
             <dd className="font-mono">{example ?? '—'}</dd>
           </div>
           {detail && (
             <div>
-              <dt className="text-xs font-medium text-text-tertiary">
+              <dt className="text-xs font-medium text-text-secondary">
                 Next number with the saved pattern
               </dt>
               <dd className="font-mono">{detail.numberPreview}</dd>

@@ -40,6 +40,16 @@ import { CENTER_ROOT } from './nav';
 
 type Errors = Record<string, string>;
 
+/** After a failed submit, bring the first problem into view and focus it when it is a control. */
+function focusFirstProblem() {
+  window.setTimeout(() => {
+    const target = document.querySelector<HTMLElement>('[aria-invalid="true"], [data-problem]');
+    if (!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (target.matches('input, select, textarea, button')) target.focus({ preventScroll: true });
+  }, 0);
+}
+
 /** Keys of the form whose server-side error clears when the person edits the field. */
 function clearedBy(patchKeys: string[]): string[] {
   const keys = [...patchKeys];
@@ -72,8 +82,10 @@ function useDefinitionForm(initial: DefinitionFormValues) {
     if (!(err instanceof ApiError)) return errorMessage(err);
     const next: Errors = {};
     for (const f of err.fields) next[fieldForPath(f.path.split('.'))] ??= f.message;
+    // A taken code comes back as a conflict, not a field error; show it beside the field.
+    if (err.code === 'CODE_TAKEN') next['code'] = err.message;
     setServerErrors(next);
-    return err.fields.length === 0 || Object.keys(next).length === 0 ? err.message : null;
+    return Object.keys(next).length === 0 ? err.message : null;
   };
 
   const errors: Errors = showProblems ? { ...local.errors, ...serverErrors } : serverErrors;
@@ -107,7 +119,8 @@ function CreateCertification() {
     form.setFormError(null);
     if (!form.local.request) {
       form.setShowProblems(true);
-      toast.error('Some fields need attention', 'The first one is marked below.');
+      toast.error('Some fields need attention', 'The first one is marked on the page.');
+      focusFirstProblem();
       return;
     }
     create.mutate(form.local.request, {
@@ -192,7 +205,8 @@ function EditCertification({ detail }: { detail: CertificationDetail }) {
     const request = form.local.request;
     if (!request) {
       form.setShowProblems(true);
-      toast.error('Some fields need attention', 'The first one is marked below.');
+      toast.error('Some fields need attention', 'The first one is marked on the page.');
+      focusFirstProblem();
       return;
     }
     const body = baseline ? changedFields(baseline, request) : request;

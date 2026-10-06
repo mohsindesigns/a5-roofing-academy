@@ -260,7 +260,7 @@ function OrganizationSettings({
               Save settings
             </Button>
             {settings.updatedAt && (
-              <span className="text-sm text-text-tertiary">
+              <span className="text-sm text-text-secondary">
                 Last saved {formatDateTime(settings.updatedAt)}
               </span>
             )}
@@ -353,11 +353,11 @@ function PatternDialog({
           </Field>
           <dl className="grid gap-2 text-sm">
             <div>
-              <dt className="text-xs font-medium text-text-tertiary">Example</dt>
+              <dt className="text-xs font-medium text-text-secondary">Example</dt>
               <dd className="font-mono">{example ?? '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-text-tertiary">Pieces</dt>
+              <dt className="text-xs font-medium text-text-secondary">Pieces</dt>
               <dd className="text-text-secondary">
                 {'{ORG}'} {'{CODE}'} {'{YYYY}'} {'{YY}'} {'{MM}'} {'{SEQ:6}'}. One {'{CODE}'} and
                 one {'{SEQ:n}'} are required.
@@ -426,7 +426,7 @@ function NumberingTable({
               <Tr key={d.id}>
                 <Td>
                   <span className="font-medium">{d.name}</span>
-                  <span className="block font-mono text-xs text-text-tertiary">{d.code}</span>
+                  <span className="block font-mono text-xs text-text-secondary">{d.code}</span>
                 </Td>
                 <Td className="font-mono text-sm">
                   {detail ? detail.numberPattern : <Skeleton className="h-4 w-40" />}

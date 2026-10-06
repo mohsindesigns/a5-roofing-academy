@@ -13,6 +13,7 @@ import {
   Select,
   SortTh,
   StatusText,
+  type Tone,
   Table,
   TableSkeleton,
   TBody,
@@ -32,6 +33,7 @@ import { useCertificates, useDefinitionOptions, useRenewals } from '../api';
 import { daysUntil } from '../labels';
 import { PersonCell } from '../person-cell';
 import { CandidateStatusText } from '../status';
+import type { RenewalItem } from '../types';
 import { IssueDialog, type IssuePreset } from './certificate-dialogs';
 import { CENTER_ROOT } from './nav';
 import { Segmented } from './segmented';
@@ -53,6 +55,18 @@ const RENEWAL_STATUS: Array<{ value: string; label: string }> = [
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
+
+const RENEWAL_STATE: Record<RenewalItem['status'], { label: string; tone: Tone }> = {
+  open: { label: 'Window open', tone: 'information' },
+  lapsed: { label: 'Lapsed', tone: 'danger' },
+  completed: { label: 'Completed', tone: 'success' },
+  cancelled: { label: 'Cancelled', tone: 'neutral' },
+};
+
+function RenewalState({ status }: { status: RenewalItem['status'] }) {
+  const state = RENEWAL_STATE[status];
+  return <StatusText tone={state.tone}>{state.label}</StatusText>;
+}
 
 function daysLeft(expiresAt: string): string {
   const d = daysUntil(expiresAt);
@@ -123,7 +137,7 @@ function ExpiringTable({
                   <span
                     className={cn(
                       'block text-sm',
-                      daysUntil(c.expiresAt) <= 30 ? 'text-warning' : 'text-text-tertiary',
+                      daysUntil(c.expiresAt) <= 30 ? 'text-warning' : 'text-text-secondary',
                     )}
                   >
                     {daysLeft(c.expiresAt)}
@@ -184,11 +198,11 @@ function RenewalsTable({
           <tr>
             <Th>Recipient</Th>
             <Th className="hidden md:table-cell">Certification</Th>
-            <Th>Renewal</Th>
+            <Th className="hidden sm:table-cell">Renewal</Th>
             <Th className="hidden sm:table-cell">Requirements</Th>
             <Th className="hidden lg:table-cell">Due</Th>
             {canIssue && (
-              <Th>
+              <Th className="hidden sm:table-cell">
                 <span className="sr-only">Actions</span>
               </Th>
             )}
@@ -210,30 +224,37 @@ function RenewalsTable({
                       detail={r.certificate.certificateNumber}
                     />
                   </Link>
+                  <div className="mt-1.5 grid justify-items-start gap-2 sm:hidden">
+                    <RenewalState status={r.status} />
+                    {r.progress && (
+                      <span className="tabular text-sm text-text-secondary">
+                        {r.progress.metCount} of {r.progress.totalCount} requirements met
+                      </span>
+                    )}
+                    {canIssue && (r.status === 'open' || r.status === 'lapsed') && (
+                      <Button
+                        size="sm"
+                        variant={ready ? 'primary' : 'secondary'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRenew({
+                            definitionId: r.certificate.definition.id,
+                            userId: r.certificate.recipient.id,
+                            userName: r.certificate.recipient.displayName,
+                          });
+                        }}
+                      >
+                        Renew
+                        <span className="sr-only"> {r.certificate.recipient.displayName}</span>
+                      </Button>
+                    )}
+                  </div>
                 </Td>
                 <Td className="hidden text-text-secondary md:table-cell">
                   {r.certificate.definition.name}
                 </Td>
-                <Td>
-                  <StatusText
-                    tone={
-                      r.status === 'open'
-                        ? 'information'
-                        : r.status === 'lapsed'
-                          ? 'danger'
-                          : r.status === 'completed'
-                            ? 'success'
-                            : 'neutral'
-                    }
-                  >
-                    {r.status === 'open'
-                      ? 'Window open'
-                      : r.status === 'lapsed'
-                        ? 'Lapsed'
-                        : r.status === 'completed'
-                          ? 'Completed'
-                          : 'Cancelled'}
-                  </StatusText>
+                <Td className="hidden sm:table-cell">
+                  <RenewalState status={r.status} />
                 </Td>
                 <Td className="hidden sm:table-cell">
                   {r.progress ? (
@@ -257,14 +278,14 @@ function RenewalsTable({
                       <CandidateStatusText status={r.progress.status} />
                     </div>
                   ) : (
-                    <span className="text-text-tertiary">—</span>
+                    <span className="text-text-secondary">—</span>
                   )}
                 </Td>
                 <Td className="hidden text-text-secondary lg:table-cell">
                   {r.dueAt ? formatDate(r.dueAt) : '—'}
                 </Td>
                 {canIssue && (
-                  <Td className="text-right">
+                  <Td className="hidden text-right sm:table-cell">
                     {(r.status === 'open' || r.status === 'lapsed') && (
                       <Button
                         size="sm"

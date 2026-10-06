@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ArrowRight, Share2 } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 import { Button, EmptyState, ErrorState, Notice, PageHeader, Skeleton, Tag } from '@/components/ui';
 import { RequirePermission } from '@/app/guards';
 import { errorMessage } from '@/lib/api/errors';
@@ -17,7 +17,7 @@ import { ShareDialog } from './verification-share';
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-medium text-text-tertiary">{label}</dt>
+      <dt className="text-xs font-medium text-text-secondary">{label}</dt>
       <dd className="mt-0.5 text-sm text-text-primary">{children}</dd>
     </div>
   );
@@ -75,7 +75,7 @@ function CertificationRow({ item }: { item: MyCertificationItem }) {
             </Button>
           )}
           {cert && (
-            <Button asChild trailing={<ArrowRight className="size-4" />}>
+            <Button asChild>
               <Link to={`/certifications/${cert.id}`}>Details</Link>
             </Button>
           )}

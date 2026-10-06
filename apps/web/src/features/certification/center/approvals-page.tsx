@@ -96,7 +96,7 @@ export function ApprovalRow({ approval }: { approval: Approval }) {
               disabled={blocker !== null}
               onClick={() => setDeciding('rejected')}
             >
-              Not yet
+              Decline
             </Button>
           </div>
         ) : (
@@ -165,9 +165,9 @@ export function ApprovalRow({ approval }: { approval: Approval }) {
       <ConfirmDialog
         open={deciding === 'rejected'}
         onOpenChange={close}
-        title={`Not ready for ${approval.definition.name}`}
-        description={`${approval.user.displayName} is told what is still missing and keeps working toward it.`}
-        confirmLabel="Send back"
+        title={`Decline ${approval.definition.name} for ${approval.user.displayName}`}
+        description={`${approval.user.displayName} is told what is still missing and keeps working toward the certification.`}
+        confirmLabel="Decline request"
         tone="danger"
         reasonLabel="What is still missing?"
         reasonRequired
@@ -180,7 +180,9 @@ export function ApprovalRow({ approval }: { approval: Approval }) {
             {
               onSuccess: () => {
                 setDeciding(null);
-                toast.success(`${approval.user.displayName} was told what to work on`);
+                toast.success(
+                  `Request declined. ${approval.user.displayName} was told what to work on`,
+                );
               },
               onError: (err) => setError(errorMessage(err)),
             },

@@ -124,17 +124,23 @@ export const CERTIFICATION_STATUS: Record<CertificationStatus, StatusInfo> = {
 
 const DAY_MS = 86_400_000;
 
-/** Whole days from `now` until `value` (negative when past). */
+/** Midnight at the start of the local calendar day, so "today" means the same day on the clock. */
+function localDay(ms: number): number {
+  const d = new Date(ms);
+  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/** Calendar days from `now` until `value` in the viewer's time zone (0 today, negative when past). */
 export function daysUntil(value: string, now = Date.now()): number {
-  return Math.ceil((new Date(value).getTime() - now) / DAY_MS);
+  return Math.round((localDay(new Date(value).getTime()) - localDay(now)) / DAY_MS);
 }
 
 /** "Expires Mar 3, 2028 (in 14 days)" or "No expiration date". */
 export function expiryText(expiresAt: string | null, now = Date.now()): string {
   if (!expiresAt) return 'No expiration date';
-  const days = daysUntil(expiresAt, now);
   const date = formatDate(expiresAt);
-  if (days < 0) return `Expired ${date}`;
+  if (new Date(expiresAt).getTime() <= now) return `Expired ${date}`;
+  const days = daysUntil(expiresAt, now);
   if (days === 0) return `Expires today (${date})`;
   if (days <= 90) return `Expires ${date} (in ${days} ${days === 1 ? 'day' : 'days'})`;
   return `Expires ${date}`;

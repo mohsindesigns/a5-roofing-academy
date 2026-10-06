@@ -79,7 +79,7 @@ function Num({
         value={Number.isFinite(value) ? value : ''}
         trailing={
           unit ? (
-            <span className="pointer-events-none text-sm text-text-tertiary">{unit}</span>
+            <span className="pointer-events-none text-sm text-text-secondary">{unit}</span>
           ) : undefined
         }
         onChange={(e) => {
@@ -187,7 +187,7 @@ export function ElementList({
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">
           Elements{' '}
-          <span className="font-normal text-text-tertiary">({design.elements.length} of 80)</span>
+          <span className="font-normal text-text-secondary">({design.elements.length} of 80)</span>
         </h3>
         {!readOnly && (
           <MenuRoot>
@@ -322,7 +322,7 @@ export function ElementProperties({
     <div className="grid gap-4">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold">{elementNoun(element.type)}</h3>
-        <code className="font-mono text-xs text-text-tertiary">{element.id}</code>
+        <code className="font-mono text-xs text-text-secondary">{element.id}</code>
       </div>
       {problems.length > 0 && (
         <ul
@@ -413,7 +413,7 @@ export function ElementProperties({
             }}
           />
           {element.assetId && upload.data?.id !== element.assetId && (
-            <p className="mt-1.5 text-xs text-text-tertiary">
+            <p className="mt-1.5 text-xs text-text-secondary">
               An image is set. Upload a new one to replace it.
             </p>
           )}
@@ -461,7 +461,7 @@ export function ElementProperties({
               onChange={(height) => onChange({ height })}
             />
           </div>
-          <p className="text-xs text-text-tertiary">
+          <p className="text-xs text-text-secondary">
             Keep elements between {c.DESIGN_SAFE_AREA.min}% and {c.DESIGN_SAFE_AREA.max}% of the
             page so printers do not clip them.
           </p>
@@ -828,13 +828,13 @@ export function VersionsPanel({
                   <span className="ml-2 text-xs font-normal text-success">Current</span>
                 )}
               </p>
-              <time dateTime={v.createdAt} className="text-xs text-text-tertiary">
+              <time dateTime={v.createdAt} className="text-xs text-text-secondary">
                 {formatDateTime(v.createdAt)}
               </time>
             </div>
             {v.changeNote && <p className="mt-0.5 text-sm text-text-secondary">{v.changeNote}</p>}
             <div className="mt-1 flex items-center justify-between gap-2">
-              <p className="text-xs text-text-tertiary">{v.createdBy?.displayName ?? 'System'}</p>
+              <p className="text-xs text-text-secondary">{v.createdBy?.displayName ?? 'System'}</p>
               {!readOnly && v.version !== currentVersion && (
                 <Button size="sm" loading={restoring === v.id} onClick={() => onRestore(v)}>
                   Load into editor
@@ -851,7 +851,7 @@ export function VersionsPanel({
 
 export function Hint({ children }: { children: ReactNode }) {
   return (
-    <p className="flex items-start gap-2 text-xs text-text-tertiary">
+    <p className="flex items-start gap-2 text-xs text-text-secondary">
       <SquareDashed aria-hidden className="mt-0.5 size-3.5 shrink-0" />
       <span>{children}</span>
     </p>

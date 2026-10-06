@@ -160,7 +160,7 @@ export function ImageUploader({
               </Button>
             )}
           </div>
-          <p className="mt-1.5 text-xs text-text-tertiary">{limitsText(purpose)}</p>
+          <p className="mt-1.5 text-xs text-text-secondary">{limitsText(purpose)}</p>
           {broken && (
             <p className="mt-1 text-xs text-warning">
               The preview link expired. Reload the page to see the image again.

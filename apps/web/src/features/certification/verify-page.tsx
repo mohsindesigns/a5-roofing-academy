@@ -4,11 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { CircleAlert, CircleCheck, CircleX, History, Printer, RotateCw } from 'lucide-react';
 import { certification } from '@a5/contracts';
 import { BrandMark } from '@/app/shell/brand';
-import { Button, DescriptionList, Skeleton } from '@/components/ui';
+import { Button, Skeleton } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api/errors';
 import { cn } from '@/lib/cn';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { fetchPublicVerification } from './api';
+import { FactList } from './fact-list';
 import type { PublicVerification } from './types';
 
 type Result = PublicVerification['status'];
@@ -97,12 +98,12 @@ export function VerificationResult({ result }: { result: PublicVerification }) {
       </div>
 
       <div className="mt-6">
-        <DescriptionList columns={2} items={verificationFacts(result)} />
+        <FactList items={verificationFacts(result)} />
       </div>
 
       {result.status === 'revoked' && result.revocationNote && (
         <div className="mt-6 rounded-lg border border-border bg-surface px-4 py-3">
-          <p className="text-xs font-medium text-text-tertiary">Note from the issuer</p>
+          <p className="text-xs font-medium text-text-secondary">Note from the issuer</p>
           <p className="mt-0.5 text-base">{result.revocationNote}</p>
         </div>
       )}
@@ -239,7 +240,7 @@ export function VerifyPage() {
           Verification link: {typeof window === 'undefined' ? '' : window.location.href}
         </p>
       </main>
-      <footer className="px-5 pb-8 text-xs text-text-tertiary sm:px-8 print:hidden">
+      <footer className="px-5 pb-8 text-xs text-text-secondary sm:px-8 print:hidden">
         This page shows only the details the issuer chooses to publish. It never shows contact
         information, scores or training records.
       </footer>

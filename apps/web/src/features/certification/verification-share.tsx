@@ -21,10 +21,13 @@ async function copyText(text: string): Promise<boolean> {
 export function VerificationPanel({
   url,
   certificateNumber,
+  audience = 'holder',
   className,
 }: {
   url: string;
   certificateNumber: string | null;
+  /** Whose point of view the explanation takes: the certificate holder or an administrator. */
+  audience?: 'holder' | 'admin';
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
@@ -90,12 +93,14 @@ export function VerificationPanel({
             </Button>
           </div>
           <p className="mt-2 text-sm text-text-secondary">
-            Anyone with this link or QR code can confirm the certificate is genuine. It shows your
-            name, the certification, its dates and whether it is still valid, and nothing else.
+            {audience === 'holder'
+              ? 'Anyone with this link or QR code can confirm the certificate is genuine. It shows your name, the certification, its dates and whether it is still valid, and nothing else.'
+              : 'Anyone with this link or QR code can check the certificate. The page shows the holder’s name, the certification, its dates and its status, and nothing else.'}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button asChild leading={<ExternalLink className="size-4" />}>
+            <Button asChild>
               <a href={url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink aria-hidden className="size-4" />
                 Open verification page
                 <span className="sr-only"> (opens in a new tab)</span>
               </a>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
   Copy,
+  Download,
   Ellipsis,
   FileText,
   Pencil,
@@ -354,13 +355,13 @@ function Designer({ template }: { template: TemplateDetail }) {
               </label>
             </div>
             {canEdit && (
-              <p className="text-xs text-text-tertiary">
+              <p className="text-xs text-text-secondary">
                 Drag an element, or select it and use the arrow keys. Shift moves faster, Alt
                 resizes.
               </p>
             )}
           </div>
-          <p className="mt-2 text-xs text-text-tertiary">
+          <p className="mt-2 text-xs text-text-secondary">
             Sample names and numbers are fictional. Text that does not fit its box is shrunk in the
             PDF, so check the sample PDF before saving.
           </p>
@@ -499,27 +500,26 @@ function Designer({ template }: { template: TemplateDetail }) {
                   {pdfStale ? 'Update sample PDF' : 'Refresh sample PDF'}
                 </Button>
                 {preview && (
-                  <Button asChild>
-                    <a href={preview.data.pdfUrl} target="_blank" rel="noopener noreferrer">
-                      Open in a new tab<span className="sr-only"> (opens in a new tab)</span>
+                  <Button asChild variant="primary">
+                    <a href={preview.data.pdfUrl} download="certificate-preview.pdf">
+                      <Download aria-hidden className="size-4" />
+                      Download sample PDF
                     </a>
                   </Button>
                 )}
               </div>
               {pdfStale && (
                 <p className="text-sm text-warning">
-                  The PDF below shows the design as of the last refresh, not your latest changes.
+                  The last sample shows the design as of the previous refresh, not your latest
+                  changes. Update it before downloading.
                 </p>
               )}
-              {preview ? (
-                <iframe
-                  title="Sample certificate PDF"
-                  src={preview.data.pdfUrl}
-                  className="h-[60vh] w-full rounded-lg border border-border bg-surface"
-                />
-              ) : previewRequest.isPending ? (
-                <Skeleton className="h-64 w-full" />
-              ) : null}
+              {preview && (
+                <p className="text-xs text-text-secondary">
+                  The download link expires after a short time. Refresh the sample to get a new one.
+                </p>
+              )}
+              {!preview && previewRequest.isPending && <Skeleton className="h-10 w-48" />}
             </TabsContent>
           </TabsRoot>
         </div>

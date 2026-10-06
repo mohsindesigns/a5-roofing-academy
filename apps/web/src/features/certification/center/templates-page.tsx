@@ -155,7 +155,7 @@ function Templates() {
                     {t.usedBy.length > 0 ? (
                       t.usedBy.map((u) => u.name).join(', ')
                     ) : (
-                      <span className="text-text-tertiary">Not assigned</span>
+                      <span className="text-text-secondary">Not assigned</span>
                     )}
                   </Td>
                   <Td className="hidden text-text-secondary md:table-cell">

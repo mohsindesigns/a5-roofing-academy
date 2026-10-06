@@ -225,9 +225,14 @@ function IssuedTable({
                 <SortTh field="number" sort={state.sort} onSort={onSort}>
                   Number
                 </SortTh>
-                <Th>Recipient</Th>
+                <Th className="hidden sm:table-cell">Recipient</Th>
                 <Th className="hidden md:table-cell">Certification</Th>
-                <SortTh field="status" sort={state.sort} onSort={onSort}>
+                <SortTh
+                  field="status"
+                  sort={state.sort}
+                  onSort={onSort}
+                  className="hidden sm:table-cell"
+                >
                   Status
                 </SortTh>
                 <SortTh
@@ -255,17 +260,21 @@ function IssuedTable({
                   <Td>
                     <Link
                       to={`${CENTER_ROOT}/issued/${c.id}`}
-                      className="font-mono text-sm font-medium hover:underline"
+                      className="font-mono text-sm font-medium whitespace-nowrap hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {c.certificateNumber}
                     </Link>
+                    <div className="mt-1.5 grid gap-1 sm:hidden">
+                      <span className="font-medium">{c.recipient.displayName}</span>
+                      <CertificateStatus status={c.effectiveStatus} />
+                    </div>
                   </Td>
-                  <Td>
+                  <Td className="hidden sm:table-cell">
                     <PersonCell name={c.recipient.displayName} />
                   </Td>
                   <Td className="hidden text-text-secondary md:table-cell">{c.definition.name}</Td>
-                  <Td>
+                  <Td className="hidden sm:table-cell">
                     <CertificateStatus status={c.effectiveStatus} />
                   </Td>
                   <Td className="hidden text-text-secondary sm:table-cell">
@@ -362,60 +371,65 @@ function ReadyTable({
               <tr>
                 <Th>Person</Th>
                 <Th className="hidden md:table-cell">Certification</Th>
-                <Th>Status</Th>
+                <Th className="hidden sm:table-cell">Status</Th>
                 <Th className="hidden sm:table-cell">Ready since</Th>
                 {canIssue && (
-                  <Th>
+                  <Th className="hidden sm:table-cell">
                     <span className="sr-only">Actions</span>
                   </Th>
                 )}
               </tr>
             </THead>
             <TBody>
-              {candidates.data.items.map((c) => (
-                <Tr key={c.id}>
-                  <Td>
-                    <PersonCell name={c.user.displayName} detail={c.user.employeeId} />
-                    {(c.onHold || c.issueError) && (
-                      <p className="mt-1 text-sm text-warning">
-                        {c.onHold
-                          ? `On hold: ${c.holdReason}`
-                          : `Automatic issue failed: ${c.issueError}`}
-                      </p>
-                    )}
-                  </Td>
-                  <Td className="hidden text-text-secondary md:table-cell">
-                    {c.definition.name}
-                    {c.purpose === 'renewal' && (
-                      <span className="text-text-tertiary"> (renewal)</span>
-                    )}
-                  </Td>
-                  <Td>
-                    <CandidateStatusText status={c.status} />
-                  </Td>
-                  <Td className="hidden text-text-secondary sm:table-cell">
-                    {c.eligibleAt ? formatDate(c.eligibleAt) : '—'}
-                  </Td>
-                  {canIssue && (
-                    <Td className="text-right">
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={() =>
-                          onIssue({
-                            definitionId: c.definition.id,
-                            userId: c.user.id,
-                            userName: c.user.displayName,
-                          })
-                        }
-                      >
-                        {c.purpose === 'renewal' ? 'Renew' : 'Issue'}
-                        <span className="sr-only"> for {c.user.displayName}</span>
-                      </Button>
+              {candidates.data.items.map((c) => {
+                const action = canIssue ? (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() =>
+                      onIssue({
+                        definitionId: c.definition.id,
+                        userId: c.user.id,
+                        userName: c.user.displayName,
+                      })
+                    }
+                  >
+                    {c.purpose === 'renewal' ? 'Renew' : 'Issue'}
+                    <span className="sr-only"> for {c.user.displayName}</span>
+                  </Button>
+                ) : null;
+                return (
+                  <Tr key={c.id}>
+                    <Td>
+                      <PersonCell name={c.user.displayName} detail={c.user.employeeId} />
+                      {(c.onHold || c.issueError) && (
+                        <p className="mt-1 text-sm text-warning">
+                          {c.onHold
+                            ? `On hold: ${c.holdReason}`
+                            : `Automatic issue failed: ${c.issueError}`}
+                        </p>
+                      )}
+                      <div className="mt-2 grid justify-items-start gap-2 sm:hidden">
+                        <CandidateStatusText status={c.status} />
+                        {action}
+                      </div>
                     </Td>
-                  )}
-                </Tr>
-              ))}
+                    <Td className="hidden text-text-secondary md:table-cell">
+                      {c.definition.name}
+                      {c.purpose === 'renewal' && (
+                        <span className="text-text-secondary"> (renewal)</span>
+                      )}
+                    </Td>
+                    <Td className="hidden sm:table-cell">
+                      <CandidateStatusText status={c.status} />
+                    </Td>
+                    <Td className="hidden text-text-secondary sm:table-cell">
+                      {c.eligibleAt ? formatDate(c.eligibleAt) : '—'}
+                    </Td>
+                    {canIssue && <Td className="hidden text-right sm:table-cell">{action}</Td>}
+                  </Tr>
+                );
+              })}
             </TBody>
           </Table>
           <Pagination

@@ -63,8 +63,11 @@ function Certifications() {
         description="Each certification defines what people must complete, how long it lasts and what the certificate looks like."
         actions={
           permissions.has('certifications.create') && (
-            <Button asChild variant="primary" leading={<Plus className="size-4" />}>
-              <Link to={`${CENTER_ROOT}/certifications/new`}>New certification</Link>
+            <Button asChild variant="primary">
+              <Link to={`${CENTER_ROOT}/certifications/new`}>
+                <Plus aria-hidden className="size-4" />
+                New certification
+              </Link>
             </Button>
           )
         }
@@ -139,7 +142,7 @@ function Certifications() {
                     >
                       {d.name}
                     </Link>
-                    <span className="block font-mono text-xs text-text-tertiary">{d.code}</span>
+                    <span className="block font-mono text-xs text-text-secondary">{d.code}</span>
                   </Td>
                   <Td>
                     <DefinitionStatusText status={d.status} />

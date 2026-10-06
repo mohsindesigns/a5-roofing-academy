@@ -90,9 +90,11 @@ interface UsageValues {
 function UsageFields<T extends FieldValues & UsageValues>({
   form,
   noun,
+  plural,
 }: {
   form: UseFormReturn<T>;
   noun: string;
+  plural: string;
 }) {
   const definitions = useDefinitionOptions();
   const options = (definitions.data?.items ?? []).map((d) => ({ value: d.id, label: d.name }));
@@ -147,8 +149,8 @@ function UsageFields<T extends FieldValues & UsageValues>({
               >
                 Active
               </label>
-              <p className="text-xs text-text-tertiary">
-                Inactive {noun}s cannot be chosen for new certificates. Issued certificates are not
+              <p className="text-xs text-text-secondary">
+                Inactive {plural} cannot be chosen for new certificates. Issued certificates are not
                 affected.
               </p>
             </div>
@@ -189,7 +191,7 @@ function SignatureHistory({ id }: { id: string }) {
               Version {v.version}
               {i === 0 && <span className="ml-2 text-xs font-normal text-success">Current</span>}
             </p>
-            <p className="text-xs text-text-tertiary">
+            <p className="text-xs text-text-secondary">
               {v.width} × {v.height} px · {formatDateTime(v.uploadedAt)}
               {v.uploadedBy ? ` · ${v.uploadedBy.displayName}` : ''}
             </p>
@@ -310,7 +312,7 @@ export function SignatorySheet({
               </Field>
             )}
           />
-          <UsageFields form={form} noun="signatory" />
+          <UsageFields form={form} noun="signatory" plural="signatories" />
           {formError && (
             <p role="alert" className="rounded bg-danger-soft px-3 py-2 text-sm text-danger">
               {formError}
@@ -444,7 +446,7 @@ export function StampSheet({
               <Input {...register('departmentName')} />
             </Field>
           )}
-          <UsageFields form={form} noun="stamp" />
+          <UsageFields form={form} noun="stamp" plural="stamps" />
           {formError && (
             <p role="alert" className="rounded bg-danger-soft px-3 py-2 text-sm text-danger">
               {formError}
@@ -469,7 +471,7 @@ export function StampSheet({
                 }}
               />
               {saved.currentImage && (
-                <p className="text-xs text-text-tertiary">
+                <p className="text-xs text-text-secondary">
                   Version {saved.currentImage.version} · {saved.currentImage.width} ×{' '}
                   {saved.currentImage.height} px · uploaded{' '}
                   {formatDate(saved.currentImage.uploadedAt)}
