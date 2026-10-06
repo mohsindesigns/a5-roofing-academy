@@ -353,7 +353,12 @@ function Programs() {
                 <SortTh field="title" sort={state.sort} onSort={(sort) => setState({ sort })}>
                   Program
                 </SortTh>
-                <SortTh field="status" sort={state.sort} onSort={(sort) => setState({ sort })}>
+                <SortTh
+                  field="status"
+                  sort={state.sort}
+                  onSort={(sort) => setState({ sort })}
+                  className="hidden sm:table-cell"
+                >
                   Status
                 </SortTh>
                 <Th className="hidden md:table-cell">Contents</Th>
@@ -384,8 +389,16 @@ function Programs() {
                       <span className="block max-w-[56ch] truncate text-sm text-text-tertiary">
                         {[p.category, p.summary].filter(Boolean).join(' · ') || 'No summary'}
                       </span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden">
+                        <StatusText tone={s.tone}>{s.label}</StatusText>
+                        {p.hasUnpublishedChanges && p.status !== 'archived' && (
+                          <Tag tone="warning">
+                            {p.status === 'draft' ? 'Never published' : 'Unpublished changes'}
+                          </Tag>
+                        )}
+                      </span>
                     </Td>
-                    <Td>
+                    <Td className="hidden sm:table-cell">
                       <StatusText tone={s.tone}>{s.label}</StatusText>
                       {p.status === 'published' && (
                         <span className="block text-xs text-text-tertiary">

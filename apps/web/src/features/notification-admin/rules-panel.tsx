@@ -59,7 +59,7 @@ export function RulesPanel() {
             const conditions = describeConditions(r.conditions);
             return (
               <Tr key={r.id}>
-                <Td className="min-w-[200px]">
+                <Td className="min-w-[170px]">
                   <span className="block font-medium">{r.typeLabel}</span>
                   <span className="block max-w-[46ch] text-xs text-text-secondary">
                     {categoryLabel(r.category)} · {r.description}
@@ -105,8 +105,11 @@ export function RulesPanel() {
                     leading={<Pencil className="size-3.5" />}
                     onClick={() => setEditing(r)}
                   >
-                    {r.mandatory ? 'View' : 'Edit'}
-                    <span className="sr-only"> {r.typeLabel}</span>
+                    <span className="hidden sm:inline">{r.mandatory ? 'View' : 'Edit'}</span>
+                    <span className="sr-only">
+                      <span className="sm:hidden">{r.mandatory ? 'View' : 'Edit'}</span>{' '}
+                      {r.typeLabel}
+                    </span>
                   </Button>
                 </Td>
               </Tr>

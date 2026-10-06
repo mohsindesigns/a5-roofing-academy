@@ -164,7 +164,7 @@ function Row({
         actions.move(planDrop(phases, drag, target));
       }}
       className={cn(
-        'group flex items-center gap-2 rounded px-2 py-2',
+        'group flex min-w-0 items-center gap-1 rounded px-1 py-2 sm:gap-2 sm:px-2',
         active === 'before' && 'shadow-[inset_0_2px_0_0_var(--a5-focus)]',
         active === 'after' && 'shadow-[inset_0_-2px_0_0_var(--a5-focus)]',
         active === 'into' && 'bg-information-soft outline outline-1 outline-information',
@@ -174,7 +174,7 @@ function Row({
       {canEdit && (
         <GripVertical
           aria-hidden
-          className="size-4 shrink-0 cursor-grab text-text-tertiary opacity-60 group-hover:opacity-100"
+          className="hidden size-4 shrink-0 cursor-grab text-text-tertiary opacity-60 group-hover:opacity-100 sm:block"
         />
       )}
       <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
@@ -316,7 +316,7 @@ function ModuleBlock({
   const lessons = module.lessons.filter((l) => showArchived || l.status !== 'archived');
   const otherPhases = phases.filter((p) => p.id !== phase.id && p.status !== 'archived');
   return (
-    <div className={cn(archived && 'opacity-60')}>
+    <div className={cn('min-w-0', archived && 'opacity-60')}>
       <Row
         {...shared}
         phases={phases}
@@ -363,7 +363,7 @@ function ModuleBlock({
         </div>
       </Row>
       {open && (
-        <div className="ml-6 border-l border-divider pl-2">
+        <div className="ml-3 min-w-0 border-l border-divider pl-1 sm:ml-6 sm:pl-2">
           {lessons.map((l) => (
             <LessonRow key={l.id} lesson={l} module={module} phases={phases} {...shared} />
           ))}
@@ -405,7 +405,7 @@ function PhaseBlock({
   return (
     <section
       aria-label={`${phase.label}: ${phase.title}`}
-      className={cn('rounded-lg border border-border bg-surface', archived && 'opacity-60')}
+      className={cn('min-w-0 rounded-lg border border-border bg-surface', archived && 'opacity-60')}
     >
       <Row
         {...shared}

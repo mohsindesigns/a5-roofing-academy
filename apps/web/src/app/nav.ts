@@ -76,6 +76,7 @@ export const NAV: NavSection[] = [
         to: '/team',
         label: 'Team',
         icon: UsersRound,
+        mobile: true,
         visible: (p) =>
           p.hasAny(['enrollments.view', 'certificates.view']) &&
           p.scope('enrollments.view') !== 'own',

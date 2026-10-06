@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, UserPlus } from 'lucide-react';
+import type { learning } from '@a5/contracts';
 import {
   Avatar,
   Button,
@@ -42,6 +43,36 @@ import {
   toProgressParams,
 } from './filters';
 import { LearnerDrawer } from './learner-drawer';
+
+function ProgressCell({ row }: { row: learning.TeamProgressRow }) {
+  return (
+    <>
+      <ProgressBar
+        value={row.progressPercent}
+        label={`${row.learner.displayName} progress in ${row.program.title}`}
+        tone={row.status === 'completed' ? 'success' : 'accent'}
+        showValue
+      />
+      <p className="mt-0.5 text-xs text-text-tertiary">
+        {row.status === 'completed'
+          ? 'Completed'
+          : row.status === 'withdrawn'
+            ? 'Withdrawn'
+            : `${row.requiredCompleted} of ${row.requiredTotal} required${
+                row.currentPhase ? ` · ${row.currentPhase.label}` : ''
+              }`}
+      </p>
+    </>
+  );
+}
+
+function AttentionCell({ row }: { row: learning.TeamProgressRow }) {
+  return row.status === 'withdrawn' ? (
+    <StatusText tone="neutral">Withdrawn</StatusText>
+  ) : (
+    <AttentionFlags flags={row.attention} compact />
+  );
+}
 
 function TeamProgress() {
   const [state, setState] = useSearchState(TEAM_DEFAULTS);
@@ -194,7 +225,12 @@ function TeamProgress() {
                   Person
                 </SortTh>
                 <Th className="hidden lg:table-cell">Program</Th>
-                <SortTh field="progress" sort={state.sort} onSort={(sort) => setState({ sort })}>
+                <SortTh
+                  field="progress"
+                  sort={state.sort}
+                  onSort={(sort) => setState({ sort })}
+                  className="hidden sm:table-cell"
+                >
                   Progress
                 </SortTh>
                 <SortTh
@@ -213,7 +249,7 @@ function TeamProgress() {
                 >
                   Due
                 </SortTh>
-                <Th>Attention</Th>
+                <Th className="hidden sm:table-cell">Attention</Th>
               </tr>
             </THead>
             <TBody>
@@ -248,24 +284,16 @@ function TeamProgress() {
                         </span>
                       </span>
                     </button>
+                    <div className="mt-2 grid gap-1.5 sm:hidden">
+                      <ProgressCell row={row} />
+                      {row.attention.length > 0 && row.status !== 'withdrawn' && (
+                        <AttentionCell row={row} />
+                      )}
+                    </div>
                   </Td>
                   <Td className="hidden text-text-secondary lg:table-cell">{row.program.title}</Td>
-                  <Td className="min-w-[150px]">
-                    <ProgressBar
-                      value={row.progressPercent}
-                      label={`${row.learner.displayName} progress in ${row.program.title}`}
-                      tone={row.status === 'completed' ? 'success' : 'accent'}
-                      showValue
-                    />
-                    <p className="mt-0.5 text-xs text-text-tertiary">
-                      {row.status === 'completed'
-                        ? 'Completed'
-                        : row.status === 'withdrawn'
-                          ? 'Withdrawn'
-                          : `${row.requiredCompleted} of ${row.requiredTotal} required${
-                              row.currentPhase ? ` · ${row.currentPhase.label}` : ''
-                            }`}
-                    </p>
+                  <Td className="hidden min-w-[150px] sm:table-cell">
+                    <ProgressCell row={row} />
                   </Td>
                   <Td className="hidden text-sm text-text-secondary md:table-cell">
                     {row.lastActivityAt ? formatRelative(row.lastActivityAt) : 'No activity yet'}
@@ -282,12 +310,8 @@ function TeamProgress() {
                       <span className="text-text-tertiary">—</span>
                     )}
                   </Td>
-                  <Td className="min-w-[150px]">
-                    {row.status === 'withdrawn' ? (
-                      <StatusText tone="neutral">Withdrawn</StatusText>
-                    ) : (
-                      <AttentionFlags flags={row.attention} compact />
-                    )}
+                  <Td className="hidden min-w-[150px] sm:table-cell">
+                    <AttentionCell row={row} />
                   </Td>
                 </Tr>
               ))}

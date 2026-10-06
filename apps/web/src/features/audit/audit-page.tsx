@@ -214,7 +214,7 @@ function AuditLog() {
               <tr>
                 <Th>When</Th>
                 <Th>Action</Th>
-                <Th>Actor</Th>
+                <Th className="hidden sm:table-cell">Actor</Th>
                 <Th className="hidden md:table-cell">Resource</Th>
                 <Th className="hidden xl:table-cell">Service</Th>
               </tr>
@@ -244,12 +244,15 @@ function AuditLog() {
                           {e.reason}
                         </span>
                       )}
+                      <span className="block text-xs text-text-secondary sm:hidden">
+                        by {e.actor.displayName ?? e.actor.type}
+                      </span>
                       {e.hasChanges && (
                         <span className="text-xs text-text-tertiary">Includes changes</span>
                       )}
                     </button>
                   </Td>
-                  <Td className="text-sm">
+                  <Td className="hidden text-sm sm:table-cell">
                     {e.actor.displayName ?? (
                       <span className="text-text-secondary capitalize">{e.actor.type}</span>
                     )}

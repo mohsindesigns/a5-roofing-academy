@@ -195,7 +195,7 @@ function Library() {
                   Title
                 </SortTh>
                 <Th className="hidden sm:table-cell">Type</Th>
-                <Th>Status</Th>
+                <Th className="hidden sm:table-cell">Status</Th>
                 <SortTh
                   field="sizeBytes"
                   sort={state.sort}
@@ -234,6 +234,9 @@ function Library() {
                         <span className="block truncate text-xs text-text-tertiary">
                           {a.originalFilename}
                         </span>
+                        <span className="mt-0.5 block sm:hidden">
+                          <MediaStatus status={a.status} />
+                        </span>
                       </span>
                     </button>
                   </Td>
@@ -245,7 +248,7 @@ function Library() {
                       </span>
                     )}
                   </Td>
-                  <Td>
+                  <Td className="hidden sm:table-cell">
                     <MediaStatus status={a.status} />
                     {a.error && (a.status === 'failed' || a.status === 'rejected') && (
                       <span className="mt-0.5 block max-w-[36ch] text-xs text-text-secondary">
