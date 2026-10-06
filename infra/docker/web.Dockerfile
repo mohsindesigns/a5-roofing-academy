@@ -13,5 +13,6 @@ RUN pnpm --filter @a5/web build
 
 FROM nginx:1.29-alpine AS runtime
 COPY infra/nginx/web.conf /etc/nginx/conf.d/default.conf
+COPY infra/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 EXPOSE 8080
