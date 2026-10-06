@@ -7,8 +7,9 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('../..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('../..', import.meta.url));
 const args = process.argv.slice(2);
 const noWeb = args.includes('--no-web');
 const filters = args.filter((a) => !a.startsWith('--'));
@@ -28,6 +29,7 @@ function run(name, cmd, cmdArgs, cwd, color) {
   const child = spawn(cmd, cmdArgs, {
     cwd,
     env: { ...process.env, FORCE_COLOR: '1' },
+    shell: process.platform === 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const prefix = `\x1b[${color}m${name.padEnd(22)}\x1b[0m│ `;
@@ -50,6 +52,7 @@ function run(name, cmd, cmdArgs, cwd, color) {
 console.log(`Building ${projects.length} projects…`);
 const initial = spawnSync('pnpm', ['exec', 'tsc', '-b', ...projects], {
   cwd: root,
+  shell: process.platform === 'win32',
   stdio: 'inherit',
 });
 if (initial.status !== 0) {

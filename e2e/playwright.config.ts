@@ -15,8 +15,9 @@ export default defineConfig({
     baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:5173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    launchOptions:
-      process.env.CHROMIUM_PATH || process.env.CI
+    launchOptions: process.env.CHROMIUM_PATH
+      ? { executablePath: process.env.CHROMIUM_PATH }
+      : process.env.CI
         ? {}
         : { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' },
   },
