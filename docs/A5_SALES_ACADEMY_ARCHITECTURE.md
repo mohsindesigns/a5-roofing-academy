@@ -696,6 +696,21 @@ Typography: IBM Plex Sans / IBM Plex Mono (self-hosted), 13–14 px UI text,
 
 Each phase ends with lint, typecheck, tests and builds green.
 
+### 17.1 Implementation status
+
+Phases 1–6 are implemented end to end (services, migrations, seeds, contracts, web UI). Phase 7 is
+in progress: Playwright journeys exist for identity, assessment, AI coach, certification,
+analytics/audit and content admin; a security review and an accessibility pass are tracked in the
+README's known limitations.
+
+The entity map in §4.1 is the design baseline. Each service's `migrations/` directory is the
+source of truth; the analytics, notification and audit services in particular grew a few tables
+beyond this list (report jobs and exports, delivery logs, audit partitions).
+
+Deliberate deviations from the plan: the dashboard funnel is derived from KPIs because analytics
+does not expose true stage transitions; voice practice is interface-only; media uploads are not
+resumable; there is no standalone feature-flag API (flags are an organization setting).
+
 ---
 
 ## 18. Architecture decision log
