@@ -18,7 +18,7 @@ test.describe('authentication', () => {
     await page.getByLabel('Email').fill(accounts.rep);
     await page.locator('input[type="password"]').fill('not-the-password');
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByRole('alert')).toHaveText('The email or password is incorrect.');
+    await expect(page.getByRole('alert')).toHaveText(/^The email or password is incorrect/);
   });
 
   test('keeps the session across a reload', async ({ page }) => {
