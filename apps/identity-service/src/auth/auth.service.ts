@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { Principal } from '@a5/auth';
+import { sealLink, type Principal } from '@a5/auth';
 import { defaultFeatureFlags, type FeatureFlagState, type identity } from '@a5/contracts';
 import { sql } from '@a5/database';
 import { identityEvents } from '@a5/events';
@@ -430,7 +430,11 @@ export class AuthService {
           userId: user.id,
           email: user.email,
           displayName: `${user.first_name} ${user.last_name}`,
-          resetUrl: `${this.config.publicAppUrl}/reset-password?token=${encodeURIComponent(token)}`,
+          // Sealed so the outbox, event stream and backups never hold a usable reset link.
+          resetUrl: sealLink(
+            this.config.internalAuthSecret,
+            `${this.config.publicAppUrl}/reset-password?token=${encodeURIComponent(token)}`,
+          ),
           expiresAt: expiresAt.toISOString(),
         },
         {

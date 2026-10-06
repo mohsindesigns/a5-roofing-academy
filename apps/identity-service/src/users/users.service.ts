@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { scopeAdmitsUser, type Principal } from '@a5/auth';
+import { scopeAdmitsUser, sealLink, type Principal } from '@a5/auth';
 import type { identity } from '@a5/contracts';
 import { isUniqueViolation, type Page } from '@a5/database';
 import { identityEvents } from '@a5/events';
@@ -248,7 +248,8 @@ export class UsersService {
         userId,
         email,
         displayName,
-        activationUrl: url,
+        // Sealed so the outbox, event stream and backups never hold a usable activation link.
+        activationUrl: sealLink(this.config.internalAuthSecret, url),
         expiresAt: expiresAt.toISOString(),
         invitedByName: actor.displayName,
       },

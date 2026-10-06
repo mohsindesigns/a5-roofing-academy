@@ -173,13 +173,10 @@ describe('templates', () => {
 
   it('applies edits to new notifications, audits them and resets to the default', async () => {
     const t = await template('assessment.failed', 'in_app');
-    const updated = await h.http
-      .patch(`/api/v1/notification-templates/${t.id}`)
-      .set(admin)
-      .send({
-        subject: 'Keep going on {{assessmentTitle}}',
-        body: '{{scorePercent}}% this time; {{passingPercent}}% passes. Review and retake.',
-      });
+    const updated = await h.http.patch(`/api/v1/notification-templates/${t.id}`).set(admin).send({
+      subject: 'Keep going on {{assessmentTitle}}',
+      body: '{{scorePercent}}% this time; {{passingPercent}}% passes. Review and retake.',
+    });
     expect(updated.status).toBe(200);
     expect(updated.body).toMatchObject({
       isDefault: false,

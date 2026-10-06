@@ -1,3 +1,4 @@
+import { flattenLine } from '../prompts/compiler.js';
 import type {
   CategoryScoreRecord,
   EvidenceRecord,
@@ -55,9 +56,9 @@ export function groundQuote(
   if (q.length < 3) return null;
   const reps = transcript.filter((l) => l.role === 'rep');
   const cited = reps.find((l) => l.seq === turn);
-  if (cited && squash(cited.content).includes(q))
+  if (cited && squash(flattenLine(cited.content)).includes(q))
     return { seq: cited.seq, quote: quote.trim().replace(/^["“]+|["”]+$/g, '') };
-  const any = reps.find((l) => squash(l.content).includes(q));
+  const any = reps.find((l) => squash(flattenLine(l.content)).includes(q));
   return any ? { seq: any.seq, quote: quote.trim().replace(/^["“]+|["”]+$/g, '') } : null;
 }
 

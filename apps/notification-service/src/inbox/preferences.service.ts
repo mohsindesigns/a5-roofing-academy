@@ -97,12 +97,10 @@ export class PreferencesService {
         })),
       )
       .onConflict((oc) =>
-        oc
-          .columns(['user_id', 'type', 'channel'])
-          .doUpdateSet((eb) => ({
-            enabled: eb.ref('excluded.enabled'),
-            updated_at: sql<Date>`now()`,
-          })),
+        oc.columns(['user_id', 'type', 'channel']).doUpdateSet((eb) => ({
+          enabled: eb.ref('excluded.enabled'),
+          updated_at: sql<Date>`now()`,
+        })),
       )
       .execute();
     return this.list(p);

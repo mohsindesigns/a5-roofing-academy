@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Insertable, Selectable } from '@a5/database';
+import { unsealLink } from '@a5/auth';
 import { DirectoryReader } from '@a5/directory';
 import type { notification } from '@a5/contracts';
 import type { EventEnvelope } from '@a5/events';
@@ -208,7 +209,9 @@ export class NotificationEngine {
         const key = `${recipient.userId}:${def.key}:${channel}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        const link = built.secretLink ?? `${this.config.publicAppUrl}${built.path ?? ''}`;
+        const link = built.secretLink
+          ? unsealLink(this.config.internalAuthSecret, built.secretLink)
+          : `${this.config.publicAppUrl}${built.path ?? ''}`;
         const vars: TemplateVars = {
           ...built.vars,
           ...subjectVars,

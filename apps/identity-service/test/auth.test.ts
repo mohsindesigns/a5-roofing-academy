@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { verifyAccessToken, importAccessKeys } from '@a5/auth';
+import { verifyAccessToken, importAccessKeys, unsealLink } from '@a5/auth';
+import { TEST_INTERNAL_SECRET } from '@a5/nest-kit/testing';
 import { PEOPLE } from '@a5/seed-data';
 import { iamKeys } from '../src/common/iam-keys.js';
 import { cookie, createIdentityHarness, type IdentityHarness } from './harness.js';
@@ -218,7 +219,10 @@ describe('password reset', () => {
       .where('type', '=', 'identity.password_reset.requested')
       .orderBy('created_at', 'desc')
       .executeTakeFirstOrThrow();
-    const url = new URL((event.envelope as { payload: { resetUrl: string } }).payload.resetUrl);
+    const stored = (event.envelope as { payload: { resetUrl: string } }).payload.resetUrl;
+    // The outbox never holds a usable link; only the notification service can open it.
+    expect(stored).not.toContain('token=');
+    const url = new URL(unsealLink(TEST_INTERNAL_SECRET, stored));
     const token = url.searchParams.get('token')!;
 
     const info = await h.http.get(`/api/v1/auth/tokens/${token}`);
